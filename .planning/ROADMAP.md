@@ -34,7 +34,7 @@
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Project config files (pyproject.toml, requirements.txt, .gitignore, placeholder dirs)
+- [x] 01-01-PLAN.md — Project config files (pyproject.toml, requirements.txt, .gitignore, placeholder dirs)
 - [ ] 01-02-PLAN.md — Package skeleton (gensubtitles/ tree, core stubs, api stubs, cli stub, root main.py shim)
 - [ ] 01-03-PLAN.md — Environment + test scaffold + README (uv sync, tests/test_infrastructure.py, README.md)
 
