@@ -1,11 +1,4 @@
-"""
-GenSubtitles - Automatic subtitle generation tool.
-"""
-
-
-def main():
-    print("GenSubtitles - Subtitle generation")
-
+from gensubtitles.cli.main import app
 
 if __name__ == "__main__":
-    main()
+    app()
