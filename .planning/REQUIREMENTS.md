@@ -56,9 +56,9 @@
 ### Project Infrastructure
 
 - [ ] **INF-01**: `requirements.txt` lists all dependencies with pinned versions
-- [ ] **INF-02**: Project structure follows `core/` + `api/` + `cli/` separation
+- [x] **INF-02**: Project structure follows `core/` + `api/` + `cli/` separation
 - [ ] **INF-03**: README documents installation, CLI usage, and API usage with examples
-- [ ] **INF-04**: FFmpeg as system dependency is documented with install instructions
+- [x] **INF-04**: FFmpeg as system dependency is documented with install instructions
 
 ## v2 Requirements
 

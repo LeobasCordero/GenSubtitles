@@ -31,11 +31,11 @@
 **Estimated complexity:** Low  
 **Depends on:** Nothing (first phase)
 
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 01-01-PLAN.md — Project config files (pyproject.toml, requirements.txt, .gitignore, placeholder dirs)
-- [ ] 01-02-PLAN.md — Package skeleton (gensubtitles/ tree, core stubs, api stubs, cli stub, root main.py shim)
+- [x] 01-02-PLAN.md — Package skeleton (gensubtitles/ tree, core stubs, api stubs, cli stub, root main.py shim)
 - [ ] 01-03-PLAN.md — Environment + test scaffold + README (uv sync, tests/test_infrastructure.py, README.md)
 
 ### UAT Criteria
@@ -312,7 +312,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Project Infrastructure | 0/7 | Not started | — |
+| 1. Project Infrastructure | 2/3 | In Progress|  |
 | 2. Audio Extraction Module | 0/8 | Not started | — |
 | 3. Transcription Engine | 0/9 | Not started | — |
 | 4. Translation Engine | 0/9 | Not started | — |
