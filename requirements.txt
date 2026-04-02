@@ -1,0 +1,15 @@
+# Install: pip install -r requirements.txt
+# Primary toolchain: uv sync (see pyproject.toml)
+#
+# SYSTEM DEPENDENCY: FFmpeg must be installed separately
+# Linux:   sudo apt install ffmpeg
+# macOS:   brew install ffmpeg
+# Windows: winget install ffmpeg
+
+faster-whisper>=1.2.1
+argostranslate>=1.11.0
+srt>=3.5.3
+fastapi>=0.135.3
+uvicorn[standard]>=0.34.0
+python-multipart>=0.0.20
+typer[all]>=0.15.0

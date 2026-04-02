@@ -25,3 +25,11 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Runtime directories (tracked via .gitkeep; contents are gitignored)
+models/*
+!models/.gitkeep
+temp/*
+!temp/.gitkeep
+output/*
+!output/.gitkeep
