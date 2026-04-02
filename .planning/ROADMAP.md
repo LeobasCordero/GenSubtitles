@@ -9,7 +9,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Project Infrastructure** — Directory layout, dependencies, entry point scaffolding
+- [x] **Phase 1: Project Infrastructure** — Directory layout, dependencies, entry point scaffolding (completed 2026-04-02)
 - [ ] **Phase 2: Audio Extraction Module** — FFmpeg subprocess audio extraction to 16kHz mono WAV
 - [ ] **Phase 3: Transcription Engine** — faster-whisper integration with VAD, device auto-detection
 - [ ] **Phase 4: Translation Engine** — Argos Translate offline translation with on-demand model install
@@ -31,12 +31,12 @@
 **Estimated complexity:** Low  
 **Depends on:** Nothing (first phase)
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md — Project config files (pyproject.toml, requirements.txt, .gitignore, placeholder dirs)
 - [x] 01-02-PLAN.md — Package skeleton (gensubtitles/ tree, core stubs, api stubs, cli stub, root main.py shim)
-- [ ] 01-03-PLAN.md — Environment + test scaffold + README (uv sync, tests/test_infrastructure.py, README.md)
+- [x] 01-03-PLAN.md — Environment + test scaffold + README (uv sync, tests/test_infrastructure.py, README.md)
 
 ### UAT Criteria
 
@@ -312,7 +312,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Project Infrastructure | 2/3 | In Progress|  |
+| 1. Project Infrastructure | 3/3 | Complete   | 2026-04-02 |
 | 2. Audio Extraction Module | 0/8 | Not started | — |
 | 3. Transcription Engine | 0/9 | Not started | — |
 | 4. Translation Engine | 0/9 | Not started | — |
