@@ -31,15 +31,12 @@
 **Estimated complexity:** Low  
 **Depends on:** Nothing (first phase)
 
-### Plans
+**Plans:** 3 plans
 
-1. **Create package directory tree** — Create `gensubtitles/`, `gensubtitles/core/`, `gensubtitles/api/`, `gensubtitles/api/routers/`, `gensubtitles/cli/` with `__init__.py` stubs in each
-2. **Populate requirements.txt** — Pin all v1 dependencies: `faster-whisper`, `argostranslate`, `srt`, `fastapi`, `uvicorn[standard]`, `python-multipart`, `typer[all]`; include FFmpeg as a system-level comment (not pip-installable)
-3. **Create pyproject.toml** — Add project metadata (`name`, `version`, `requires-python = ">=3.11"`), entry point pointing to `gensubtitles.cli.main:app`
-4. **Create .gitignore** — Cover `models/`, `temp/`, `output/`, `__pycache__/`, `*.pyc`, `.env`, `.venv/`, `*.egg-info/`
-5. **Scaffold placeholder directories** — Add `models/`, `temp/`, `output/` directories each with a `.gitkeep` placeholder file
-6. **Update main.py entry point** — Replace skeleton content with a thin shim that delegates to the CLI module (`from gensubtitles.cli.main import app; app()`)
-7. **Create initial README stub** — Add title, one-paragraph description, and a `## Installation` heading with a FFmpeg install note per platform (apt/brew/winget)
+Plans:
+- [ ] 01-01-PLAN.md — Project config files (pyproject.toml, requirements.txt, .gitignore, placeholder dirs)
+- [ ] 01-02-PLAN.md — Package skeleton (gensubtitles/ tree, core stubs, api stubs, cli stub, root main.py shim)
+- [ ] 01-03-PLAN.md — Environment + test scaffold + README (uv sync, tests/test_infrastructure.py, README.md)
 
 ### UAT Criteria
 
