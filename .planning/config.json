@@ -1,0 +1,10 @@
+{
+  "version": "1.30.0",
+  "yolo": false,
+  "granularity": "fine",
+  "parallel_execution": false,
+  "commit_docs": true,
+  "research_phases": true,
+  "verify_phases": true,
+  "agents_enabled": true
+}
