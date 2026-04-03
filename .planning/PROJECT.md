@@ -60,4 +60,4 @@ Accurate, offline-capable subtitle generation from any video — no external API
 | `srt` library for SRT generation | pysrt unmaintained (2020); `srt` v3.5.3 is actively maintained, no deps, 30% faster | — Pending |
 
 ---
-*Last updated: 2026-04-02 — Project initialized*
+*Last updated: 2026-04-02 — Phase 1 (Project Infrastructure) complete — package skeleton, pinned deps, test scaffold, README in place*
