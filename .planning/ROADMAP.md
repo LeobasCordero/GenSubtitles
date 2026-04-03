@@ -84,7 +84,7 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md — Implement gensubtitles/core/transcriber.py (WhisperTranscriber class + transcribe_audio)
-- [x] 03-02-PLAN.md — Write tests/test_transcriber.py (18 unit tests, TRN-01 to TRN-06)
+- [x] 03-02-PLAN.md — Write tests/test_transcriber.py (25 unit tests, TRN-01 to TRN-06)
 
 ### Original Plan Items
 

@@ -6,7 +6,6 @@ without downloading models, and without faster-whisper installed.
 """
 from __future__ import annotations
 
-import sys
 from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 

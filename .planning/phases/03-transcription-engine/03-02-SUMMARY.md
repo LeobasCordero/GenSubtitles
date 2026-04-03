@@ -8,17 +8,19 @@ commit: 64612c4
 
 ## Summary
 
-Created `tests/test_transcriber.py` with 18 unit tests covering all TRN requirements. Tests mock `faster_whisper` via `sys.modules` — no GPU, no model download, no faster-whisper install required.
+Created `tests/test_transcriber.py` with 25 unit tests covering all TRN requirements. Tests mock `faster_whisper` via `sys.modules` — no GPU, no model download, no faster-whisper install required.
 
 ## What Was Built
 
-18 tests across 7 categories:
+25 tests across 8 categories:
 1. **Model size validation** (3 tests) — VALID_MODEL_SIZES contents, ValueError on invalid size, error message lists valid options
-2. **Device resolution** (4 tests) — explicit cpu/cuda pass-through, auto→cpu when torch absent, auto→cuda when `torch.cuda.is_available()=True`
+2. **Device resolution** (5 tests) — explicit cpu/cuda pass-through, auto→cpu when torch absent (ImportError), auto→cpu when torch lacks cuda (AttributeError), auto→cuda when `torch.cuda.is_available()=True`
 3. **Initializer** (3 tests) — successful init with CPU, int8 compute_type for CPU, float16 compute_type for CUDA
 4. **transcribe() method** (6 tests) — returns TranscriptionResult, segments are list (not generator), vad_filter=True always, language auto-detect, explicit language forwarded, segment attributes (start/end/text)
 5. **transcribe_audio() convenience** (1 test) — end-to-end convenience function
 6. **Exception hierarchy** (1 test) — TranscriptionError is subclass of GenSubtitlesError
+7. **Device validation** (3 tests) — VALID_DEVICES set contents, ValueError on invalid device, error message lists valid options
+8. **TranscriptionError surface** (3 tests) — raised on model init failure, raised on transcription failure, original exception chained as __cause__
 
 ## Key Design Decision
 
@@ -26,7 +28,7 @@ Used `patch.dict("sys.modules", {"faster_whisper": fake_module})` instead of `pa
 
 ## Verification
 
-- `pytest tests/test_transcriber.py -v` → 18 passed in 0.40s ✓
+- `pytest tests/test_transcriber.py -v` → 25 passed ✓
 - All 6 TRN requirements covered
 
 ## Requirements Addressed
