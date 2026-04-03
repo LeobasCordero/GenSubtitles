@@ -14,18 +14,17 @@ Accurate, offline-capable subtitle generation from any video — no external API
 
 <!-- Shipped and confirmed valuable. -->
 
-(None yet — ship to validate)
+- [x] Accept a video file as input and extract its audio track via FFmpeg — Validated in Phase 2: audio-extraction-module
+- [x] Support multiple input video formats (mp4, mkv, avi, mov, webm) — Validated in Phase 2: audio-extraction-module
 
 ### Active
 
-- [ ] Accept a video file as input and extract its audio track via FFmpeg
 - [ ] Transcribe audio to text using faster-whisper (local, offline)
 - [ ] Detect source language automatically
 - [ ] Translate transcription to target language using Argos Translate (offline)
 - [ ] Generate a valid SRT subtitle file using the `srt` library
 - [ ] Expose functionality via FastAPI REST API (Uvicorn server)
 - [ ] CLI interface for direct usage without API
-- [ ] Support multiple input video formats (mp4, mkv, avi, mov, etc.)
 - [ ] Support multiple target languages for translation
 
 ### Out of Scope
@@ -60,4 +59,4 @@ Accurate, offline-capable subtitle generation from any video — no external API
 | `srt` library for SRT generation | pysrt unmaintained (2020); `srt` v3.5.3 is actively maintained, no deps, 30% faster | — Pending |
 
 ---
-*Last updated: 2026-04-02 — Phase 1 (Project Infrastructure) complete — package skeleton, pinned deps, test scaffold, README in place*
+*Last updated: 2026-04-02 — Phase 2 (Audio Extraction Module) complete — `extract_audio()`, `audio_temp_context()`, exception hierarchy, and test suite in place*

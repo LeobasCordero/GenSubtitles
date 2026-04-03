@@ -55,16 +55,12 @@ Plans:
 **Estimated complexity:** Medium  
 **Depends on:** Phase 1
 
-### Plans
+**Plans:** 3 plans
 
-1. **Implement `core/audio.py` module** — Create `gensubtitles/core/audio.py` with an `extract_audio(video_path: str, output_path: str) -> None` function
-2. **Build FFmpeg subprocess command** — Construct `["ffmpeg", "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", "-f", "wav", "-y", output_path]`; use `subprocess.run(..., capture_output=True, text=True)`
-3. **Validate return code and raise on error** — If `result.returncode != 0`, raise `RuntimeError(f"FFmpeg failed: {result.stderr}")` with the full stderr for diagnostics
-4. **Validate input file extension** — Check extension against `{".mp4", ".mkv", ".avi", ".mov", ".webm"}`; raise `ValueError` with the rejected extension before invoking FFmpeg
-5. **Handle missing audio track** — Parse FFmpeg stderr for "no audio" indicators; raise `RuntimeError("No audio track found in video")` with a descriptive message distinct from generic FFmpeg errors
-6. **Implement temp-file cleanup helper** — Add `audio_temp_context(video_path: str)` context manager using `tempfile.NamedTemporaryFile(suffix=".wav", delete=False)` that yields the temp path and deletes it on exit
-7. **Check FFmpeg availability** — At module import, or lazily on first call, check that `ffmpeg` is on PATH via `shutil.which("ffmpeg")`; raise `EnvironmentError("FFmpeg not found on PATH")` if absent
-8. **Write unit smoke test** — Using a tiny synthetic video (1-second mp4 generated via FFmpeg in the test itself), verify `extract_audio` produces a WAV file with the correct properties
+Plans:
+- [ ] 02-01-PLAN.md — Exceptions module (gensubtitles/exceptions.py) + test fixture infrastructure (tests/conftest.py)
+- [ ] 02-02-PLAN.md — Implement gensubtitles/core/audio.py (extract_audio, audio_temp_context, SUPPORTED_EXTENSIONS)
+- [ ] 02-03-PLAN.md — Write tests/test_audio.py (5 tests covering AUD-01–04)
 
 ### UAT Criteria
 
