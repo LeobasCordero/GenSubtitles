@@ -122,11 +122,12 @@ def translate_segments(
     """
     Translate segment texts from source_lang to target_lang using Argos Translate.
 
-    If source_lang == target_lang, the original segment list is returned unchanged (TRANS-02).
+    If source_lang == target_lang, a shallow copy of the original segment list is returned
+    without translating any text; the segment references themselves are unchanged (TRANS-02).
     Otherwise, ensures the language package is installed (TRANS-03/TRANS-05), then
     translates each segment's .text while preserving .start and .end (TRANS-01).
 
-    Returns a list of TranslatedSegment namedtuples (or the original list when no-op).
+    Returns a list of TranslatedSegment namedtuples (or a shallow copy of the input list when no-op).
     """
     if source_lang == target_lang:
         return list(segments)  # D-07: return original references unchanged
