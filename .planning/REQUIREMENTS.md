@@ -7,10 +7,10 @@
 
 ### Audio Extraction
 
-- [ ] **AUD-01**: System accepts a video file path as input (mp4, mkv, avi, mov, webm)
-- [ ] **AUD-02**: Audio is extracted from video using FFmpeg subprocess at 16kHz mono (WAV/PCM)
-- [ ] **AUD-03**: Extraction handles missing audio track gracefully with clear error message
-- [ ] **AUD-04**: Temporary audio files are cleaned up after processing
+- [x] **AUD-01**: System accepts a video file path as input (mp4, mkv, avi, mov, webm)
+- [x] **AUD-02**: Audio is extracted from video using FFmpeg subprocess at 16kHz mono (WAV/PCM)
+- [x] **AUD-03**: Extraction handles missing audio track gracefully with clear error message
+- [x] **AUD-04**: Temporary audio files are cleaned up after processing
 
 ### Transcription
 
@@ -89,7 +89,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUD-01 to AUD-04 | Phase 1 | Pending |
+| AUD-01 to AUD-04 | Phase 2 | Complete |
 | TRN-01 to TRN-06 | Phase 2 | Pending |
 | TRANS-01 to TRANS-05 | Phase 3 | Pending |
 | SRT-01 to SRT-04 | Phase 4 | Pending |
@@ -104,4 +104,4 @@
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 — Project initialized*
+*Last updated: 2026-04-02 — Phase 2 (Audio Extraction Module) complete — AUD-01 to AUD-04 shipped*
