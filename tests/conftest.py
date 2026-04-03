@@ -25,7 +25,6 @@ def synthetic_video(tmp_path_factory) -> Path:
             "ffmpeg",
             "-f", "lavfi", "-i", "testsrc=duration=1:size=320x240:rate=25",
             "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
-            "-c:v", "libx264",
             "-c:a", "aac",
             "-shortest",
             str(output),
@@ -50,7 +49,6 @@ def silent_video(tmp_path_factory) -> Path:
             "ffmpeg",
             "-f", "lavfi", "-i", "testsrc=duration=1:size=320x240:rate=25",
             "-an",  # Explicitly remove audio stream
-            "-c:v", "libx264",
             str(output),
         ],
         capture_output=True,

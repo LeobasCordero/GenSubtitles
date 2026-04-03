@@ -29,7 +29,7 @@ Created the shared exception hierarchy and pytest fixture infrastructure require
 
 ## Decisions
 
-- Extended `Exception` (not `RuntimeError`) for `GenSubtitlesError` per research rationale
+- Extended `RuntimeError` for `GenSubtitlesError` to match the shipped implementation and satisfy D-01
 - `scope="session"` on both fixtures — FFmpeg runs once per pytest invocation
 - `tmp_path_factory` used (not `tmp_path`) for session-scoped temp dirs
 

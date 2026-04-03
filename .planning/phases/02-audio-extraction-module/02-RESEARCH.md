@@ -82,7 +82,7 @@ if ext not in SUPPORTED_EXTENSIONS:
 ```python
 # gensubtitles/exceptions.py
 
-class GenSubtitlesError(Exception):
+class GenSubtitlesError(RuntimeError):
     """Base exception for all GenSubtitles errors."""
 
 class AudioExtractionError(GenSubtitlesError):
@@ -96,9 +96,9 @@ class AudioExtractionError(GenSubtitlesError):
 
 **Why a base class `GenSubtitlesError`:** Downstream catch blocks (pipeline, CLI, API) can catch all project errors with `except GenSubtitlesError` without importing each specific class. Future modules (TranscriptionError, TranslationError) extend the same base — consistent and extensible.
 
-**Why `AudioExtractionError(GenSubtitlesError)` not `AudioExtractionError(RuntimeError)` directly:** Having `GenSubtitlesError(Exception)` as base makes `AudioExtractionError` still an instance of `RuntimeError`-like errors (it's catchable as `Exception`), but gives the project a clean hierarchy. The CONTEXT.md D-01 says `RuntimeError` subclass — we satisfy this by making `GenSubtitlesError` extend `Exception` directly, which is semantically equivalent without sacrificing hierarchy.
+**How to satisfy the `RuntimeError` contract cleanly:** If CONTEXT.md D-01 requires `AudioExtractionError` to be a `RuntimeError` subclass, then `RuntimeError` must appear in its inheritance chain. The shipped implementation defines `GenSubtitlesError(RuntimeError)` as the shared base, with `AudioExtractionError(GenSubtitlesError)` beneath it. This satisfies D-01 strictly while preserving a project-wide catch-all hierarchy. Future modules (`TranscriptionError`, `TranslationError`) extend the same base — consistent and extensible.
 
-> **Note for planner:** CONTEXT.md D-01 says `AudioExtractionError(RuntimeError)`. The recommendation above uses `GenSubtitlesError(Exception)` as an intermediate base. Either approach is valid — if the planner wants strict D-01 compliance, `AudioExtractionError` can directly extend `RuntimeError`. A shared base class is additive, not contradictory.
+> **Note for planner:** CONTEXT.md D-01 says `AudioExtractionError(RuntimeError)`. The implementation uses `GenSubtitlesError(RuntimeError)` as an intermediate base, with `AudioExtractionError(GenSubtitlesError)` beneath it — this satisfies strict D-01 compliance and provides a shared project exception hierarchy.
 
 ---
 

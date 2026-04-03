@@ -58,7 +58,7 @@ created: 2026-04-02
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| FFmpeg not on PATH → EnvironmentError at import | AUD-03 | Requires system-level FFmpeg removal | Temporarily rename ffmpeg binary; `python -c "import gensubtitles.core.audio"` |
+| FFmpeg not on PATH → EnvironmentError at import | INF-04 / D-05 | Requires system-level FFmpeg removal | Temporarily rename ffmpeg binary; `python -c "import gensubtitles.core.audio"` |
 
 ---
 

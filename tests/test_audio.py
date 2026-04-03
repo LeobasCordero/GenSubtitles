@@ -62,7 +62,9 @@ def test_extract_audio_missing_audio_track(silent_video, tmp_path):
     """
     output_wav = tmp_path / "output.wav"
 
-    with pytest.raises(AudioExtractionError):
+    assert issubclass(AudioExtractionError, RuntimeError)
+
+    with pytest.raises(AudioExtractionError, match=r"FFmpeg failed \(exit"):
         extract_audio(silent_video, output_wav)
 
 
