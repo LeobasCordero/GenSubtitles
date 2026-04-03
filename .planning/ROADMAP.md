@@ -11,8 +11,8 @@
 
 - [x] **Phase 1: Project Infrastructure** — Directory layout, dependencies, entry point scaffolding
  (completed 2026-04-02)
-- [ ] **Phase 2: Audio Extraction Module** — FFmpeg subprocess audio extraction to 16kHz mono WAV
-- [ ] **Phase 3: Transcription Engine** — faster-whisper integration with VAD, device auto-detection
+- [x] **Phase 2: Audio Extraction Module** — FFmpeg subprocess audio extraction to 16kHz mono WAV (completed 2026-04-02)
+- [x] **Phase 3: Transcription Engine** — faster-whisper integration with VAD, device auto-detection (completed 2026-04-02)
 - [ ] **Phase 4: Translation Engine** — Argos Translate offline translation with on-demand model install
 - [ ] **Phase 5: SRT Generation Module** — `srt` library segment-to-file conversion
 - [ ] **Phase 6: Core Pipeline Assembly** — Wire all core modules into a single callable pipeline
@@ -80,7 +80,13 @@ Plans:
 **Estimated complexity:** High  
 **Depends on:** Phase 1
 
-### Plans
+**Plans:** 2/2 plans complete
+
+Plans:
+- [x] 03-01-PLAN.md — Implement gensubtitles/core/transcriber.py (WhisperTranscriber class + transcribe_audio)
+- [x] 03-02-PLAN.md — Write tests/test_transcriber.py (25 unit tests, TRN-01 to TRN-06)
+
+### Original Plan Items
 
 1. **Implement `core/transcriber.py` module** — Create `gensubtitles/core/transcriber.py` with a `WhisperTranscriber` class
 2. **Implement `__init__(model_size, device, compute_type)`** — Default `device="auto"`, `compute_type=None`; auto-select compute_type: `"float16"` for CUDA, `"int8"` for CPU; instantiate `WhisperModel(model_size, device=resolved_device, compute_type=resolved_compute_type)`
