@@ -6,5 +6,8 @@
   "commit_docs": true,
   "research_phases": true,
   "verify_phases": true,
-  "agents_enabled": true
+  "agents_enabled": true,
+  "workflow": {
+    "_auto_chain_active": false
+  }
 }

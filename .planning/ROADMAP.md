@@ -9,7 +9,8 @@
 
 ## Phases
 
-- [x] **Phase 1: Project Infrastructure** — Directory layout, dependencies, entry point scaffolding (completed 2026-04-02)
+- [x] **Phase 1: Project Infrastructure** — Directory layout, dependencies, entry point scaffolding
+ (completed 2026-04-02)
 - [ ] **Phase 2: Audio Extraction Module** — FFmpeg subprocess audio extraction to 16kHz mono WAV
 - [ ] **Phase 3: Transcription Engine** — faster-whisper integration with VAD, device auto-detection
 - [ ] **Phase 4: Translation Engine** — Argos Translate offline translation with on-demand model install
