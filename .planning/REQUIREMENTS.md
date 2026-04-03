@@ -14,12 +14,12 @@
 
 ### Transcription
 
-- [ ] **TRN-01**: Audio is transcribed using faster-whisper (local, offline)
-- [ ] **TRN-02**: Source language is detected automatically (no manual input required)
-- [ ] **TRN-03**: Configurable Whisper model size (tiny/base/small/medium/large) via CLI flag or API param
-- [ ] **TRN-04**: VAD filter is applied to suppress hallucinations on silence
-- [ ] **TRN-05**: Whisper segments generator is fully consumed before downstream processing
-- [ ] **TRN-06**: CPU and GPU (CUDA) execution are both supported; device auto-detected
+- [x] **TRN-01**: Audio is transcribed using faster-whisper (local, offline)
+- [x] **TRN-02**: Source language is detected automatically (no manual input required)
+- [x] **TRN-03**: Configurable Whisper model size (tiny/base/small/medium/large) via CLI flag or API param
+- [x] **TRN-04**: VAD filter is applied to suppress hallucinations on silence
+- [x] **TRN-05**: Whisper segments generator is fully consumed before downstream processing
+- [x] **TRN-06**: CPU and GPU (CUDA) execution are both supported; device auto-detected
 
 ### Translation
 
@@ -90,7 +90,7 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | AUD-01 to AUD-04 | Phase 2 | Complete |
-| TRN-01 to TRN-06 | Phase 2 | Pending |
+| TRN-01 to TRN-06 | Phase 3 | Complete |
 | TRANS-01 to TRANS-05 | Phase 3 | Pending |
 | SRT-01 to SRT-04 | Phase 4 | Pending |
 | CLI-01 to CLI-04 | Phase 5 | Pending |
@@ -104,4 +104,4 @@
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 — Phase 2 (Audio Extraction Module) complete — AUD-01 to AUD-04 shipped*
+*Last updated: 2026-04-03 — Phase 3 (Transcription Engine) complete — TRN-01 to TRN-06 shipped*
