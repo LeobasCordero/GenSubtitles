@@ -119,8 +119,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Add tqdm dependency + implement gensubtitles/core/translator.py
-- [ ] 04-02-PLAN.md — Write tests/test_translator.py (18 tests, TRANS-01 to TRANS-05)
+- [x] 04-01-PLAN.md — Add tqdm dependency + implement gensubtitles/core/translator.py
+- [x] 04-02-PLAN.md — Write tests/test_translator.py (18 tests, TRANS-01 to TRANS-05)
 
 ### UAT Criteria
 
