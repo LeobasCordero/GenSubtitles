@@ -8,6 +8,7 @@
 
 faster-whisper>=1.2.1
 argostranslate>=1.11.0
+tqdm>=4.0.0
 srt>=3.5.3
 fastapi>=0.135.3
 uvicorn[standard]>=0.34.0
