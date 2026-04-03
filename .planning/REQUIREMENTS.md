@@ -31,10 +31,10 @@
 
 ### SRT Generation
 
-- [ ] **SRT-01**: Output is a valid SRT file using the `srt` library (replaces unmaintained pysrt)
-- [ ] **SRT-02**: Whisper float timestamps (seconds) are correctly converted to SRT timecodes (HH:MM:SS,mmm)
-- [ ] **SRT-03**: SRT file is saved to a configurable output path
-- [ ] **SRT-04**: SRT entries preserve original segment text (translated if translation is enabled)
+- [x] **SRT-01**: Output is a valid SRT file using the `srt` library (replaces unmaintained pysrt)
+- [x] **SRT-02**: Whisper float timestamps (seconds) are correctly converted to SRT timecodes (HH:MM:SS,mmm)
+- [x] **SRT-03**: SRT file is saved to a configurable output path
+- [x] **SRT-04**: SRT entries preserve original segment text (translated if translation is enabled)
 
 ### CLI Interface
 
@@ -92,7 +92,7 @@
 | AUD-01 to AUD-04 | Phase 2 | Complete |
 | TRN-01 to TRN-06 | Phase 3 | Complete |
 | TRANS-01 to TRANS-05 | Phase 4 | Complete |
-| SRT-01 to SRT-04 | Phase 4 | Pending |
+| SRT-01 to SRT-04 | Phase 5 | Complete |
 | CLI-01 to CLI-04 | Phase 5 | Pending |
 | API-01 to API-07 | Phase 6 | Pending |
 | INF-01 to INF-04 | Phase 7 | Pending |
@@ -104,4 +104,4 @@
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-03 — Phase 4 (Translation Engine) complete — TRANS-01 to TRANS-05 shipped*
+*Last updated: 2026-04-03 — Phase 5 (SRT Generation Module) complete — SRT-01 to SRT-04 shipped*
