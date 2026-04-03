@@ -116,17 +116,11 @@ Plans:
 **Estimated complexity:** High  
 **Depends on:** Phase 1
 
-### Plans
+**Plans:** 2 plans
 
-1. **Implement `core/translator.py` module** — Create `gensubtitles/core/translator.py` with functions for translation, package management, and pair listing
-2. **Implement `list_installed_pairs() -> list[dict]`** — Return list of `{"from": code, "to": code}` dicts from `argostranslate.translate.get_installed_languages()`
-3. **Implement `ensure_pair_installed(from_code, to_code) -> None`** — Check installed packages; if pair missing, call `update_package_index()` then download and `install_from_path()`; skip download if already installed
-4. **Implement package index update** — Wrap `argostranslate.package.update_package_index()` with a try/except; log a warning if index update fails (offline mode); do not crash if already-installed packages are sufficient
-5. **Implement `is_pair_available(from_code, to_code) -> bool`** — Check both installed packages and available (remote) packages; raise `ValueError(f"Language pair '{from_code}→{to_code}' is not available. Call list_installed_pairs() to see options.")` if the pair is neither installed nor available
-6. **Implement `translate_segments(segments, source_lang, target_lang) -> list`** — If `source_lang == target_lang`, return segments unchanged; otherwise call `ensure_pair_installed`, then translate each segment's text via `argostranslate.translate.translate(text, source_lang, target_lang)`
-7. **Return translated segments preserving timestamps** — Build a new list from each original segment, replacing only `.text`; use a simple dataclass `TranslatedSegment(start, end, text)` for consistent typing
-8. **Model cache verification** — Verify cached models are not re-downloaded on repeated calls by inspecting installed packages list before each `ensure_pair_installed` call
-9. **Handle pivot translation gracefully** — Document in docstring that Argos automatically pivots through English if the direct pair is missing; surface this in the pair-availability error message
+Plans:
+- [ ] 04-01-PLAN.md — Add tqdm dependency + implement gensubtitles/core/translator.py
+- [ ] 04-02-PLAN.md — Write tests/test_translator.py (18 tests, TRANS-01 to TRANS-05)
 
 ### UAT Criteria
 
