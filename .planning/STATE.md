@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 05
+status: Phase 05 Complete
 last_updated: "2026-04-03T14:34:37.836Z"
 progress:
   total_phases: 10
@@ -18,7 +18,7 @@ progress:
 ## Current Status
 
 - **Milestone:** v1
-- **Active Phase:** Phase 5 — SRT Generation Module (executing)
+- **Active Phase:** Phase 6 — Core Pipeline Assembly (not started)
 - **Last action:** 05-01 executed — SRT writer module (`gensubtitles/core/srt_writer.py`) and pytest suite (`tests/test_srt_writer.py`) implemented; all SRT-01 through SRT-04 requirements satisfied (2026-04-03)
 
 ## Milestone Progress

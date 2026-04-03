@@ -25,15 +25,16 @@ logger = logging.getLogger(__name__)
 
 def segments_to_srt(segments: Iterable[Any]) -> str:
     """
-    Convert a list of duck-typed segment objects to an SRT-formatted string.
+    Convert an iterable of duck-typed segment objects to an SRT-formatted string.
 
     Each segment must have:
         .start (float): start time in seconds
         .end   (float): end time in seconds
         .text  (str):   subtitle text (stripped before writing)
 
-    Returns an empty string for an empty segment list.
+    Returns an empty string for an empty iterable of segments.
     """
+    segments = list(segments)
     if not segments:
         return ""
 

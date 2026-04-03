@@ -5,7 +5,7 @@ subsystem: core
 tags: [srt, subtitles, srt-library, tdd]
 
 requires:
-  - phase: 04-translation-module
+  - phase: 04-translation-engine
     provides: duck-typed TranslatedSegment namedtuple (.start, .end, .text) consumed by srt_writer
 provides:
   - gensubtitles/core/srt_writer.py with segments_to_srt() and write_srt() public functions
@@ -13,7 +13,8 @@ provides:
 affects: [06-pipeline, api, cli]
 
 tech-stack:
-  added: [srt>=3.5.3]
+  added: []
+  used: [srt>=3.5.3]
   patterns: [duck-typed segment protocol, srt.Subtitle + srt.compose, pathlib Path.write_text(encoding='utf-8')]
 
 key-files:
