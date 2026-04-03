@@ -13,15 +13,17 @@ Provides:
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 import srt
 
 logger = logging.getLogger(__name__)
 
 
-def segments_to_srt(segments) -> str:
+def segments_to_srt(segments: Iterable[Any]) -> str:
     """
     Convert a list of duck-typed segment objects to an SRT-formatted string.
 
@@ -47,7 +49,7 @@ def segments_to_srt(segments) -> str:
     return srt.compose(subtitles)
 
 
-def write_srt(segments, output_path: str | Path) -> None:
+def write_srt(segments: Iterable[Any], output_path: str | Path) -> None:
     """
     Write SRT-formatted subtitles to a file.
 

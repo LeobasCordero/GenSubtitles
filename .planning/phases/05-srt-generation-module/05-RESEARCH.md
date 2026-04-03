@@ -206,6 +206,6 @@ All tests must pass. No mocking of `srt` library — it is a real (lightweight) 
 
 ---
 
-## ## RESEARCH COMPLETE
+## RESEARCH COMPLETE
 
 Phase 5 is ready for planning. All decisions are locked (D-01 to D-03), the `srt` library API is confirmed, patterns are established. Single combined plan (05-01-PLAN.md) as per D-01.

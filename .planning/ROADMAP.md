@@ -13,8 +13,8 @@
  (completed 2026-04-02)
 - [x] **Phase 2: Audio Extraction Module** — FFmpeg subprocess audio extraction to 16kHz mono WAV (completed 2026-04-02)
 - [x] **Phase 3: Transcription Engine** — faster-whisper integration with VAD, device auto-detection (completed 2026-04-02)
-- [ ] **Phase 4: Translation Engine** — Argos Translate offline translation with on-demand model install
-- [ ] **Phase 5: SRT Generation Module** — `srt` library segment-to-file conversion (1 plan)
+- [x] **Phase 4: Translation Engine** — Argos Translate offline translation with on-demand model install (completed 2026-04-03)
+- [x] **Phase 5: SRT Generation Module** — `srt` library segment-to-file conversion (1 plan) (completed 2026-04-03)
 - [ ] **Phase 6: Core Pipeline Assembly** — Wire all core modules into a single callable pipeline
 - [ ] **Phase 7: CLI Interface** — Typer CLI with all flags, progress output, and exit codes
 - [ ] **Phase 8: FastAPI REST API Core** — Upload endpoint, lifespan model loading, thread pool execution

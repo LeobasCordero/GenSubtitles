@@ -5,7 +5,6 @@ Uses SimpleNamespace to duck-type segment objects (mirrors faster-whisper/Argos 
 from __future__ import annotations
 
 import srt
-import pytest
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -113,7 +112,7 @@ def test_write_srt_creates_nested_directory(tmp_path):
 # ── SRT-04: text preserved ────────────────────────────────────────────────────
 
 
-def test_text_stripped_leading_trailing_whitespace(tmp_path):
+def test_text_stripped_leading_trailing_whitespace():
     """Leading/trailing whitespace is stripped from segment text (UAT-2)."""
     seg = _make_segment(0.0, 3.5, "  Hello world  ")
     result = segments_to_srt([seg])

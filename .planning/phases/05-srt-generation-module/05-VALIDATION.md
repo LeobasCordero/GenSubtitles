@@ -1,9 +1,9 @@
 ---
 phase: 5
 slug: srt-generation-module
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-03
 ---
 
@@ -38,8 +38,8 @@ created: 2026-04-03
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 05-01-01 | 01 | 1 | SRT-01, SRT-02, SRT-03, SRT-04 | unit | `python -m pytest tests/test_srt_writer.py -v` | ❌ W0 | ⬜ pending |
-| 05-01-02 | 01 | 1 | SRT-01, SRT-02, SRT-03, SRT-04 | unit | `python -m pytest tests/test_srt_writer.py -v` | ❌ W0 | ⬜ pending |
+| 05-01-01 | 01 | 1 | SRT-01, SRT-02, SRT-03, SRT-04 | unit | `python -m pytest tests/test_srt_writer.py -v` | ✅ exists | ✅ green |
+| 05-01-02 | 01 | 1 | SRT-01, SRT-02, SRT-03, SRT-04 | unit | `python -m pytest tests/test_srt_writer.py -v` | ✅ exists | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -47,7 +47,7 @@ created: 2026-04-03
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_srt_writer.py` — test stubs for SRT-01 through SRT-04 (~14 tests)
+- [x] `tests/test_srt_writer.py` — test stubs for SRT-01 through SRT-04 (~14 tests)
 
 *Existing test infrastructure (`conftest.py`, pytest config) covers Phase 5 — no new framework install needed.*
 
@@ -61,11 +61,11 @@ created: 2026-04-03
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete
