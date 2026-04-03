@@ -23,11 +23,11 @@
 
 ### Translation
 
-- [ ] **TRANS-01**: Transcription can be translated to a target language using Argos Translate (offline)
-- [ ] **TRANS-02**: Translation is optional — skipped when source and target language are the same
-- [ ] **TRANS-03**: Language model packages are installed programmatically on first use
-- [ ] **TRANS-04**: System lists available language pairs and fails gracefully if a pair is unsupported
-- [ ] **TRANS-05**: Models are downloaded once and cached locally (not re-downloaded on each run)
+- [x] **TRANS-01**: Transcription can be translated to a target language using Argos Translate (offline)
+- [x] **TRANS-02**: Translation is optional — skipped when source and target language are the same
+- [x] **TRANS-03**: Language model packages are installed programmatically on first use
+- [x] **TRANS-04**: System lists available language pairs and fails gracefully if a pair is unsupported
+- [x] **TRANS-05**: Models are downloaded once and cached locally (not re-downloaded on each run)
 
 ### SRT Generation
 
@@ -91,7 +91,7 @@
 |-------------|-------|--------|
 | AUD-01 to AUD-04 | Phase 2 | Complete |
 | TRN-01 to TRN-06 | Phase 3 | Complete |
-| TRANS-01 to TRANS-05 | Phase 3 | Pending |
+| TRANS-01 to TRANS-05 | Phase 4 | Complete |
 | SRT-01 to SRT-04 | Phase 4 | Pending |
 | CLI-01 to CLI-04 | Phase 5 | Pending |
 | API-01 to API-07 | Phase 6 | Pending |
@@ -104,4 +104,4 @@
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-03 — Phase 3 (Transcription Engine) complete — TRN-01 to TRN-06 shipped*
+*Last updated: 2026-04-03 — Phase 4 (Translation Engine) complete — TRANS-01 to TRANS-05 shipped*
