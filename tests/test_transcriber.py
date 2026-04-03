@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from gensubtitles.core.transcriber import (
+    VALID_DEVICES,
     VALID_MODEL_SIZES,
     TranscriptionResult,
     WhisperTranscriber,
@@ -91,8 +92,23 @@ def test_resolve_device_explicit_cuda():
 
 
 def test_resolve_device_auto_no_cuda():
-    """TRN-06: device='auto' resolves to 'cpu' when torch is absent."""
-    with patch.dict("sys.modules", {"torch": None}):
+    """TRN-06: device='auto' resolves to 'cpu' when torch is absent (ImportError)."""
+    original_import = __import__
+
+    def _import_without_torch(name, *args, **kwargs):
+        if name == "torch":
+            raise ImportError("No module named 'torch'")
+        return original_import(name, *args, **kwargs)
+
+    with patch("builtins.__import__", side_effect=_import_without_torch):
+        result = WhisperTranscriber._resolve_device("auto")
+    assert result == "cpu"
+
+
+def test_resolve_device_auto_no_cuda_attribute_error():
+    """TRN-06: device='auto' resolves to 'cpu' when torch lacks cuda (AttributeError)."""
+    mock_torch = MagicMock(spec=[])  # no .cuda attribute
+    with patch.dict("sys.modules", {"torch": mock_torch}):
         result = WhisperTranscriber._resolve_device("auto")
     assert result == "cpu"
 
@@ -237,3 +253,64 @@ def test_transcription_error_is_gen_subtitles_error():
     """TranscriptionError is a subclass of GenSubtitlesError."""
     from gensubtitles.exceptions import GenSubtitlesError
     assert issubclass(TranscriptionError, GenSubtitlesError)
+
+
+# ── device validation ─────────────────────────────────────────────────────────
+
+
+def test_invalid_device_raises_value_error():
+    """device must be one of VALID_DEVICES; others raise ValueError."""
+    with pytest.raises(ValueError, match="cdua"):
+        WhisperTranscriber("tiny", device="cdua")
+
+
+def test_invalid_device_error_lists_valid_options():
+    """ValueError for invalid device must list valid options."""
+    with pytest.raises(ValueError) as exc_info:
+        WhisperTranscriber("tiny", device="gpu")
+    message = str(exc_info.value)
+    for valid in VALID_DEVICES:
+        assert valid in message
+
+
+def test_valid_devices_set():
+    """VALID_DEVICES contains exactly auto, cpu, cuda."""
+    assert VALID_DEVICES == frozenset({"auto", "cpu", "cuda"})
+
+
+# ── TranscriptionError surface ────────────────────────────────────────────────
+
+
+def test_transcription_error_on_model_init_failure():
+    """TranscriptionError is raised (not library exception) when WhisperModel init fails."""
+    fw = _make_fw_module()
+    fw.WhisperModel.side_effect = RuntimeError("model load failed")
+    with patch.dict("sys.modules", {"faster_whisper": fw}):
+        with pytest.raises(TranscriptionError, match="model load failed"):
+            WhisperTranscriber("tiny", device="cpu")
+
+
+def test_transcription_error_on_transcribe_failure():
+    """TranscriptionError is raised when model.transcribe() fails."""
+    mock_model = _make_model_mock()
+    mock_model.transcribe.side_effect = RuntimeError("transcription boom")
+    fw = _make_fw_module(model_mock=mock_model)
+    with patch.dict("sys.modules", {"faster_whisper": fw}):
+        transcriber = WhisperTranscriber("tiny", device="cpu")
+    transcriber.model = mock_model
+    with pytest.raises(TranscriptionError, match="transcription boom"):
+        transcriber.transcribe("fake.wav")
+
+
+def test_transcription_error_chains_original_exception():
+    """TranscriptionError.__cause__ is the original exception from faster-whisper."""
+    original_exc = RuntimeError("underlying error")
+    mock_model = _make_model_mock()
+    mock_model.transcribe.side_effect = original_exc
+    fw = _make_fw_module(model_mock=mock_model)
+    with patch.dict("sys.modules", {"faster_whisper": fw}):
+        transcriber = WhisperTranscriber("tiny", device="cpu")
+    transcriber.model = mock_model
+    with pytest.raises(TranscriptionError) as exc_info:
+        transcriber.transcribe("fake.wav")
+    assert exc_info.value.__cause__ is original_exc

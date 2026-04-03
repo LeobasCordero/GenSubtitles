@@ -16,6 +16,8 @@ from collections import namedtuple
 from pathlib import Path
 from typing import Optional
 
+from gensubtitles.exceptions import TranscriptionError
+
 logger = logging.getLogger(__name__)
 
 # ── valid model sizes ─────────────────────────────────────────────────────────
@@ -32,6 +34,8 @@ VALID_MODEL_SIZES: frozenset[str] = frozenset(
         "distil-large-v3",
     }
 )
+
+VALID_DEVICES: frozenset[str] = frozenset({"auto", "cpu", "cuda"})
 
 # ── result type ───────────────────────────────────────────────────────────────
 TranscriptionResult = namedtuple("TranscriptionResult", ["segments", "language"])
@@ -62,6 +66,13 @@ class WhisperTranscriber:
                 f"Valid options: {sorted_sizes}"
             )
 
+        if device not in VALID_DEVICES:
+            sorted_devices = sorted(VALID_DEVICES)
+            raise ValueError(
+                f"Invalid device {device!r}. "
+                f"Valid options: {sorted_devices}"
+            )
+
         resolved_device = self._resolve_device(device)
         resolved_compute = compute_type or self._default_compute_type(resolved_device)
 
@@ -72,13 +83,19 @@ class WhisperTranscriber:
             resolved_compute,
         )
 
-        from faster_whisper import WhisperModel  # deferred — heavy import
+        try:
+            from faster_whisper import WhisperModel  # deferred — heavy import
 
-        self._model_raw = WhisperModel(
-            model_size,
-            device=resolved_device,
-            compute_type=resolved_compute,
-        )
+            self._model_raw = WhisperModel(
+                model_size,
+                device=resolved_device,
+                compute_type=resolved_compute,
+            )
+        except Exception as exc:
+            raise TranscriptionError(
+                f"Failed to load WhisperModel {model_size!r} on {resolved_device!r}: {exc}"
+            ) from exc
+
         self._device = resolved_device
 
         # Wrap in BatchedInferencePipeline for GPU throughput
@@ -122,11 +139,16 @@ class WhisperTranscriber:
         if self._device == "cuda":
             kwargs["batch_size"] = 16
 
-        segments_gen, info = self.model.transcribe(str(audio_path), **kwargs)
+        try:
+            segments_gen, info = self.model.transcribe(str(audio_path), **kwargs)
 
-        # TRN-05: materialise the lazy generator immediately to ensure transcription
-        # completes before caller receives control.
-        segments = list(segments_gen)
+            # TRN-05: materialise the lazy generator immediately to ensure transcription
+            # completes before caller receives control.
+            segments = list(segments_gen)
+        except Exception as exc:
+            raise TranscriptionError(
+                f"Transcription failed for {audio_path!r}: {exc}"
+            ) from exc
 
         logger.info(
             "Transcription complete: %d segments, language=%r",
@@ -148,7 +170,7 @@ class WhisperTranscriber:
             if torch.cuda.is_available():
                 logger.info("CUDA available — resolving device to 'cuda'")
                 return "cuda"
-        except ImportError:
+        except (ImportError, AttributeError):
             pass
         logger.info("CUDA not available — resolving device to 'cpu'")
         return "cpu"
