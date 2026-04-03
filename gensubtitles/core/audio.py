@@ -72,6 +72,8 @@ def extract_audio(video_path: str | Path, output_path: str | Path) -> None:
         )
 
     # --- AUD-02: build FFmpeg command ---
+    # -hide_banner : suppress version/build info banner
+    # -loglevel error: suppress progress stats; only emit errors to stderr
     # -vn      : disable video output (audio-only extraction)
     # -ar 16000: resample to 16 kHz (Whisper's native sample rate)
     # -ac 1    : mono channel
@@ -79,6 +81,8 @@ def extract_audio(video_path: str | Path, output_path: str | Path) -> None:
     # -y       : overwrite output without prompting
     cmd = [
         "ffmpeg",
+        "-hide_banner",
+        "-loglevel", "error",
         "-i", str(video_path),
         "-vn",
         "-ar", "16000",
@@ -88,7 +92,13 @@ def extract_audio(video_path: str | Path, output_path: str | Path) -> None:
         str(output_path),
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
 
     # --- AUD-02 / AUD-03: raise on failure ---
     if result.returncode != 0:

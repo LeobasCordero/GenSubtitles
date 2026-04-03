@@ -8,7 +8,7 @@ Import from here in core modules to avoid circular imports:
 """
 
 
-class GenSubtitlesError(Exception):
+class GenSubtitlesError(RuntimeError):
     """Base exception for all GenSubtitles errors."""
 
 
