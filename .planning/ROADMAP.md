@@ -142,7 +142,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 05-01-PLAN.md — Implement srt_writer.py (segments_to_srt + write_srt) + 14-test TDD suite
+- [x] 05-01-PLAN.md — Implement srt_writer.py (segments_to_srt + write_srt) + 14-test TDD suite
 
 ### UAT Criteria
 
