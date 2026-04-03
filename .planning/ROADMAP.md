@@ -14,7 +14,7 @@
 - [x] **Phase 2: Audio Extraction Module** — FFmpeg subprocess audio extraction to 16kHz mono WAV (completed 2026-04-02)
 - [x] **Phase 3: Transcription Engine** — faster-whisper integration with VAD, device auto-detection (completed 2026-04-02)
 - [ ] **Phase 4: Translation Engine** — Argos Translate offline translation with on-demand model install
-- [ ] **Phase 5: SRT Generation Module** — `srt` library segment-to-file conversion
+- [ ] **Phase 5: SRT Generation Module** — `srt` library segment-to-file conversion (1 plan)
 - [ ] **Phase 6: Core Pipeline Assembly** — Wire all core modules into a single callable pipeline
 - [ ] **Phase 7: CLI Interface** — Typer CLI with all flags, progress output, and exit codes
 - [ ] **Phase 8: FastAPI REST API Core** — Upload endpoint, lifespan model loading, thread pool execution
@@ -139,15 +139,10 @@ Plans:
 **Estimated complexity:** Low  
 **Depends on:** Phase 1
 
-### Plans
+**Plans:** 1 plan
 
-1. **Implement `core/srt_writer.py` module** — Create `gensubtitles/core/srt_writer.py` with two public functions: `segments_to_srt` and `write_srt`
-2. **Implement `segments_to_srt(segments) -> str`** — Iterate segments (1-indexed), convert `seg.start`/`seg.end` floats to `datetime.timedelta(seconds=float)`, strip `seg.text`, build `srt.Subtitle(index, start, end, content)`, collect into list
-3. **Compose SRT string** — Call `srt.compose(subtitles)` to produce the final SRT-formatted string; never manually format timecodes
-4. **Implement `write_srt(segments, output_path: str) -> None`** — Call `segments_to_srt()`, ensure parent directory of `output_path` exists (`Path(output_path).parent.mkdir(parents=True, exist_ok=True)`), write to file as UTF-8
-5. **Handle empty segment list** — If `segments` is empty, write an empty file (0 bytes) and log a warning rather than raising an exception
-6. **Validate round-trip integrity** — In tests, parse output with `srt.parse()` and verify entry count matches input segment count and timestamps match within 1ms tolerance
-7. **Preserve original text when not translated** — Confirm `SRT-04`: if no translation occurred, `seg.text.strip()` is the exact content written to the SRT entry
+Plans:
+- [ ] 05-01-PLAN.md — Implement srt_writer.py (segments_to_srt + write_srt) + 14-test TDD suite
 
 ### UAT Criteria
 
