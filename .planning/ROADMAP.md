@@ -161,16 +161,11 @@ Plans:
 **Estimated complexity:** Medium  
 **Depends on:** Phases 2, 3, 4, 5
 
-### Plans
+**Plans:** 2 plans
 
-1. **Implement `core/pipeline.py`** — Create `gensubtitles/core/pipeline.py` with `run_pipeline(video_path, output_path, model_size, target_lang, source_lang, device, progress_callback) -> PipelineResult`
-2. **Define `PipelineResult` dataclass** — Fields: `srt_path: str`, `detected_language: str`, `segment_count: int`, `audio_duration_seconds: float`
-3. **Manage temp audio file lifecycle** — Use `audio_temp_context(video_path)` (Phase 2) as a context manager; guarantee cleanup via `try/finally` even on exception
-4. **Implement stage-by-stage pipeline** — Stage 1: extract_audio → Stage 2: transcribe → Stage 3: translate (conditional) → Stage 4: write_srt; emit progress callback with stage name and stage index before each stage
-5. **Implement `progress_callback` protocol** — Signature `(stage: str, current: int, total: int) -> None`; default to a no-op lambda if not provided; pass `("Extracting audio", 1, 4)`, `("Transcribing", 2, 4)`, etc.
-6. **Validate inputs at entry** — Check `video_path` exists (`Path.is_file()`), `output_path` parent is writable; raise `FileNotFoundError` and `PermissionError` respectively with clear messages
-7. **Wrap stage errors with context** — Catch exceptions from each stage, re-raise as `PipelineError(stage="audio_extraction", cause=original_exc)` (custom exception subclassing `RuntimeError`) so callers know which stage failed
-8. **Add `source_lang=None` / `target_lang=None` passthrough** — When `target_lang is None`, skip translation stage entirely; pass `source_lang` directly to `transcribe()` (or `None` for auto-detect)
+Plans:
+- [ ] 06-01-PLAN.md — Extend TranscriptionResult with duration field + add PipelineError to exceptions.py + update transcriber tests
+- [ ] 06-02-PLAN.md — TDD: implement gensubtitles/core/pipeline.py (PipelineResult + run_pipeline) + test_pipeline.py
 
 ### UAT Criteria
 
