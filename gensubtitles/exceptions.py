@@ -18,3 +18,7 @@ class AudioExtractionError(GenSubtitlesError):
 
     The exception message includes the full FFmpeg stderr output for diagnostics.
     """
+
+
+class TranscriptionError(GenSubtitlesError):
+    """Raised when faster-whisper transcription fails."""
