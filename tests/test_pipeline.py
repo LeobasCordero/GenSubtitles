@@ -11,7 +11,6 @@ used in test_transcriber.py for faster_whisper).
 """
 from __future__ import annotations
 
-import sys
 import types
 from collections import namedtuple
 from contextlib import contextmanager
@@ -86,7 +85,9 @@ def _make_mocks(
     mock_transcriber_instance.transcribe.return_value = mock_transcription
     mock_WhisperTranscriber = MagicMock(return_value=mock_transcriber_instance)
     mock_extract_audio = MagicMock()
-    mock_translate = MagicMock(return_value=translate_return or segments)
+    mock_translate = MagicMock(
+        return_value=segments if translate_return is None else translate_return
+    )
     mock_write_srt = MagicMock()
 
     @contextmanager
