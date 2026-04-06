@@ -28,9 +28,9 @@ def _make_fake_segment(start: float, end: float, text: str):
     return SimpleNamespace(start=start, end=end, text=text)
 
 
-def _make_transcription_info(language: str = "en"):
+def _make_transcription_info(language: str = "en", duration: float = 120.0):
     """Minimal TranscriptionInfo stub."""
-    return SimpleNamespace(language=language)
+    return SimpleNamespace(language=language, duration=duration)
 
 
 def _make_model_mock(segments=None, language="en"):

@@ -38,7 +38,7 @@ VALID_MODEL_SIZES: frozenset[str] = frozenset(
 VALID_DEVICES: frozenset[str] = frozenset({"auto", "cpu", "cuda"})
 
 # ── result type ───────────────────────────────────────────────────────────────
-TranscriptionResult = namedtuple("TranscriptionResult", ["segments", "language"])
+TranscriptionResult = namedtuple("TranscriptionResult", ["segments", "language", "duration"])
 
 
 class WhisperTranscriber:
@@ -155,7 +155,7 @@ class WhisperTranscriber:
             len(segments),
             info.language,
         )
-        return TranscriptionResult(segments=segments, language=info.language)
+        return TranscriptionResult(segments=segments, language=info.language, duration=info.duration)
 
     # ── private helpers ───────────────────────────────────────────────────────
 
