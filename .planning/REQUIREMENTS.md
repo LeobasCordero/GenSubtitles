@@ -1,4 +1,4 @@
-# Requirements: GenSubtitles
+ # Requirements: GenSubtitles
 
 **Defined:** 2026-04-02
 **Core Value:** Accurate, offline-capable subtitle generation from any video — no external API keys required.

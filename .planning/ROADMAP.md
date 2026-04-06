@@ -164,8 +164,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Extend TranscriptionResult with duration field + add PipelineError to exceptions.py + update transcriber tests
-- [ ] 06-02-PLAN.md — TDD: implement gensubtitles/core/pipeline.py (PipelineResult + run_pipeline) + test_pipeline.py
+- [x] 06-01-PLAN.md — Extend TranscriptionResult with duration field + add PipelineError to exceptions.py + update transcriber tests
+- [x] 06-02-PLAN.md — TDD: implement gensubtitles/core/pipeline.py (PipelineResult + run_pipeline) + test_pipeline.py
 
 ### UAT Criteria
 
