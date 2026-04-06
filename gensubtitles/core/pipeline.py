@@ -67,20 +67,21 @@ def run_pipeline(
     video_path = Path(video_path)
     output_path = Path(output_path)
 
-    # Lazy imports — several sub-modules have import-time side effects or heavy
-    # optional dependencies (FFmpeg check in audio.py, srt/argostranslate/faster-whisper).
-    # Deferring them here keeps pipeline.py importable in any environment.
-    from gensubtitles.core.audio import audio_temp_context, extract_audio  # noqa: PLC0415
-    from gensubtitles.core.srt_writer import write_srt  # noqa: PLC0415
-    from gensubtitles.core.transcriber import WhisperTranscriber  # noqa: PLC0415
-    from gensubtitles.core.translator import translate_segments  # noqa: PLC0415
-
-    # ── input validation (before any subprocess) ─────────────────────────────
+    # ── input validation (before any subprocess or optional dependency checks) ──
     if not video_path.is_file():
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
     # Ensure output parent dir exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Lazy imports — several sub-modules have import-time side effects or heavy
+    # optional dependencies (FFmpeg check in audio.py, srt/argostranslate/faster-whisper).
+    # Deferring them until after path validation ensures missing-input errors are
+    # raised without requiring optional runtime dependencies to be available.
+    from gensubtitles.core.audio import audio_temp_context, extract_audio  # noqa: PLC0415
+    from gensubtitles.core.srt_writer import write_srt  # noqa: PLC0415
+    from gensubtitles.core.transcriber import WhisperTranscriber  # noqa: PLC0415
+    from gensubtitles.core.translator import translate_segments  # noqa: PLC0415
 
     # Default no-op callback
     if progress_callback is None:

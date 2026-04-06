@@ -131,7 +131,8 @@ class WhisperTranscriber:
             language:   ISO 639-1 code, e.g. "en". None = auto-detect (TRN-02).
 
         Returns:
-            TranscriptionResult(segments=list[Segment], language=str)
+            TranscriptionResult(segments=list[Segment], language=str, duration=float)
+            where duration is the total audio duration in seconds.
         """
         kwargs: dict = {"vad_filter": True, "beam_size": 5}
         if language is not None:
@@ -202,7 +203,8 @@ def transcribe_audio(
         language:    ISO 639-1 code or None for auto-detect.
 
     Returns:
-        TranscriptionResult(segments, language)
+        TranscriptionResult(segments, language, duration) where duration is
+        the total audio duration in seconds.
     """
     transcriber = WhisperTranscriber(model_size=model_size, device=device)
     return transcriber.transcribe(audio_path, language=language)
