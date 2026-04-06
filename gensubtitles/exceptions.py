@@ -22,3 +22,7 @@ class AudioExtractionError(GenSubtitlesError):
 
 class TranscriptionError(GenSubtitlesError):
     """Raised when faster-whisper transcription fails."""
+
+
+class PipelineError(GenSubtitlesError):
+    """Raised when a pipeline stage fails during run_pipeline()."""

@@ -28,16 +28,16 @@ def _make_fake_segment(start: float, end: float, text: str):
     return SimpleNamespace(start=start, end=end, text=text)
 
 
-def _make_transcription_info(language: str = "en"):
+def _make_transcription_info(language: str = "en", duration: float = 120.0):
     """Minimal TranscriptionInfo stub."""
-    return SimpleNamespace(language=language)
+    return SimpleNamespace(language=language, duration=duration)
 
 
-def _make_model_mock(segments=None, language="en"):
+def _make_model_mock(segments=None, language="en", duration: float = 120.0):
     """Build a mock WhisperModel that returns (iter(segments), info) from .transcribe()."""
     if segments is None:
         segments = [_make_fake_segment(0.0, 2.5, "Hello world")]
-    info = _make_transcription_info(language)
+    info = _make_transcription_info(language, duration=duration)
     mock_model = MagicMock()
     mock_model.transcribe.return_value = (iter(segments), info)
     return mock_model
@@ -169,6 +169,18 @@ def test_transcribe_returns_transcription_result():
     assert result.language == "en"
 
 
+def test_transcribe_duration_is_populated():
+    """TranscriptionResult.duration is a float threaded through from info.duration."""
+    mock_model = _make_model_mock(duration=42.5)
+    fw = _make_fw_module(model_mock=mock_model)
+    with patch.dict("sys.modules", {"faster_whisper": fw}):
+        transcriber = WhisperTranscriber("tiny", device="cpu")
+    transcriber.model = mock_model
+    result = transcriber.transcribe("fake.wav")
+    assert isinstance(result.duration, float)
+    assert result.duration == 42.5
+
+
 def test_transcribe_segments_are_list():
     """TRN-05: segments generator is materialised as a list before returning."""
     segments = [_make_fake_segment(0.0, 2.5, "Test segment")]
@@ -246,6 +258,16 @@ def test_transcribe_audio_convenience():
     assert isinstance(result, TranscriptionResult)
     assert result.language == "en"
     assert len(result.segments) == 1
+
+
+def test_transcribe_audio_duration_is_populated():
+    """transcribe_audio() result.duration is threaded through from info.duration."""
+    mock_model = _make_model_mock(duration=75.0)
+    fw = _make_fw_module(model_mock=mock_model)
+    with patch.dict("sys.modules", {"faster_whisper": fw}):
+        result = transcribe_audio("fake.wav", model_size="tiny", device="cpu")
+    assert isinstance(result.duration, float)
+    assert result.duration == 75.0
 
 
 def test_transcription_error_is_gen_subtitles_error():
