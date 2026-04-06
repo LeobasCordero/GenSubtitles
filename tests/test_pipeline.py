@@ -246,6 +246,39 @@ def test_temp_file_cleanup_on_success(tmp_path):
     assert cleanup_called, "audio_temp_context __exit__ was not called — temp file not cleaned up"
 
 
+# ── test 6b — temp file cleanup on exception ─────────────────────────────────
+
+
+def test_temp_file_cleanup_on_exception(tmp_path):
+    """audio_temp_context __exit__ is called even when a pipeline stage raises,
+    ensuring the temp WAV is cleaned up on error."""
+    video = tmp_path / "video.mp4"
+    video.touch()
+    output = tmp_path / "out.srt"
+    cleanup_called: list[bool] = []
+
+    @contextmanager
+    def tracking_context():
+        try:
+            yield Path("fake_temp.wav")
+        finally:
+            cleanup_called.append(True)
+
+    mocks = _make_mocks()
+    mocks["transcriber_instance"].transcribe.side_effect = RuntimeError("boom during transcription")
+    tracking_audio_module = _make_fake_audio_module(
+        extract_audio_mock=mocks["extract_audio"],
+        audio_temp_context_fn=tracking_context,
+    )
+    patched_modules = {**_sys_modules_patches(mocks), "gensubtitles.core.audio": tracking_audio_module}
+
+    with patch.dict("sys.modules", patched_modules):
+        with pytest.raises(PipelineError):
+            run_pipeline(str(video), str(output))
+
+    assert cleanup_called, "audio_temp_context __exit__ was not called on exception — temp file leaked"
+
+
 # ── test 7 — stage exceptions wrapped as PipelineError ───────────────────────
 
 
