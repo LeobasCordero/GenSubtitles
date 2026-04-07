@@ -352,5 +352,18 @@ Plans:
 
 ---
 
+## Backlog
+
+### Phase 999.1: GUI Interface (BACKLOG)
+
+**Goal:** Add a graphical user interface so non-technical users can generate subtitles without using the CLI or REST API. Could be a desktop app (e.g., Tkinter, PyQt, or Tauri) or a lightweight local web UI (e.g., Gradio, Streamlit).
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-02 — Initial roadmap from requirements + research*
+*Last updated: 2026-04-07 — Added backlog item 999.1: GUI Interface*
