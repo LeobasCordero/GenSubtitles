@@ -18,8 +18,8 @@
 - [x] **Phase 6: Core Pipeline Assembly** — Wire all core modules into a single callable pipeline
  (completed 2026-04-06)
 - [x] **Phase 7: CLI Interface** — Typer CLI with all flags, progress output, and exit codes (completed 2026-04-06)
-- [ ] **Phase 8: FastAPI REST API Core** — Upload endpoint, lifespan model loading, thread pool execution
-- [ ] **Phase 9: FastAPI Extensions & Docs** — Languages endpoint, Uvicorn serve, OpenAPI docs
+- [x] **Phase 8: FastAPI REST API Core** — Upload endpoint, lifespan model loading, thread pool execution (completed 2026-04-07)
+- [x] **Phase 9: FastAPI Extensions & Docs** — Languages endpoint, Uvicorn serve, OpenAPI docs (completed 2026-04-07)
 - [ ] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test
 
 ---
@@ -209,7 +209,7 @@ Plans:
 **Estimated complexity:** High  
 **Depends on:** Phase 6
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 08-01-PLAN.md — FastAPI app with lifespan model loading + get_transcriber dependency (api/main.py, api/dependencies.py)
@@ -234,7 +234,7 @@ Plans:
 **Estimated complexity:** Medium  
 **Depends on:** Phase 8
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 09-01-PLAN.md — GET /languages endpoint + CORS middleware + extended API tests (/docs, /openapi.json)
@@ -290,8 +290,8 @@ Plans:
 | 5. SRT Generation Module | 1/1 | Complete | 2026-04-03 |
 | 6. Core Pipeline Assembly | 2/2 | Complete | 2026-04-06 |
 | 7. CLI Interface | 2/2 | Complete | 2026-04-06 |
-| 8. FastAPI REST API Core | 0/10 | Not started | — |
-| 9. FastAPI Extensions & Docs | 0/8 | Not started | — |
+| 8. FastAPI REST API Core | 3/3 | Complete | 2026-04-07 |
+| 9. FastAPI Extensions & Docs | 2/2 | Complete | 2026-04-07 |
 | 10. Documentation & End-to-End Validation | 0/9 | Not started | — |
 
 ---
@@ -326,13 +326,13 @@ Plans:
 | CLI-02 | Phase 7 | Complete |
 | CLI-03 | Phase 7 | Complete |
 | CLI-04 | Phase 7 | Complete |
-| API-01 | Phase 8 | Pending |
-| API-02 | Phase 8 | Pending |
-| API-03 | Phase 8 | Pending |
-| API-04 | Phase 8 | Pending |
-| API-05 | Phase 9 | Pending |
-| API-06 | Phase 9 | Pending |
-| API-07 | Phase 9 | Pending |
+| API-01 | Phase 8 | Complete |
+| API-02 | Phase 8 | Complete |
+| API-03 | Phase 8 | Complete |
+| API-04 | Phase 8 | Complete |
+| API-05 | Phase 9 | Complete |
+| API-06 | Phase 9 | Complete |
+| API-07 | Phase 9 | Complete |
 | INF-03 | Phase 10 | Pending |
 
 **Coverage: 34/31 v1 requirements mapped** *(31 original + 3 split across Phase 8/9 from API-05/06/07) — all requirements covered ✓*
@@ -355,4 +355,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-07 — Phases 1–7 complete (26/34 requirements shipped); Phases 8–10 pending*
+*Last updated: 2026-04-07 — Phases 1–9 complete (33/34 requirements shipped); UAT verified for all phases 1–9 (FFmpeg installed 2026-04-07); Phase 10 pending*
