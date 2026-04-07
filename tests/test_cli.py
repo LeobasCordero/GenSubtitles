@@ -100,13 +100,9 @@ def test_nonexistent_file_exits_one(tmp_path):
     """CLI-04: Non-existent input file → exit 1, error message names the file."""
     missing = tmp_path / "nonexistent.mp4"
     output = tmp_path / "out.srt"
-    with patch(
-        "gensubtitles.core.pipeline.run_pipeline",
-        side_effect=FileNotFoundError(f"Video file not found: {missing}"),
-    ):
-        result = runner.invoke(app, ["--input", str(missing), "--output", str(output)])
+    result = runner.invoke(app, ["--input", str(missing), "--output", str(output)])
     assert result.exit_code == 1
-    assert "nonexistent" in result.output
+    assert "nonexistent" in result.stderr
 
 
 def test_all_flags_forwarded(tmp_path):
@@ -149,4 +145,4 @@ def test_pipeline_error_exits_one(tmp_path):
     ):
         result = runner.invoke(app, ["--input", str(video), "--output", str(output)])
     assert result.exit_code == 1
-    assert "boom" in result.output
+    assert "boom" in result.stderr
