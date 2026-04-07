@@ -47,7 +47,7 @@ def post_subtitles(
     Transcription runs in FastAPI's thread pool — does not block the async event loop.
     """
     # ── 0. Validate file extension before touching disk ────────────────────────
-    video_suffix = Path(file.filename or "upload.mp4").suffix.lower() or ".mp4"
+    video_suffix = Path(file.filename or "").suffix.lower()
     if video_suffix not in _SUPPORTED_VIDEO_EXTENSIONS:
         raise HTTPException(
             status_code=400,

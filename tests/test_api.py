@@ -113,9 +113,8 @@ def client(mock_transcriber):
     sys.modules["gensubtitles.core.srt_writer"] = mock_srt
 
     try:
-        with patch("gensubtitles.api.main.WhisperTranscriber", return_value=mock_transcriber):
-            with TestClient(app) as c:
-                yield c
+        with patch("gensubtitles.api.main.WhisperTranscriber", return_value=mock_transcriber), TestClient(app) as c:
+            yield c
     finally:
         app.dependency_overrides.clear()
         # Restore prior sys.modules state
