@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 06
-last_updated: "2026-04-06T19:35:11.128Z"
+status: completed
+last_updated: "2026-04-06T19:35:11Z"
 progress:
   total_phases: 10
-  completed_phases: 5
-  total_plans: 13
-  completed_plans: 11
+  completed_phases: 7
+  total_plans: 15
+  completed_plans: 15
 ---
 
 # GenSubtitles — Project State
@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1
-- **Active Phase:** Phase 6 — Core Pipeline Assembly (not started)
-- **Last action:** 05-01 executed — SRT writer module (`gensubtitles/core/srt_writer.py`) and pytest suite (`tests/test_srt_writer.py`) implemented; all SRT-01 through SRT-04 requirements satisfied (2026-04-03)
+- **Active Phase:** Phase 8 — FastAPI REST API Core (not started)
+- **Last action:** Phase 7 complete — CLI implemented (`gensubtitles/cli/main.py`) with 6 Typer flags, progress callbacks, auto-derived output path, and exit codes; 8-test CliRunner suite (`tests/test_cli.py`) passing; all CLI-01 through CLI-04 requirements satisfied (2026-04-06)
 
 ## Milestone Progress
 
@@ -30,8 +30,8 @@ progress:
 | 3 | Transcription Engine | ✅ Complete (2/2 plans) |
 | 4 | Translation Engine | ✅ Complete (2/2 plans) |
 | 5 | SRT Generation Module | ✅ Complete (1/1 plans) |
-| 6 | Core Pipeline Assembly | ⏳ Not started |
-| 7 | CLI Interface | ⏳ Not started |
+| 6 | Core Pipeline Assembly | ✅ Complete (2/2 plans, completed 2026-04-06) |
+| 7 | CLI Interface | ✅ Complete (2/2 plans, completed 2026-04-06) |
 | 8 | FastAPI REST API Core | ⏳ Not started |
 | 9 | FastAPI Extensions & Docs | ⏳ Not started |
 | 10 | Documentation & End-to-End Validation | ⏳ Not started |

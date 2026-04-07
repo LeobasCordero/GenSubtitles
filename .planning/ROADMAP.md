@@ -15,8 +15,9 @@
 - [x] **Phase 3: Transcription Engine** — faster-whisper integration with VAD, device auto-detection (completed 2026-04-02)
 - [x] **Phase 4: Translation Engine** — Argos Translate offline translation with on-demand model install (completed 2026-04-03)
 - [x] **Phase 5: SRT Generation Module** — `srt` library segment-to-file conversion (1 plan) (completed 2026-04-03)
-- [ ] **Phase 6: Core Pipeline Assembly** — Wire all core modules into a single callable pipeline
-- [ ] **Phase 7: CLI Interface** — Typer CLI with all flags, progress output, and exit codes
+- [x] **Phase 6: Core Pipeline Assembly** — Wire all core modules into a single callable pipeline
+ (completed 2026-04-06)
+- [x] **Phase 7: CLI Interface** — Typer CLI with all flags, progress output, and exit codes (completed 2026-04-06)
 - [ ] **Phase 8: FastAPI REST API Core** — Upload endpoint, lifespan model loading, thread pool execution
 - [ ] **Phase 9: FastAPI Extensions & Docs** — Languages endpoint, Uvicorn serve, OpenAPI docs
 - [ ] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test
@@ -161,7 +162,7 @@ Plans:
 **Estimated complexity:** Medium  
 **Depends on:** Phases 2, 3, 4, 5
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 06-01-PLAN.md — Extend TranscriptionResult with duration field + add PipelineError to exceptions.py + update transcriber tests
@@ -184,17 +185,11 @@ Plans:
 **Estimated complexity:** Medium  
 **Depends on:** Phase 6
 
-### Plans
+**Plans:** 2/2 complete
 
-1. **Implement `cli/main.py` with Typer** — Create `gensubtitles/cli/main.py`; instantiate a `typer.Typer()` app with a single `generate` command (also set as default callback so `python main.py` works)
-2. **Wire `--input` flag** — `input: Path = typer.Option(..., "--input", "-i", help="Path to input video file", exists=True, readable=True)`
-3. **Wire `--output` flag** — `output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output SRT path (defaults to input filename with .srt extension)")`; auto-derive default from input stem if not provided
-4. **Wire `--model` flag** — `model: str = typer.Option("small", "--model", "-m", help="Whisper model size: tiny/base/small/medium/large-v1/large-v2/large-v3/turbo")`
-5. **Wire `--target-lang` and `--source-lang` flags** — `target_lang: Optional[str] = typer.Option(None, "--target-lang", "-t", help="Target language code for translation (e.g. 'es'). Omit to keep source language.")` ; `source_lang: Optional[str] = typer.Option(None, "--source-lang", "-s", help="Source language code. Omit for auto-detection.")`
-6. **Wire `--device` flag** — `device: str = typer.Option("auto", "--device", help="Compute device: auto/cpu/cuda")`
-7. **Implement stage progress printing** — Pass a `progress_callback` to `run_pipeline` that prints `[{current}/{total}] {stage}...` to stdout using `typer.echo()`
-8. **Implement error handling and exit codes** — Catch all exceptions in the CLI handler; print to stderr via `typer.echo(str(e), err=True)`; call `raise typer.Exit(code=1)` on error, `raise typer.Exit(code=0)` on success
-9. **Update `main.py` entry shim** — `from gensubtitles.cli.main import app; app()` so `python main.py [args]` works identically to the installed script
+Plans:
+- [x] 07-01-PLAN.md — Implement gensubtitles/cli/main.py: 6 Typer flags + progress callback + error handling + exit codes
+- [x] 07-02-PLAN.md — Write tests/test_cli.py: 8 CliRunner tests covering all CLI UAT criteria
 
 ### UAT Criteria
 
