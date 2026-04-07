@@ -22,7 +22,7 @@ app = typer.Typer(
 )
 
 
-@app.command()
+@app.command(no_args_is_help=True)
 def generate(
     input: Path = typer.Option(
         ...,
