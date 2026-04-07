@@ -294,13 +294,13 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Project Infrastructure | 3/3 | Complete    | 2026-04-03 |
-| 2. Audio Extraction Module | 0/8 | Not started | — |
-| 3. Transcription Engine | 0/9 | Not started | — |
-| 4. Translation Engine | 0/9 | Not started | — |
-| 5. SRT Generation Module | 0/7 | Not started | — |
-| 6. Core Pipeline Assembly | 0/8 | Not started | — |
-| 7. CLI Interface | 0/9 | Not started | — |
+| 1. Project Infrastructure | 3/3 | Complete | 2026-04-02 |
+| 2. Audio Extraction Module | 3/3 | Complete | 2026-04-02 |
+| 3. Transcription Engine | 2/2 | Complete | 2026-04-02 |
+| 4. Translation Engine | 2/2 | Complete | 2026-04-03 |
+| 5. SRT Generation Module | 1/1 | Complete | 2026-04-03 |
+| 6. Core Pipeline Assembly | 2/2 | Complete | 2026-04-06 |
+| 7. CLI Interface | 2/2 | Complete | 2026-04-06 |
 | 8. FastAPI REST API Core | 0/10 | Not started | — |
 | 9. FastAPI Extensions & Docs | 0/8 | Not started | — |
 | 10. Documentation & End-to-End Validation | 0/9 | Not started | — |
@@ -311,32 +311,32 @@ Plans:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INF-01 | Phase 1 | Pending |
-| INF-02 | Phase 1 | Pending |
-| INF-04 | Phase 1 | Pending |
-| AUD-01 | Phase 2 | Pending |
-| AUD-02 | Phase 2 | Pending |
-| AUD-03 | Phase 2 | Pending |
-| AUD-04 | Phase 2 | Pending |
-| TRN-01 | Phase 3 | Pending |
-| TRN-02 | Phase 3 | Pending |
-| TRN-03 | Phase 3 | Pending |
-| TRN-04 | Phase 3 | Pending |
-| TRN-05 | Phase 3 | Pending |
-| TRN-06 | Phase 3 | Pending |
-| TRANS-01 | Phase 4 | Pending |
-| TRANS-02 | Phase 4 | Pending |
-| TRANS-03 | Phase 4 | Pending |
-| TRANS-04 | Phase 4 | Pending |
-| TRANS-05 | Phase 4 | Pending |
-| SRT-01 | Phase 5 | Pending |
-| SRT-02 | Phase 5 | Pending |
-| SRT-03 | Phase 5 | Pending |
-| SRT-04 | Phase 5 | Pending |
-| CLI-01 | Phase 7 | Pending |
-| CLI-02 | Phase 7 | Pending |
-| CLI-03 | Phase 7 | Pending |
-| CLI-04 | Phase 7 | Pending |
+| INF-01 | Phase 1 | Complete |
+| INF-02 | Phase 1 | Complete |
+| INF-04 | Phase 1 | Complete |
+| AUD-01 | Phase 2 | Complete |
+| AUD-02 | Phase 2 | Complete |
+| AUD-03 | Phase 2 | Complete |
+| AUD-04 | Phase 2 | Complete |
+| TRN-01 | Phase 3 | Complete |
+| TRN-02 | Phase 3 | Complete |
+| TRN-03 | Phase 3 | Complete |
+| TRN-04 | Phase 3 | Complete |
+| TRN-05 | Phase 3 | Complete |
+| TRN-06 | Phase 3 | Complete |
+| TRANS-01 | Phase 4 | Complete |
+| TRANS-02 | Phase 4 | Complete |
+| TRANS-03 | Phase 4 | Complete |
+| TRANS-04 | Phase 4 | Complete |
+| TRANS-05 | Phase 4 | Complete |
+| SRT-01 | Phase 5 | Complete |
+| SRT-02 | Phase 5 | Complete |
+| SRT-03 | Phase 5 | Complete |
+| SRT-04 | Phase 5 | Complete |
+| CLI-01 | Phase 7 | Complete |
+| CLI-02 | Phase 7 | Complete |
+| CLI-03 | Phase 7 | Complete |
+| CLI-04 | Phase 7 | Complete |
 | API-01 | Phase 8 | Pending |
 | API-02 | Phase 8 | Pending |
 | API-03 | Phase 8 | Pending |
@@ -352,5 +352,18 @@ Plans:
 
 ---
 
+## Backlog
+
+### Phase 999.1: GUI Interface (BACKLOG)
+
+**Goal:** Add a graphical user interface so non-technical users can generate subtitles without using the CLI or REST API. Could be a desktop app (e.g., Tkinter, PyQt, or Tauri) or a lightweight local web UI (e.g., Gradio, Streamlit).
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-02 — Initial roadmap from requirements + research*
+*Last updated: 2026-04-07 — Phases 1–7 complete (26/34 requirements shipped); Phases 8–10 pending*
