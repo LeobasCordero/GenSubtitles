@@ -234,16 +234,11 @@ Plans:
 **Estimated complexity:** Medium  
 **Depends on:** Phase 8
 
-### Plans
+**Plans:** 2 plans
 
-1. **Implement `GET /languages` endpoint** — Add to `api/routers/subtitles.py`; return `{"pairs": [{"from": code, "to": code}, ...]}` using `list_installed_pairs()` from `core/translator.py`
-2. **Include router in app** — Register the subtitles router in `api/main.py` with `app.include_router(subtitles_router, prefix="")` or a `/api/v1` prefix
-3. **Add query parameter passthrough to `POST /subtitles`** — Confirm `model_size`, `target_lang`, `source_lang` query params from Phase 8 are wired through to `run_pipeline`
-4. **Document Uvicorn startup** — In README and in API module docstring: `uvicorn gensubtitles.api.main:app --host 0.0.0.0 --port 8000 --reload`
-5. **Add `--serve` flag to CLI** — Add `serve` sub-command or `--serve` flag to `cli/main.py` that programmatically calls `uvicorn.run("gensubtitles.api.main:app", host=..., port=...)`
-6. **Verify `/docs` Swagger UI** — Navigate to `http://localhost:8000/docs`; ensure both `POST /subtitles` and `GET /languages` appear with correct parameter schemas
-7. **Verify `/openapi.json`** — Confirm the JSON schema is valid and includes all endpoints, parameters, and response schemas
-8. **Add CORS middleware (configurable)** — Add `CORSMiddleware` to `api/main.py` with `allow_origins=["*"]` as a dev default; document how to restrict in production
+Plans:
+- [ ] 09-01-PLAN.md — GET /languages endpoint + CORS middleware + extended API tests (/docs, /openapi.json)
+- [ ] 09-02-PLAN.md — CLI serve subcommand (uvicorn.run) + 3 serve tests
 
 ### UAT Criteria
 
