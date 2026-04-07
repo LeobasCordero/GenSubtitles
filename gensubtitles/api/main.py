@@ -59,6 +59,18 @@ async def file_not_found_handler(request: Request, exc: FileNotFoundError) -> JS
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+    """Map value errors (e.g. unsupported file extension) to HTTP 400 Bad Request."""
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(EnvironmentError)
+async def environment_error_handler(request: Request, exc: EnvironmentError) -> JSONResponse:
+    """Map environment errors (e.g. FFmpeg missing) to HTTP 500 Internal Server Error."""
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+
 @app.exception_handler(RuntimeError)
 async def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResponse:
     """Map runtime failures (pipeline, transcription, etc.) to HTTP 500."""

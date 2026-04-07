@@ -1,8 +1,12 @@
 """
-Phase 8 API tests — covers API-01, API-02, API-03, API-04.
+Phase 8 API tests — covers API-01, API-02, API-04.
 
 All heavy dependencies (FFmpeg, WhisperTranscriber, argostranslate) are mocked
 so tests run without GPU, FFmpeg installation, or model downloads.
+
+Note: API-03 (sync route does not block the event loop) is verified by
+architecture — ``post_subtitles`` is defined as a plain ``def``, which
+FastAPI automatically dispatches to a thread pool executor.
 """
 from __future__ import annotations
 
@@ -92,6 +96,9 @@ def client(mock_transcriber):
     gensubtitles.core.srt_writer into sys.modules BEFORE any lazy import
     in the router executes. This bypasses the import-time FFmpeg check in
     audio.py without requiring FFmpeg to be installed.
+
+    Uses the context-manager form of TestClient so lifespan startup/shutdown
+    run reliably and resources are cleaned up between tests.
     """
     app.dependency_overrides[get_transcriber] = lambda: mock_transcriber
 
@@ -106,7 +113,9 @@ def client(mock_transcriber):
     sys.modules["gensubtitles.core.srt_writer"] = mock_srt
 
     try:
-        yield TestClient(app)
+        with patch("gensubtitles.api.main.WhisperTranscriber", return_value=mock_transcriber):
+            with TestClient(app) as c:
+                yield c
     finally:
         app.dependency_overrides.clear()
         # Restore prior sys.modules state
@@ -151,10 +160,10 @@ class TestPostSubtitles:
         assert response.status_code == 200
         mock_translate.assert_not_called()
 
-    def test_model_size_query_param_passed_to_transcriber(self, client, mock_transcriber, video_bytes):
-        """API-01 + query params: model_size query param is available (transcriber preloaded, not per-request)."""
+    def test_preloaded_transcriber_used_regardless_of_query_params(self, client, mock_transcriber, video_bytes):
+        """API-01: The preloaded transcriber is used for every request; no per-request model loading."""
         response = client.post(
-            "/subtitles?model_size=tiny",
+            "/subtitles",
             files={"file": ("video.mp4", video_bytes, "video/mp4")},
         )
         assert response.status_code == 200
@@ -204,6 +213,17 @@ class TestPostSubtitles:
         for path in captured_paths:
             assert not Path(path).exists(), f"Temp file still exists: {path}"
 
+    def test_unsupported_extension_returns_400_json(self, client):
+        """Unsupported file extension (e.g. .txt) returns JSON 400 before touching disk."""
+        response = client.post(
+            "/subtitles",
+            files={"file": ("document.txt", b"not a video", "text/plain")},
+        )
+        assert response.status_code == 400
+        body = response.json()
+        assert "detail" in body
+        assert ".txt" in body["detail"]
+
     def test_invalid_file_returns_error_json(self, client):
         """UAT 5: Invalid upload that triggers a pipeline error returns JSON with 'detail' key."""
         def raising_extract(video_path, wav_path):
@@ -212,7 +232,7 @@ class TestPostSubtitles:
         with patch("gensubtitles.core.audio.extract_audio", side_effect=raising_extract):
             response = client.post(
                 "/subtitles",
-                files={"file": ("bad.txt", b"not a video", "text/plain")},
+                files={"file": ("bad.mp4", b"not a video", "video/mp4")},
             )
         # Must return JSON with detail key — not a raw 500 stack trace
         assert response.status_code in (400, 500)

@@ -19,7 +19,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
 from gensubtitles.api.dependencies import get_transcriber
@@ -27,12 +27,15 @@ from gensubtitles.core.transcriber import WhisperTranscriber
 
 router = APIRouter()
 
+# Mirrors SUPPORTED_EXTENSIONS from core.audio — defined here to allow
+# early validation before the lazy import (which triggers the FFmpeg check).
+_SUPPORTED_VIDEO_EXTENSIONS = frozenset({".mp4", ".mkv", ".avi", ".mov", ".webm"})
+
 
 @router.post("/subtitles")
 def post_subtitles(
     file: UploadFile,
     background_tasks: BackgroundTasks,
-    model_size: str = Query(default="small", description="Whisper model size (tiny/base/small/medium/large)"),
     target_lang: Optional[str] = Query(default=None, description="ISO 639-1 target language for translation (e.g. 'es'). Omit to skip translation."),
     source_lang: Optional[str] = Query(default=None, description="Force source language detection (e.g. 'en'). Omit for auto-detect."),
     transcriber: WhisperTranscriber = Depends(get_transcriber),
@@ -43,9 +46,19 @@ def post_subtitles(
     Accepts any video format supported by FFmpeg (mp4, mkv, avi, mov, webm).
     Transcription runs in FastAPI's thread pool — does not block the async event loop.
     """
+    # ── 0. Validate file extension before touching disk ────────────────────────
+    video_suffix = Path(file.filename or "upload.mp4").suffix.lower() or ".mp4"
+    if video_suffix not in _SUPPORTED_VIDEO_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Unsupported video format '{video_suffix}'. "
+                f"Supported formats: {', '.join(sorted(_SUPPORTED_VIDEO_EXTENSIONS))}"
+            ),
+        )
+
     # ── 1. Copy UploadFile → NamedTemporaryFile on disk ───────────────────────
     # FFmpeg requires a real file path; UploadFile is an in-memory spoolfile.
-    video_suffix = Path(file.filename or "upload.mp4").suffix or ".mp4"
     tmp_video = tempfile.NamedTemporaryFile(delete=False, suffix=video_suffix)
     try:
         shutil.copyfileobj(file.file, tmp_video)
