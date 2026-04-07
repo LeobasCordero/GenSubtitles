@@ -86,8 +86,8 @@ Phase 7 had 2 existing plans (07-01, 07-02) created without user context. User c
 
 | ID | Decision |
 |----|----------|
-| D-01 | Single Rich progress bar, 25% per stage, stage name as description |
-| D-02 | `rich` available via `typer[all]` — no new dep |
+| D-01 | Plain `[N/4] <stage>...` lines via `typer.echo` (Rich progress bar considered but not shipped) |
+| D-02 | `typer.echo` sufficient — no additional Rich dependency needed |
 | D-03 | Default output = same dir as input, same stem, `.srt` extension |
-| D-04 | Rich error panel on failure, no traceback, exit 1 |
+| D-04 | Plain `Error: <message>` via `typer.echo(..., err=True)` on failure, no traceback, exit 1 (Rich error panel considered but not shipped) |
 | D-05 | CLI validates `--input` existence only; rest delegated to pipeline |

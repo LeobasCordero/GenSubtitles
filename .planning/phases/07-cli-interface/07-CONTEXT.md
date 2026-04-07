@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Expose `run_pipeline()` as a polished command-line tool via `gensubtitles/cli/main.py`. Delivers 6 Typer flags, Rich progress bar, Rich error panel, auto-derived output path, and correct exit codes. No API endpoints, no model caching, no new core modules — those belong to Phases 8+.
+Expose `run_pipeline()` as a polished command-line tool via `gensubtitles/cli/main.py`. Delivers 6 Typer flags, plain `[N/4] <stage>...` progress lines, plain `Error: ...` error output, auto-derived output path, and correct exit codes. No API endpoints, no model caching, no new core modules — those belong to Phases 8+.
 
 </domain>
 
@@ -24,7 +24,7 @@ Expose `run_pipeline()` as a polished command-line tool via `gensubtitles/cli/ma
 - **D-04:** On any exception, print a plain `Error: <message>` line via `typer.echo(..., err=True)`. No Python traceback shown to the user. Exit code 1 for all pipeline errors, FileNotFoundError, etc.
 
 ### Flag Validation
-- **D-05:** CLI validates **`--input` file existence only** before calling `run_pipeline()`. If the path does not exist, print a plain error message and exit 1 immediately. Model size, device, and language validation are delegated to the pipeline (they already raise appropriate errors).
+- **D-05:** CLI validates **`--input` file existence** (`is_file()` check) before calling `run_pipeline()`. If the path does not exist, print a plain error message and exit 1 immediately. Model size, device, and language validation are delegated to the pipeline (they already raise appropriate errors).
 
 ### Agent's Discretion
 - Default `--model` value — `"small"` is the existing pipeline default; planner should keep it consistent.

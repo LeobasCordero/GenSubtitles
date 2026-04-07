@@ -18,7 +18,7 @@ updated: "2026-04-06T00:00:00Z"
 ### 1. No-Args Shows Help
 expected: Running `python main.py` with no arguments prints the help text (usage, description, and available options) without error. It does NOT attempt to run the pipeline.
 result: pass
-note: Fixed — added `no_args_is_help=True` to `@app.command()` decorator
+note: Fixed — configured `no_args_is_help=True` on the `@app.callback(...)` entrypoint
 
 ### 2. All 6 Flags in --help
 expected: Running `python main.py --help` lists all six flags: `--input`, `--output`, `--model`, `--target-lang`, `--source-lang`, and `--device`.

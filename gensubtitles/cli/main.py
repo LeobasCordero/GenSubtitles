@@ -24,7 +24,7 @@ app = typer.Typer(
 
 @app.callback(invoke_without_command=True, no_args_is_help=True)
 def generate(
-    input: Path = typer.Option(
+    video_path: Path = typer.Option(
         ...,
         "--input",
         "-i",
@@ -61,8 +61,13 @@ def generate(
     ),
 ) -> None:
     """Generate subtitles from a video file."""
+    # Validate --input existence before importing the pipeline
+    if not video_path.is_file():
+        typer.echo(f"Error: Input file not found: {video_path}", err=True)
+        raise typer.Exit(code=1)
+
     # Auto-derive output path from input stem when --output not provided
-    effective_output: Path = output if output is not None else input.with_suffix(".srt")
+    effective_output: Path = output if output is not None else video_path.with_suffix(".srt")
 
     def _progress(label: str, current: int, total: int) -> None:
         typer.echo(f"[{current}/{total}] {label}...")
@@ -72,7 +77,7 @@ def generate(
         from gensubtitles.core.pipeline import run_pipeline  # noqa: PLC0415
 
         result = run_pipeline(
-            video_path=input,
+            video_path=video_path,
             output_path=effective_output,
             model_size=model,
             target_lang=target_lang,
