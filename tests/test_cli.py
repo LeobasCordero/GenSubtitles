@@ -3,10 +3,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from typer.testing import CliRunner
 
 from gensubtitles.cli.main import app
@@ -67,10 +65,13 @@ def test_progress_lines_printed(tmp_path):
 
 def test_help_lists_all_flags():
     """CLI-02: --help output lists all 6 option names."""
+    import re
+
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
+    output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
     for flag in ["--input", "--output", "--model", "--target-lang", "--source-lang", "--device"]:
-        assert flag in result.stdout, f"Missing flag in --help: {flag}"
+        assert flag in output, f"Missing flag in --help: {flag}"
 
 
 def test_auto_derives_output_from_input(tmp_path):

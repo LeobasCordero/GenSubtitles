@@ -185,11 +185,11 @@ Plans:
 **Estimated complexity:** Medium  
 **Depends on:** Phase 6
 
-**Plans:** 2 plans
+**Plans:** 2/2 complete
 
 Plans:
-- [ ] 07-01-PLAN.md — Implement gensubtitles/cli/main.py: 6 Typer flags + progress callback + error handling + exit codes
-- [ ] 07-02-PLAN.md — Write tests/test_cli.py: 8 CliRunner tests covering all CLI UAT criteria
+- [x] 07-01-PLAN.md — Implement gensubtitles/cli/main.py: 6 Typer flags + progress callback + error handling + exit codes
+- [x] 07-02-PLAN.md — Write tests/test_cli.py: 8 CliRunner tests covering all CLI UAT criteria
 
 ### UAT Criteria
 

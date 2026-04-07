@@ -14,17 +14,17 @@ Expose `run_pipeline()` as a polished command-line tool via `gensubtitles/cli/ma
 ## Implementation Decisions
 
 ### Progress Display
-- **D-01:** Use a **single Rich progress bar** that advances 25% per stage. Stage name is the bar description. Compact single-bar layout — not per-stage spinners, not a status panel.
-- **D-02:** Rich is already available via `typer[all]>=0.15.0` — no new dependency required. Use `rich.progress.Progress` directly.
+- **D-01:** Print plain `[N/4] <stage>...` lines via `typer.echo` for each pipeline stage. One line per stage, no Rich progress bar.
+- **D-02:** No additional Rich dependency required — `typer.echo` is sufficient for the chosen output style.
 
 ### Output Path
 - **D-03:** When `--output` is omitted, derive the output path as **same directory as input, same stem, `.srt` extension**. Example: `path/to/video.mp4` → `path/to/video.srt`. Do NOT use `output/` subdirectory or CWD.
 
 ### Error Messaging
-- **D-04:** On any exception, display a **Rich error panel** (`rich.panel.Panel` with `style="red"` or similar) containing the error message. No Python traceback shown to the user. Exit code 1 for all pipeline errors, FileNotFoundError, etc.
+- **D-04:** On any exception, print a plain `Error: <message>` line via `typer.echo(..., err=True)`. No Python traceback shown to the user. Exit code 1 for all pipeline errors, FileNotFoundError, etc.
 
 ### Flag Validation
-- **D-05:** CLI validates **`--input` file existence only** before calling `run_pipeline()`. If the path does not exist, show a Rich error panel and exit 1 immediately. Model size, device, and language validation are delegated to the pipeline (they already raise appropriate errors).
+- **D-05:** CLI validates **`--input` file existence only** before calling `run_pipeline()`. If the path does not exist, print a plain error message and exit 1 immediately. Model size, device, and language validation are delegated to the pipeline (they already raise appropriate errors).
 
 ### Agent's Discretion
 - Default `--model` value — `"small"` is the existing pipeline default; planner should keep it consistent.
@@ -77,8 +77,8 @@ No external specs — requirements fully captured in decisions above.
 <specifics>
 ## Specific Ideas
 
-- Single Rich progress bar advancing by stage (not per-stage spinners)
-- Rich error panel on failure (red-styled, no traceback)
+- Plain `[N/4] <stage>...` lines via `typer.echo` for progress output
+- Plain `Error: <message>` line via `typer.echo(..., err=True)` on failure (no traceback)
 - Output path derivation: `Path(input).with_suffix(".srt")` — same dir, same stem
 
 </specifics>
