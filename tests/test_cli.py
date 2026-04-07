@@ -146,3 +146,56 @@ def test_pipeline_error_exits_one(tmp_path):
         result = runner.invoke(app, ["--input", str(video), "--output", str(output)])
     assert result.exit_code == 1
     assert "boom" in result.stderr
+
+
+class TestServeCommand:
+    """Phase 9 — covers API-06 (CLI serve subcommand)."""
+
+    def _mock_uvicorn(self):
+        """Inject a fake uvicorn module so tests work without uvicorn installed."""
+        import sys
+        from types import ModuleType
+        from unittest.mock import MagicMock
+
+        mock_uvicorn = ModuleType("uvicorn")
+        mock_uvicorn.run = MagicMock()  # type: ignore[attr-defined]
+        sys.modules["uvicorn"] = mock_uvicorn
+        return mock_uvicorn
+
+    def test_serve_invokes_uvicorn_with_defaults(self):
+        """serve subcommand calls uvicorn.run with default host, port, and reload=False."""
+        import sys
+
+        mock_uvicorn = self._mock_uvicorn()
+        try:
+            result = runner.invoke(app, ["serve"])
+        finally:
+            sys.modules.pop("uvicorn", None)
+        assert result.exit_code == 0
+        mock_uvicorn.run.assert_called_once_with(
+            "gensubtitles.api.main:app",
+            host="0.0.0.0",
+            port=8000,
+            reload=False,
+        )
+
+    def test_serve_accepts_custom_host_port(self):
+        """serve --host and --port are forwarded to uvicorn.run."""
+        import sys
+
+        mock_uvicorn = self._mock_uvicorn()
+        try:
+            result = runner.invoke(app, ["serve", "--host", "127.0.0.1", "--port", "9000"])
+        finally:
+            sys.modules.pop("uvicorn", None)
+        assert result.exit_code == 0
+        _, kw = mock_uvicorn.run.call_args
+        assert kw.get("host") == "127.0.0.1"
+        assert kw.get("port") == 9000
+
+    def test_serve_help_shows_options(self):
+        """serve --help output lists --host, --port, and --reload options."""
+        result = runner.invoke(app, ["serve", "--help"])
+        assert result.exit_code == 0
+        for flag in ("--host", "--port", "--reload"):
+            assert flag in result.output
