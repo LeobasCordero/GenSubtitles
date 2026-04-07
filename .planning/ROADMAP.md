@@ -209,18 +209,12 @@ Plans:
 **Estimated complexity:** High  
 **Depends on:** Phase 6
 
-### Plans
+**Plans:** 3 plans
 
-1. **Implement `api/main.py`** — Create `gensubtitles/api/main.py`; define `FastAPI(title="GenSubtitles", lifespan=lifespan)` app
-2. **Implement `lifespan` context manager** — Use `@asynccontextmanager async def lifespan(app)` pattern; load `WhisperModel` and set `app.state.whisper_model`; log startup/shutdown; yield; cleanup on shutdown
-3. **Implement `api/dependencies.py`** — Create `get_whisper_model(request: Request) -> WhisperModel` dependency that reads from `request.app.state.whisper_model`; injectable via `Depends(get_whisper_model)`
-4. **Implement `api/routers/subtitles.py`** — Create router with `POST /subtitles` as a **sync `def` route** (not `async def`) so FastAPI automatically routes it to the thread pool executor
-5. **Implement UploadFile → NamedTemporaryFile copy** — Inside the route, open a `NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix)` and `shutil.copyfileobj(file.file, tmp)` to get a real disk path for FFmpeg
-6. **Run pipeline in sync route** — Call `run_pipeline(tmp_video_path, tmp_srt_path, model_size=..., ...)` directly; `def` route + FastAPI = auto threadpool, no manual `run_in_executor` needed
-7. **Return SRT as FileResponse** — Use `FileResponse(tmp_srt_path, media_type="text/plain; charset=utf-8", filename="subtitles.srt")` and schedule temp file cleanup via `BackgroundTasks`
-8. **Implement error handlers** — `@app.exception_handler(FileNotFoundError)` → 400; `@app.exception_handler(RuntimeError)` → 500 with `{"detail": str(e)}`; include `HTTPException` for malformed requests
-9. **Accept model and language query params** — `model_size: str = Query(default="small")`, `target_lang: Optional[str] = Query(default=None)`, `source_lang: Optional[str] = Query(default=None)` on the POST route
-10. **Verify `python-multipart` in requirements.txt** — Confirm it is listed (FastAPI will 400 on every upload without it)
+Plans:
+- [x] 08-01-PLAN.md — FastAPI app with lifespan model loading + get_transcriber dependency (api/main.py, api/dependencies.py)
+- [x] 08-02-PLAN.md — POST /subtitles endpoint: UploadFile copy → preloaded transcriber → FileResponse + BackgroundTask cleanup; wire router (api/routers/subtitles.py, api/main.py)
+- [x] 08-03-PLAN.md — API test suite: 8 tests covering API-01 through API-04 with mocked deps (tests/test_api.py)
 
 ### UAT Criteria
 
