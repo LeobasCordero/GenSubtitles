@@ -38,10 +38,10 @@
 
 ### CLI Interface
 
-- [ ] **CLI-01**: `python main.py` accepts `--input`, `--output`, `--model`, `--target-lang` flags
-- [ ] **CLI-02**: `--help` shows all available options with descriptions
-- [ ] **CLI-03**: Progress is printed to stdout (extraction → transcription → translation → SRT)
-- [ ] **CLI-04**: Exit code 0 on success, non-zero on error
+- [x] **CLI-01**: `python main.py` accepts `--input`, `--output`, `--model`, `--target-lang` flags
+- [x] **CLI-02**: `--help` shows all available options with descriptions
+- [x] **CLI-03**: Progress is printed to stdout (extraction → transcription → translation → SRT)
+- [x] **CLI-04**: Exit code 0 on success, non-zero on error
 
 ### REST API (FastAPI)
 
@@ -93,7 +93,7 @@
 | TRN-01 to TRN-06 | Phase 3 | Complete |
 | TRANS-01 to TRANS-05 | Phase 4 | Complete |
 | SRT-01 to SRT-04 | Phase 5 | Complete |
-| CLI-01 to CLI-04 | Phase 5 | Pending |
+| CLI-01 to CLI-04 | Phase 7 | Complete |
 | API-01 to API-07 | Phase 6 | Pending |
 | INF-01 to INF-04 | Phase 7 | Pending |
 
@@ -104,4 +104,4 @@
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-03 — Phase 5 (SRT Generation Module) complete — SRT-01 to SRT-04 shipped*
+*Last updated: 2026-04-07 — Phase 7 (CLI Interface) complete — CLI-01 to CLI-04 shipped*
