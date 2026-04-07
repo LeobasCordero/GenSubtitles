@@ -237,7 +237,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — GET /languages endpoint + CORS middleware + extended API tests (/docs, /openapi.json)
+- [x] 09-01-PLAN.md — GET /languages endpoint + CORS middleware + extended API tests (/docs, /openapi.json)
 - [ ] 09-02-PLAN.md — CLI serve subcommand (uvicorn.run) + 3 serve tests
 
 ### UAT Criteria
