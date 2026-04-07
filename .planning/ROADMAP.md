@@ -212,9 +212,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — FastAPI app with lifespan model loading + get_transcriber dependency (api/main.py, api/dependencies.py)
-- [ ] 08-02-PLAN.md — POST /subtitles endpoint: UploadFile copy → preloaded transcriber → FileResponse + BackgroundTask cleanup; wire router (api/routers/subtitles.py, api/main.py)
-- [ ] 08-03-PLAN.md — API test suite: 8 tests covering API-01 through API-04 with mocked deps (tests/test_api.py)
+- [x] 08-01-PLAN.md — FastAPI app with lifespan model loading + get_transcriber dependency (api/main.py, api/dependencies.py)
+- [x] 08-02-PLAN.md — POST /subtitles endpoint: UploadFile copy → preloaded transcriber → FileResponse + BackgroundTask cleanup; wire router (api/routers/subtitles.py, api/main.py)
+- [x] 08-03-PLAN.md — API test suite: 8 tests covering API-01 through API-04 with mocked deps (tests/test_api.py)
 
 ### UAT Criteria
 
