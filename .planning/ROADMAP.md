@@ -17,7 +17,7 @@
 - [x] **Phase 5: SRT Generation Module** — `srt` library segment-to-file conversion (1 plan) (completed 2026-04-03)
 - [x] **Phase 6: Core Pipeline Assembly** — Wire all core modules into a single callable pipeline
  (completed 2026-04-06)
-- [ ] **Phase 7: CLI Interface** — Typer CLI with all flags, progress output, and exit codes
+- [x] **Phase 7: CLI Interface** — Typer CLI with all flags, progress output, and exit codes (completed 2026-04-06)
 - [ ] **Phase 8: FastAPI REST API Core** — Upload endpoint, lifespan model loading, thread pool execution
 - [ ] **Phase 9: FastAPI Extensions & Docs** — Languages endpoint, Uvicorn serve, OpenAPI docs
 - [ ] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test
