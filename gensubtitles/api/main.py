@@ -17,6 +17,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from gensubtitles.core.transcriber import WhisperTranscriber
@@ -48,6 +49,13 @@ app = FastAPI(
     description="Offline subtitle generation via faster-whisper + Argos Translate.",
     version="1.0.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

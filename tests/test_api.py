@@ -268,3 +268,51 @@ class TestLifespan:
 
         # WhisperTranscriber was instantiated exactly once (not per-request)
         mock_cls.assert_called_once()
+
+
+class TestGetLanguages:
+    """Phase 9 — covers API-05 (GET /languages) and API-07 (OpenAPI docs)."""
+
+    def test_get_languages_returns_200_with_pairs_key(self, client):
+        """GET /languages returns HTTP 200 with a JSON body containing a 'pairs' key."""
+        with patch("gensubtitles.core.translator.list_installed_pairs", return_value=[]):
+            response = client.get("/languages")
+        assert response.status_code == 200
+        body = response.json()
+        assert "pairs" in body
+        assert isinstance(body["pairs"], list)
+
+    def test_get_languages_empty_when_no_models(self, client):
+        """GET /languages with no installed models returns {'pairs': []}."""
+        with patch("gensubtitles.core.translator.list_installed_pairs", return_value=[]):
+            response = client.get("/languages")
+        assert response.status_code == 200
+        assert response.json() == {"pairs": []}
+
+    def test_get_languages_with_pairs(self, client):
+        """GET /languages with installed pairs returns them in the response body."""
+        fake_pairs = [{"from": "en", "to": "es"}, {"from": "en", "to": "fr"}]
+        with patch("gensubtitles.core.translator.list_installed_pairs", return_value=fake_pairs):
+            response = client.get("/languages")
+        assert response.status_code == 200
+        assert response.json() == {"pairs": fake_pairs}
+
+    def test_cors_header_present(self, client):
+        """CORS Access-Control-Allow-Origin header is present on API responses."""
+        with patch("gensubtitles.core.translator.list_installed_pairs", return_value=[]):
+            response = client.get("/languages", headers={"Origin": "http://localhost:3000"})
+        assert response.status_code == 200
+        assert "access-control-allow-origin" in response.headers
+
+    def test_openapi_json_includes_both_endpoints(self, client):
+        """GET /openapi.json is valid JSON and includes paths for /subtitles and /languages."""
+        response = client.get("/openapi.json")
+        assert response.status_code == 200
+        schema = response.json()
+        assert "/languages" in schema["paths"]
+        assert "/subtitles" in schema["paths"]
+
+    def test_docs_returns_200(self, client):
+        """GET /docs returns HTTP 200 (Swagger UI accessible)."""
+        response = client.get("/docs")
+        assert response.status_code == 200
