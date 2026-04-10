@@ -1,5 +1,6 @@
 # Install: pip install -r requirements.txt
 # Primary toolchain: uv sync (see pyproject.toml)
+# For GUI: pip install gensubtitles[gui] or also install customtkinter and requests
 #
 # SYSTEM DEPENDENCY: FFmpeg must be installed separately
 # Linux:   sudo apt install ffmpeg
@@ -14,4 +15,3 @@ fastapi>=0.135.3
 uvicorn[standard]>=0.34.0
 python-multipart>=0.0.20
 typer[all]>=0.15.0
-requests>=2.31.0

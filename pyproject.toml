@@ -19,12 +19,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gui = [
+    "customtkinter>=5.2.0",
+    "requests>=2.31.0",
+]
 dev = [
     "pytest>=8.0.0",
 ]
 
 [project.scripts]
 gensubtitles = "gensubtitles.cli.main:app"
+gensubtitles-gui = "gensubtitles.gui.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["gensubtitles"]

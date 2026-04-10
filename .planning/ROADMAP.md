@@ -340,7 +340,63 @@ Plans:
 
 ### Phase 999.1: GUI Interface (BACKLOG)
 
-**Goal:** Add a graphical user interface so non-technical users can generate subtitles without using the CLI or REST API. Could be a desktop app (e.g., Tkinter, PyQt, or Tauri) or a lightweight local web UI (e.g., Gradio, Streamlit).
+**Goal:** Add a CustomTkinter desktop GUI so non-technical users can generate subtitles without using the CLI or REST API. The window exposes the 4 API-supported parameters (input file, output path, source language, target language), auto-launches the Uvicorn server on open, and shuts it down on close. Model size and device are fixed at server startup via lifespan configuration.
+**Requirements:** GUI-01, GUI-02, GUI-03, GUI-04, GUI-05, GUI-06
+**Plans:** 2/2 plans complete
+
+Plans:
+- [x] 999.1-01-PLAN.md — Package scaffold, customtkinter dependency, Uvicorn server thread, full UI layout
+- [x] 999.1-02-PLAN.md — API integration (_on_generate), stage progress simulation, success+error feedback, CLI entry points
+
+---
+
+### Phase 999.2: GUI — Clear Fields Button (BACKLOG)
+
+**Goal:** Add a "Clear" button to the GUI that resets all input fields (video path, subtitle path, model, language options) back to their default/empty state in a single click.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
+### Phase 999.3: GUI — Auto-populate Subtitle Path from Video (BACKLOG)
+
+**Goal:** When a user selects a video file, automatically populate the subtitle output path field with the same directory and the same base filename as the video (e.g., selecting `/videos/movie.mp4` sets subtitle path to `/videos/movie.srt`).
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
+### Phase 999.4: GUI — Disable Fields During Pipeline (BACKLOG)
+
+**Goal:** While the subtitle generation pipeline is running, all input fields and buttons (except a potential cancel/stop control) should be disabled/read-only to prevent mid-run modifications that could corrupt the operation.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
+### Phase 999.5: GUI — Elapsed Time Counter Above Progress Bar (BACKLOG)
+
+**Goal:** Display an elapsed time counter (e.g., `00:01:23`) above the progress bar that starts from 00:00:00 when generation begins and counts up in real-time. The counter resets to zero at the start of every new subtitle generation run. After completion, display the final elapsed time.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
+### Phase 999.6: GUI — Mark Mandatory Fields with Asterisk (BACKLOG)
+
+**Goal:** Add a visual `*` marker next to all mandatory fields in the GUI (e.g., video input path, output path) so users can immediately identify which fields are required before starting generation.
 **Requirements:** TBD
 **Plans:** 0 plans
 
