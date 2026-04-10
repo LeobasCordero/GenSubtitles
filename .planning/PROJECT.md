@@ -16,6 +16,8 @@ Accurate, offline-capable subtitle generation from any video — no external API
 
 - [x] Accept a video file as input and extract its audio track via FFmpeg — Validated in Phase 2: audio-extraction-module
 - [x] Support multiple input video formats (mp4, mkv, avi, mov, webm) — Validated in Phase 2: audio-extraction-module
+- [x] Expose functionality via FastAPI REST API (Uvicorn server) — Validated in Phase 9: Language pairs endpoint, CORS middleware, and OpenAPI docs live
+- [x] CLI interface for direct usage without API — Validated in Phase 9: `python main.py serve` launches API; existing `generate` workflow intact
 
 ### Active
 
@@ -59,4 +61,4 @@ Accurate, offline-capable subtitle generation from any video — no external API
 | `srt` library for SRT generation | pysrt unmaintained (2020); `srt` v3.5.3 is actively maintained, no deps, 30% faster | — Pending |
 
 ---
-*Last updated: 2026-04-02 — Phase 2 (Audio Extraction Module) complete — `extract_audio()`, `audio_temp_context()`, exception hierarchy, and test suite in place*
+*Last updated: 2026-04-07 — Phase 9 (FastAPI Extensions & API Documentation) complete — `GET /languages`, `CORSMiddleware`, OpenAPI docs, and CLI `serve` subcommand delivered*

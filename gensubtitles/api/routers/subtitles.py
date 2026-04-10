@@ -25,7 +25,7 @@ from fastapi.responses import FileResponse
 from gensubtitles.api.dependencies import get_transcriber
 from gensubtitles.core.transcriber import WhisperTranscriber
 
-router = APIRouter()
+router = APIRouter(tags=["subtitles"])
 
 # Mirrors SUPPORTED_EXTENSIONS from core.audio — defined here to allow
 # early validation before the lazy import (which triggers the FFmpeg check).
@@ -104,3 +104,15 @@ def post_subtitles(
         media_type="text/plain; charset=utf-8",
         filename="subtitles.srt",
     )
+
+
+@router.get("/languages")
+def get_languages() -> dict:
+    """
+    Return all installed Argos Translate language pairs.
+
+    Returns an empty list if no translation models are installed yet.
+    """
+    from gensubtitles.core.translator import list_installed_pairs  # noqa: PLC0415
+
+    return {"pairs": list_installed_pairs()}
