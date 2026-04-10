@@ -1,6 +1,7 @@
 """Phase 7 CLI tests — covers CLI-01 through CLI-04."""
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
@@ -146,3 +147,59 @@ def test_pipeline_error_exits_one(tmp_path):
         result = runner.invoke(app, ["--input", str(video), "--output", str(output)])
     assert result.exit_code == 1
     assert "boom" in result.stderr
+
+
+class TestServeCommand:
+    """Phase 9 — covers API-06 (CLI serve subcommand)."""
+
+    def _mock_uvicorn(self):
+        """Inject a fake uvicorn module so tests work without uvicorn installed."""
+        from types import ModuleType
+        from unittest.mock import MagicMock
+
+        mock_uvicorn = ModuleType("uvicorn")
+        mock_uvicorn.run = MagicMock()  # type: ignore[attr-defined]
+        self._prev_uvicorn = sys.modules.get("uvicorn")
+        sys.modules["uvicorn"] = mock_uvicorn
+        return mock_uvicorn
+
+    def _restore_uvicorn(self):
+        """Restore the previously saved uvicorn entry in sys.modules."""
+        if self._prev_uvicorn is None:
+            sys.modules.pop("uvicorn", None)
+        else:
+            sys.modules["uvicorn"] = self._prev_uvicorn
+
+    def test_serve_invokes_uvicorn_with_defaults(self):
+        """serve subcommand calls uvicorn.run with default host, port, and reload=False."""
+        mock_uvicorn = self._mock_uvicorn()
+        try:
+            result = runner.invoke(app, ["serve"])
+        finally:
+            self._restore_uvicorn()
+        assert result.exit_code == 0
+        mock_uvicorn.run.assert_called_once_with(
+            "gensubtitles.api.main:app",
+            host="127.0.0.1",
+            port=8000,
+            reload=False,
+        )
+
+    def test_serve_accepts_custom_host_port(self):
+        """serve --host and --port are forwarded to uvicorn.run."""
+        mock_uvicorn = self._mock_uvicorn()
+        try:
+            result = runner.invoke(app, ["serve", "--host", "127.0.0.1", "--port", "9000"])
+        finally:
+            self._restore_uvicorn()
+        assert result.exit_code == 0
+        _, kw = mock_uvicorn.run.call_args
+        assert kw.get("host") == "127.0.0.1"
+        assert kw.get("port") == 9000
+
+    def test_serve_help_shows_options(self):
+        """serve --help output lists --host, --port, and --reload options."""
+        result = runner.invoke(app, ["serve", "--help"])
+        assert result.exit_code == 0
+        for flag in ("--host", "--port", "--reload"):
+            assert flag in result.output
