@@ -45,13 +45,13 @@
 
 ### REST API (FastAPI)
 
-- [ ] **API-01**: POST `/subtitles` endpoint accepts video file upload and returns SRT file
-- [ ] **API-02**: Upload handler copies UploadFile to named temp file before passing to FFmpeg
-- [ ] **API-03**: Transcription runs in thread pool executor (not blocking async event loop)
-- [ ] **API-04**: Models are loaded once at application startup via FastAPI `lifespan` context
-- [ ] **API-05**: GET `/languages` endpoint returns list of supported translation language pairs
-- [ ] **API-06**: API is served via Uvicorn; startup command documented in README
-- [ ] **API-07**: Auto-generated OpenAPI docs available at `/docs`
+- [x] **API-01**: POST `/subtitles` endpoint accepts video file upload and returns SRT file
+- [x] **API-02**: Upload handler copies UploadFile to named temp file before passing to FFmpeg
+- [x] **API-03**: Transcription runs in thread pool executor (not blocking async event loop)
+- [x] **API-04**: Models are loaded once at application startup via FastAPI `lifespan` context
+- [x] **API-05**: GET `/languages` endpoint returns list of supported translation language pairs
+- [x] **API-06**: API is served via Uvicorn; startup command documented in README
+- [x] **API-07**: Auto-generated OpenAPI docs available at `/docs`
 
 ### Project Infrastructure
 
@@ -94,14 +94,16 @@
 | TRANS-01 to TRANS-05 | Phase 4 | Complete |
 | SRT-01 to SRT-04 | Phase 5 | Complete |
 | CLI-01 to CLI-04 | Phase 7 | Complete |
-| API-01 to API-07 | Phase 6 | Pending |
-| INF-01 to INF-04 | Phase 7 | Pending |
+| API-01 to API-04 | Phase 8 | Complete |
+| API-05 to API-07 | Phase 9 | Complete |
+| INF-01 to INF-04 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 31 total
 - Mapped to phases: 31
 - Unmapped: 0 ✓
+- All requirements checked off: 31/31 ✓
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-07 — Phase 7 (CLI Interface) complete — CLI-01 to CLI-04 shipped*
+*Last updated: 2026-04-10 — v1.0 milestone complete — all 31 requirements shipped*
