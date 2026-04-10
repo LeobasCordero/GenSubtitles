@@ -342,11 +342,11 @@ Plans:
 
 **Goal:** Add a CustomTkinter desktop GUI so non-technical users can generate subtitles without using the CLI or REST API. The window mirrors all 6 CLI flags, auto-launches the Uvicorn server on open, and shuts it down on close.
 **Requirements:** GUI-01, GUI-02, GUI-03, GUI-04, GUI-05, GUI-06
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 999.1-01-PLAN.md — Package scaffold, customtkinter dependency, Uvicorn server thread, full UI layout
-- [ ] 999.1-02-PLAN.md — API integration (_on_generate), stage progress simulation, success+error feedback, CLI entry points
+- [x] 999.1-01-PLAN.md — Package scaffold, customtkinter dependency, Uvicorn server thread, full UI layout
+- [x] 999.1-02-PLAN.md — API integration (_on_generate), stage progress simulation, success+error feedback, CLI entry points
 
 ---
 
