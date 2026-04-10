@@ -354,10 +354,10 @@ Plans:
 
 **Goal:** Add a "Clear" button to the GUI that resets all input fields (video path, subtitle path, model, language options) back to their default/empty state in a single click.
 **Requirements:** TBD
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 999.2-01-PLAN.md — Add Clear button with reactive enable/disable + human verify
+- [x] 999.2-01-PLAN.md — Add Clear button with reactive enable/disable + human verify
 
 ---
 
