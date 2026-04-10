@@ -16,6 +16,8 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
     "python-multipart>=0.0.20",
     "typer[all]>=0.15.0",
+    "customtkinter>=5.2.0",
+    "requests>=2.31.0",
 ]
 
 [project.optional-dependencies]
@@ -25,6 +27,7 @@ dev = [
 
 [project.scripts]
 gensubtitles = "gensubtitles.cli.main:app"
+gensubtitles-gui = "gensubtitles.gui.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["gensubtitles"]
