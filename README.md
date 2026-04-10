@@ -113,9 +113,8 @@ curl -X POST http://localhost:8000/subtitles \
 
 **With translation:**
 ```bash
-curl -X POST http://localhost:8000/subtitles \
+curl -X POST "http://localhost:8000/subtitles?target_lang=es" \
   -F "file=@video.mp4" \
-  -F "target_lang=es" \
   --output subtitles.srt
 ```
 
