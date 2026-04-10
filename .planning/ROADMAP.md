@@ -18,9 +18,9 @@
 - [x] **Phase 6: Core Pipeline Assembly** — Wire all core modules into a single callable pipeline
  (completed 2026-04-06)
 - [x] **Phase 7: CLI Interface** — Typer CLI with all flags, progress output, and exit codes (completed 2026-04-06)
-- [ ] **Phase 8: FastAPI REST API Core** — Upload endpoint, lifespan model loading, thread pool execution
-- [ ] **Phase 9: FastAPI Extensions & Docs** — Languages endpoint, Uvicorn serve, OpenAPI docs
-- [x] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test (completed 2026-04-10)
+- [x] **Phase 8: FastAPI REST API Core** — Upload endpoint, lifespan model loading, thread pool execution (completed 2026-04-07)
+- [x] **Phase 9: FastAPI Extensions & Docs** — Languages endpoint, Uvicorn serve, OpenAPI docs (completed 2026-04-07)
+- [ ] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test
 
 ---
 
@@ -209,7 +209,7 @@ Plans:
 **Estimated complexity:** High  
 **Depends on:** Phase 6
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 08-01-PLAN.md — FastAPI app with lifespan model loading + get_transcriber dependency (api/main.py, api/dependencies.py)
@@ -234,16 +234,11 @@ Plans:
 **Estimated complexity:** Medium  
 **Depends on:** Phase 8
 
-### Plans
+**Plans:** 2/2 plans complete
 
-1. **Implement `GET /languages` endpoint** — Add to `api/routers/subtitles.py`; return `{"pairs": [{"from": code, "to": code}, ...]}` using `list_installed_pairs()` from `core/translator.py`
-2. **Include router in app** — Register the subtitles router in `api/main.py` with `app.include_router(subtitles_router, prefix="")` or a `/api/v1` prefix
-3. **Add query parameter passthrough to `POST /subtitles`** — Confirm `model_size`, `target_lang`, `source_lang` query params from Phase 8 are wired through to `run_pipeline`
-4. **Document Uvicorn startup** — In README and in API module docstring: `uvicorn gensubtitles.api.main:app --host 0.0.0.0 --port 8000 --reload`
-5. **Add `--serve` flag to CLI** — Add `serve` sub-command or `--serve` flag to `cli/main.py` that programmatically calls `uvicorn.run("gensubtitles.api.main:app", host=..., port=...)`
-6. **Verify `/docs` Swagger UI** — Navigate to `http://localhost:8000/docs`; ensure both `POST /subtitles` and `GET /languages` appear with correct parameter schemas
-7. **Verify `/openapi.json`** — Confirm the JSON schema is valid and includes all endpoints, parameters, and response schemas
-8. **Add CORS middleware (configurable)** — Add `CORSMiddleware` to `api/main.py` with `allow_origins=["*"]` as a dev default; document how to restrict in production
+Plans:
+- [x] 09-01-PLAN.md — GET /languages endpoint + CORS middleware + extended API tests (/docs, /openapi.json)
+- [x] 09-02-PLAN.md — CLI serve subcommand (uvicorn.run) + 3 serve tests
 
 ### UAT Criteria
 
@@ -289,9 +284,9 @@ Plans:
 | 5. SRT Generation Module | 1/1 | Complete | 2026-04-03 |
 | 6. Core Pipeline Assembly | 2/2 | Complete | 2026-04-06 |
 | 7. CLI Interface | 2/2 | Complete | 2026-04-06 |
-| 8. FastAPI REST API Core | 0/10 | Not started | — |
-| 9. FastAPI Extensions & Docs | 0/8 | Not started | — |
-| 10. Documentation & End-to-End Validation | 3/3 | Complete    | 2026-04-10 |
+| 8. FastAPI REST API Core | 3/3 | Complete | 2026-04-07 |
+| 9. FastAPI Extensions & Docs | 2/2 | Complete | 2026-04-07 |
+| 10. Documentation & End-to-End Validation | 0/9 | Not started | — |
 
 ---
 
@@ -325,14 +320,14 @@ Plans:
 | CLI-02 | Phase 7 | Complete |
 | CLI-03 | Phase 7 | Complete |
 | CLI-04 | Phase 7 | Complete |
-| API-01 | Phase 8 | Pending |
-| API-02 | Phase 8 | Pending |
-| API-03 | Phase 8 | Pending |
-| API-04 | Phase 8 | Pending |
-| API-05 | Phase 9 | Pending |
-| API-06 | Phase 9 | Pending |
-| API-07 | Phase 9 | Pending |
-| INF-03 | Phase 10 | Complete |
+| API-01 | Phase 8 | Complete |
+| API-02 | Phase 8 | Complete |
+| API-03 | Phase 8 | Complete |
+| API-04 | Phase 8 | Complete |
+| API-05 | Phase 9 | Complete |
+| API-06 | Phase 9 | Complete |
+| API-07 | Phase 9 | Complete |
+| INF-03 | Phase 10 | Pending |
 
 **Coverage: 34/31 v1 requirements mapped** *(31 original + 3 split across Phase 8/9 from API-05/06/07) — all requirements covered ✓*
 
@@ -354,4 +349,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-10 — Phases 1–7, 10 complete (27/34 requirements shipped); Phases 8–9 pending*
+*Last updated: 2026-04-07 — Phases 1–9 complete (33/34 requirements shipped); UAT verified for all phases 1–9 (FFmpeg installed 2026-04-07); Phase 10 pending*
