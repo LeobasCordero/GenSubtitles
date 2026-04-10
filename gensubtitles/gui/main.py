@@ -10,6 +10,8 @@ module can be imported in headless environments without a DISPLAY error.
 from __future__ import annotations
 
 import logging
+import platform
+import subprocess
 import threading
 from pathlib import Path
 
@@ -171,11 +173,125 @@ class GenSubtitlesApp(ctk.CTk):
             self._output_var.set(path)
 
     # ------------------------------------------------------------------
-    # Generate button logic (stub — implemented in plan 02)
+    # Stage label cycling
+    # ------------------------------------------------------------------
+
+    def _advance_stage(self, idx: int) -> None:
+        if idx < len(_STAGE_LABELS):
+            self._stage_label.configure(text=_STAGE_LABELS[idx])
+            self._stage_timer = self.after(2500, self._advance_stage, idx + 1)
+
+    # ------------------------------------------------------------------
+    # Generate button logic
     # ------------------------------------------------------------------
 
     def _on_generate(self) -> None:
-        pass  # TODO: implemented in plan 02
+        input_path = self._input_var.get().strip()
+        output_path = self._output_var.get().strip()
+
+        if not input_path:
+            from tkinter import messagebox  # noqa: PLC0415
+
+            messagebox.showerror("Missing input", "Please select an input video file.")
+            return
+        if not output_path:
+            from tkinter import messagebox  # noqa: PLC0415
+
+            messagebox.showerror("Missing output", "Please choose an output .srt path.")
+            return
+
+        self._btn_generate.configure(state="disabled")
+        self._progress_bar.grid()
+        self._progress_bar.start()
+        self._advance_stage(0)
+
+        thread = threading.Thread(
+            target=self._run_api_call,
+            args=(input_path, output_path),
+            daemon=True,
+        )
+        thread.start()
+
+    def _run_api_call(self, input_path: str, output_path: str) -> None:
+        import requests as req  # noqa: PLC0415
+
+        try:
+            model = self._model_var.get()
+            device = self._device_var.get()
+            src_lang = self._source_lang_var.get().strip() or None
+            tgt_lang = self._target_lang_var.get().strip() or None
+
+            params: dict[str, str] = {}
+            if src_lang:
+                params["source_lang"] = src_lang
+            if tgt_lang:
+                params["target_lang"] = tgt_lang
+
+            # device is sent via a query param that the API understands
+            params["model"] = model
+            params["device"] = device
+
+            with open(input_path, "rb") as fh:
+                video_name = Path(input_path).name
+                resp = req.post(
+                    f"{_BASE_URL}/subtitles",
+                    files={"file": (video_name, fh, "application/octet-stream")},
+                    params=params,
+                    timeout=3600,
+                )
+
+            if resp.status_code == 200:
+                Path(output_path).write_bytes(resp.content)
+                self.after(0, self._finish_generate, None, output_path)
+            else:
+                try:
+                    detail = resp.json().get("detail", resp.text)
+                except Exception:  # noqa: BLE001
+                    detail = resp.text
+                if isinstance(detail, list):
+                    detail = "; ".join(str(e) for e in detail)
+                self.after(0, self._finish_generate, str(detail), None)
+        except Exception as exc:  # noqa: BLE001
+            self.after(0, self._finish_generate, str(exc), None)
+
+    def _finish_generate(self, error: str | None, output_path: str | None) -> None:
+        if self._stage_timer is not None:
+            self.after_cancel(self._stage_timer)
+            self._stage_timer = None
+
+        self._progress_bar.stop()
+        self._progress_bar.grid_remove()
+        self._btn_generate.configure(state="normal")
+
+        if error:
+            from tkinter import messagebox  # noqa: PLC0415
+
+            self._stage_label.configure(text="")
+            messagebox.showerror("Generation failed", error)
+        else:
+            self._stage_label.configure(text="✓ Done")
+            self._show_success(output_path)  # type: ignore[arg-type]
+
+    def _show_success(self, output_path: str) -> None:
+        output_dir = Path(output_path).parent
+
+        def _open_folder() -> None:
+            sys_name = platform.system()
+            if sys_name == "Windows":
+                subprocess.Popen(["explorer", str(output_dir)])  # noqa: S603,S607
+            elif sys_name == "Darwin":
+                subprocess.Popen(["open", str(output_dir)])  # noqa: S603,S607
+            else:
+                subprocess.Popen(["xdg-open", str(output_dir)])  # noqa: S603,S607
+
+        if not hasattr(self, "_btn_open_folder"):
+            self._btn_open_folder = ctk.CTkButton(
+                self._frame, text="Open Folder", command=_open_folder
+            )
+            self._btn_open_folder.grid(row=9, column=0, columnspan=3, pady=(4, 0), sticky="ew")
+        else:
+            self._btn_open_folder.configure(command=_open_folder)
+            self._btn_open_folder.grid()
 
     # ------------------------------------------------------------------
     # Server lifecycle

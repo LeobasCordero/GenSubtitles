@@ -138,5 +138,13 @@ def serve(
     )
 
 
+@app.command("gui")
+def launch_gui() -> None:
+    """Open the GenSubtitles desktop GUI window."""
+    from gensubtitles.gui.main import main as _gui_main  # noqa: PLC0415
+
+    _gui_main()
+
+
 if __name__ == "__main__":
     app()
