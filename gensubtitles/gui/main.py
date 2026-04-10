@@ -153,6 +153,8 @@ class GenSubtitlesApp(ctk.CTk):
         )
         if path:
             self._input_var.set(path)
+            if not self._output_var.get():
+                self._output_var.set(str(Path(path).with_suffix(".srt")))
 
     def _browse_output(self) -> None:
         from tkinter import filedialog  # noqa: PLC0415
