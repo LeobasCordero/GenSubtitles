@@ -72,43 +72,45 @@ class GenSubtitlesApp(ctk.CTk):
         ctk.CTkLabel(self._frame, text="Input video:").grid(
             row=0, column=0, sticky="w", padx=(0, 8), pady=4
         )
-        ctk.CTkEntry(self._frame, textvariable=self._input_var).grid(
-            row=0, column=1, sticky="ew", pady=4
+        self._entry_input = ctk.CTkEntry(self._frame, textvariable=self._input_var)
+        self._entry_input.grid(row=0, column=1, sticky="ew", pady=4)
+        self._btn_browse_input = ctk.CTkButton(
+            self._frame, text="Browse…", width=80, command=self._browse_input
         )
-        ctk.CTkButton(self._frame, text="Browse…", width=80, command=self._browse_input).grid(
-            row=0, column=2, padx=(8, 0), pady=4
-        )
+        self._btn_browse_input.grid(row=0, column=2, padx=(8, 0), pady=4)
 
         # Row 1 — Output SRT
         ctk.CTkLabel(self._frame, text="Output SRT:").grid(
             row=1, column=0, sticky="w", padx=(0, 8), pady=4
         )
-        ctk.CTkEntry(self._frame, textvariable=self._output_var).grid(
-            row=1, column=1, sticky="ew", pady=4
+        self._entry_output = ctk.CTkEntry(self._frame, textvariable=self._output_var)
+        self._entry_output.grid(row=1, column=1, sticky="ew", pady=4)
+        self._btn_browse_output = ctk.CTkButton(
+            self._frame, text="Save as…", width=80, command=self._browse_output
         )
-        ctk.CTkButton(self._frame, text="Save as…", width=80, command=self._browse_output).grid(
-            row=1, column=2, padx=(8, 0), pady=4
-        )
+        self._btn_browse_output.grid(row=1, column=2, padx=(8, 0), pady=4)
 
         # Row 2 — Source language
         ctk.CTkLabel(self._frame, text="Source language:").grid(
             row=2, column=0, sticky="w", padx=(0, 8), pady=4
         )
-        ctk.CTkEntry(
+        self._entry_source_lang = ctk.CTkEntry(
             self._frame,
             textvariable=self._source_lang_var,
             placeholder_text="auto-detect",
-        ).grid(row=2, column=1, columnspan=2, sticky="ew", pady=4)
+        )
+        self._entry_source_lang.grid(row=2, column=1, columnspan=2, sticky="ew", pady=4)
 
         # Row 3 — Target language
         ctk.CTkLabel(self._frame, text="Target language:").grid(
             row=3, column=0, sticky="w", padx=(0, 8), pady=4
         )
-        ctk.CTkEntry(
+        self._entry_target_lang = ctk.CTkEntry(
             self._frame,
             textvariable=self._target_lang_var,
             placeholder_text="(none — no translation)",
-        ).grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
+        )
+        self._entry_target_lang.grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
 
         # Row 4 — Generate button
         self._btn_generate = ctk.CTkButton(
@@ -226,6 +228,12 @@ class GenSubtitlesApp(ctk.CTk):
 
         self._btn_generate.configure(state="disabled")
         self._btn_clear.configure(state="disabled")
+        self._entry_input.configure(state="disabled")
+        self._entry_output.configure(state="disabled")
+        self._entry_source_lang.configure(state="disabled")
+        self._entry_target_lang.configure(state="disabled")
+        self._btn_browse_input.configure(state="disabled")
+        self._btn_browse_output.configure(state="disabled")
         self._progress_bar.grid()
         self._progress_bar.start()
         self._advance_stage(0)
@@ -287,6 +295,12 @@ class GenSubtitlesApp(ctk.CTk):
         self._progress_bar.stop()
         self._progress_bar.grid_remove()
         self._btn_generate.configure(state="normal")
+        self._entry_input.configure(state="normal")
+        self._entry_output.configure(state="normal")
+        self._entry_source_lang.configure(state="normal")
+        self._entry_target_lang.configure(state="normal")
+        self._btn_browse_input.configure(state="normal")
+        self._btn_browse_output.configure(state="normal")
         self._update_clear_state()
 
         if error:
