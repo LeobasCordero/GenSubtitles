@@ -1,6 +1,7 @@
 """Phase 7 CLI tests — covers CLI-01 through CLI-04."""
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
@@ -153,7 +154,6 @@ class TestServeCommand:
 
     def _mock_uvicorn(self):
         """Inject a fake uvicorn module so tests work without uvicorn installed."""
-        import sys
         from types import ModuleType
         from unittest.mock import MagicMock
 
@@ -165,8 +165,6 @@ class TestServeCommand:
 
     def _restore_uvicorn(self):
         """Restore the previously saved uvicorn entry in sys.modules."""
-        import sys
-
         if self._prev_uvicorn is None:
             sys.modules.pop("uvicorn", None)
         else:
@@ -174,8 +172,6 @@ class TestServeCommand:
 
     def test_serve_invokes_uvicorn_with_defaults(self):
         """serve subcommand calls uvicorn.run with default host, port, and reload=False."""
-        import sys
-
         mock_uvicorn = self._mock_uvicorn()
         try:
             result = runner.invoke(app, ["serve"])
@@ -191,8 +187,6 @@ class TestServeCommand:
 
     def test_serve_accepts_custom_host_port(self):
         """serve --host and --port are forwarded to uvicorn.run."""
-        import sys
-
         mock_uvicorn = self._mock_uvicorn()
         try:
             result = runner.invoke(app, ["serve", "--host", "127.0.0.1", "--port", "9000"])

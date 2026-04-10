@@ -54,7 +54,7 @@ app = FastAPI(
 _cors_origins_env = os.environ.get("CORS_ALLOW_ORIGINS", "")
 _cors_origins: list[str] = (
     [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
-    if _cors_origins_env
+    if _cors_origins_env.strip()
     else ["http://localhost", "http://127.0.0.1"]
 )
 
