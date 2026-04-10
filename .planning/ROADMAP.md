@@ -405,5 +405,27 @@ Plans:
 
 ---
 
+### Phase 999.7: GUI — Hide Source Language Input (BACKLOG)
+
+**Goal:** Hide the source language input field from the GUI for now — simplify the interface by removing the option to specify source language (Whisper auto-detection is sufficient for most users).
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
+### Phase 999.8: GUI — Target Language Dropdown (BACKLOG)
+
+**Goal:** Replace the target language free-text input with a dropdown offering "Spanish", "English", and "Other" options to reduce user error and simplify the translation workflow.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
 *Roadmap created: 2026-04-02*  
 *Last updated: 2026-04-10 — All 10 phases complete (34/34 requirements shipped); UAT verified for all phases; Phase 10 (Documentation & E2E Validation) verified 2026-04-10*
