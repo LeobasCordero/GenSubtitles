@@ -70,8 +70,8 @@ def _wait_for_server(url: str, timeout: float = 15.0, interval: float = 0.5) -> 
             return True
         except requests.exceptions.ConnectionError:
             time.sleep(interval)
-        except Exception:
-            return False
+        except requests.exceptions.RequestException:
+            time.sleep(interval)
     return False
 
 

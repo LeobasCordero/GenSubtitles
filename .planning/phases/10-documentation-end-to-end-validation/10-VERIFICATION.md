@@ -143,7 +143,7 @@ Phase 10 successfully delivers:
 
 All must-haves verified. All UAT criteria met. No gaps found.
 
-**Next steps:** None within the current roadmap scope. Phases 8-10 are complete, and Phase 10 is verified complete.
+**Next steps:** None within the current roadmap scope. All phases (8-10) are complete.
 
 ---
 *Verified: 2026-04-10*
