@@ -376,10 +376,10 @@ Plans:
 
 **Goal:** While the subtitle generation pipeline is running, all input fields and buttons (except a potential cancel/stop control) should be disabled/read-only to prevent mid-run modifications that could corrupt the operation.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] 999.4-01-PLAN.md — Store 4 entry + 2 browse button widget refs; disable all 6 in _on_generate; re-enable in _finish_generate
 
 ---
 
