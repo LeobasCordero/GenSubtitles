@@ -394,31 +394,9 @@ Plans:
 
 ---
 
-### Phase 999.6: GUI — Mark Mandatory Fields with Asterisk (BACKLOG)
+### Phase 999.9: GUI — Form Polish (BACKLOG)
 
-**Goal:** Add a visual `*` marker next to all mandatory fields in the GUI (e.g., video input path, output path) so users can immediately identify which fields are required before starting generation.
-**Requirements:** TBD
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
----
-
-### Phase 999.7: GUI — Hide Source Language Input (BACKLOG)
-
-**Goal:** Hide the source language input field from the GUI for now — simplify the interface by removing the option to specify source language (Whisper auto-detection is sufficient for most users).
-**Requirements:** TBD
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
----
-
-### Phase 999.8: GUI — Target Language Dropdown (BACKLOG)
-
-**Goal:** Replace the target language free-text input with a dropdown offering "Spanish", "English", and "Other" options to reduce user error and simplify the translation workflow.
+**Goal:** Three small form improvements bundled together: (1) add a visual `*` marker next to all mandatory fields (video input, output path) so users can identify required fields at a glance; (2) hide the source language input field — Whisper auto-detection is sufficient for most users and the field adds noise; (3) replace the target language free-text input with a dropdown offering "Spanish", "English", and "Other" to reduce user error. Merges former 999.6, 999.7, 999.8.
 **Requirements:** TBD
 **Plans:** 0 plans
 
