@@ -17,10 +17,10 @@ Complete the REST API surface: add `GET /languages` endpoint, `CORSMiddleware`, 
 - **D-01:** Use `allow_origins=["*"]` wildcard — no env var configuration needed for v1. This is a local/self-hosted tool; simplicity wins.
 
 ### `/languages` Empty-State Behavior
-- **D-03:** `GET /languages` returns **HTTP 503** with `{"detail": "No language models installed"}` when no Argos Translate models are installed. Returns **HTTP 200** with `{"pairs": [...]}` when models are present.
+- **D-03:** `GET /languages` returns **HTTP 200** with `{"pairs": []}` when no Argos Translate models are installed. Returns **HTTP 200** with `{"pairs": [...]}` when models are present. (503 approach was considered but rejected — an empty list is a valid and informative response.)
 
 ### OpenAPI Docs Customization
-- **D-04:** Add endpoint **tags** to group both endpoints under a `"subtitles"` tag in Swagger UI. No response examples needed — auto-gen docstrings are sufficient for v1.
+- **D-04:** Add endpoint **tags** by constructing `APIRouter(tags=["subtitles"])` in `routers/subtitles.py`. Both `POST /subtitles` and `GET /languages` inherit the tag and appear grouped under `"subtitles"` in Swagger UI. The router is included via `app.include_router(subtitles_router)` without an extra `tags` override.
 
 ### the Agent's Discretion
 - **D-02:** Whether `serve` exposes `--model-size`/`--device` flags or relies on env vars (`WHISPER_MODEL_SIZE`, `WHISPER_DEVICE`) is left to the planner. The lifespan already reads env vars; exposing flags that mutate env is unusual.

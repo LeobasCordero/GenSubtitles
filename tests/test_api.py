@@ -300,7 +300,7 @@ class TestGetLanguages:
     def test_cors_header_present(self, client):
         """CORS Access-Control-Allow-Origin header is present on API responses."""
         with patch("gensubtitles.core.translator.list_installed_pairs", return_value=[]):
-            response = client.get("/languages", headers={"Origin": "http://localhost:3000"})
+            response = client.get("/languages", headers={"Origin": "http://localhost"})
         assert response.status_code == 200
         assert "access-control-allow-origin" in response.headers
 

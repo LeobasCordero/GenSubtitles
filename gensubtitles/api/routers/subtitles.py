@@ -25,7 +25,7 @@ from fastapi.responses import FileResponse
 from gensubtitles.api.dependencies import get_transcriber
 from gensubtitles.core.transcriber import WhisperTranscriber
 
-router = APIRouter()
+router = APIRouter(tags=["subtitles"])
 
 # Mirrors SUPPORTED_EXTENSIONS from core.audio — defined here to allow
 # early validation before the lazy import (which triggers the FFmpeg check).

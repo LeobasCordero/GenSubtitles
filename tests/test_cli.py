@@ -159,8 +159,18 @@ class TestServeCommand:
 
         mock_uvicorn = ModuleType("uvicorn")
         mock_uvicorn.run = MagicMock()  # type: ignore[attr-defined]
+        self._prev_uvicorn = sys.modules.get("uvicorn")
         sys.modules["uvicorn"] = mock_uvicorn
         return mock_uvicorn
+
+    def _restore_uvicorn(self):
+        """Restore the previously saved uvicorn entry in sys.modules."""
+        import sys
+
+        if self._prev_uvicorn is None:
+            sys.modules.pop("uvicorn", None)
+        else:
+            sys.modules["uvicorn"] = self._prev_uvicorn
 
     def test_serve_invokes_uvicorn_with_defaults(self):
         """serve subcommand calls uvicorn.run with default host, port, and reload=False."""
@@ -170,11 +180,11 @@ class TestServeCommand:
         try:
             result = runner.invoke(app, ["serve"])
         finally:
-            sys.modules.pop("uvicorn", None)
+            self._restore_uvicorn()
         assert result.exit_code == 0
         mock_uvicorn.run.assert_called_once_with(
             "gensubtitles.api.main:app",
-            host="0.0.0.0",
+            host="127.0.0.1",
             port=8000,
             reload=False,
         )
@@ -187,7 +197,7 @@ class TestServeCommand:
         try:
             result = runner.invoke(app, ["serve", "--host", "127.0.0.1", "--port", "9000"])
         finally:
-            sys.modules.pop("uvicorn", None)
+            self._restore_uvicorn()
         assert result.exit_code == 0
         _, kw = mock_uvicorn.run.call_args
         assert kw.get("host") == "127.0.0.1"

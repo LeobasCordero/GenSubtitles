@@ -111,9 +111,9 @@ def generate(
 @app.command("serve")
 def serve(
     host: str = typer.Option(
-        "0.0.0.0",
+        "127.0.0.1",
         "--host",
-        help="Host address to bind the server to.",
+        help="Host address to bind the server to. Defaults to localhost; use 0.0.0.0 explicitly to expose it on all network interfaces.",
     ),
     port: int = typer.Option(
         8000,
