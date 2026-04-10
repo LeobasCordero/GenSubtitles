@@ -260,19 +260,13 @@ Plans:
 **Goal:** Write complete user-facing documentation in README.md covering installation, CLI usage, API usage, and troubleshooting; validate the full pipeline with real video end-to-end.  
 **Requirements:** INF-03  
 **Estimated complexity:** Low  
-**Depends on:** Phases 7, 9
+**Depends on:** Phases 7, 9  
+**Plans:** 3 plans
 
-### Plans
-
-1. **Write Installation section** — Cover prerequisites (Python 3.11+, FFmpeg) with platform-specific install commands; pip install from requirements.txt; initial model download note
-2. **Write CLI Usage section** — Document all flags with defaults and show 3–5 example commands (basic run, with translation, custom model, custom output path)
-3. **Write API Usage section** — Document startup (`uvicorn ...`); show `curl` examples for `POST /subtitles` and `GET /languages`; mention `/docs` for interactive exploration
-4. **Document model size tradeoffs** — Add table: model name / approximate size / relative speed / relative accuracy / recommended use case
-5. **Document language model download behavior** — Explain that Argos models are downloaded on first use (internet required); models are cached at OS-appropriate path; subsequent runs are offline
-6. **Document CUDA/GPU setup** — Note CUDA 12 + cuDNN 9 requirement for GPU mode; how to override `--device cpu` if CUDA setup is incorrect
-7. **Add Troubleshooting section** — Cover: FFmpeg not on PATH, CUDA errors, Argos model download failures, permissions on output directory
-8. **Run end-to-end CLI test** — Using a real MP4 with speech: `python main.py --input sample.mp4 --output test.srt --model tiny`; verify SRT file is created with correct timecodes
-9. **Run end-to-end API test** — Start uvicorn; send `curl -F "file=@sample.mp4" http://localhost:8000/subtitles`; verify SRT is returned in response body
+Plans:
+- [ ] 10-01-PLAN.md — Write README.md (English) with Installation, CLI/API usage, Language Translation, Troubleshooting
+- [ ] 10-02-PLAN.md — Write README.es.md (Spanish) as complete translation with code examples preserved
+- [ ] 10-03-PLAN.md — E2E validation with synthetic video: CLI + API paths, with/without translation
 
 ### UAT Criteria
 
@@ -297,7 +291,7 @@ Plans:
 | 7. CLI Interface | 2/2 | Complete | 2026-04-06 |
 | 8. FastAPI REST API Core | 0/10 | Not started | — |
 | 9. FastAPI Extensions & Docs | 0/8 | Not started | — |
-| 10. Documentation & End-to-End Validation | 0/9 | Not started | — |
+| 10. Documentation & End-to-End Validation | 3/3 | Planned | — |
 
 ---
 
