@@ -17,9 +17,9 @@ progress:
 
 ## Current Status
 
-- **Milestone:** v1
-- **Active Phase:** Phase 8 — FastAPI REST API Core (not started)
-- **Last action:** Phase 7 complete — CLI implemented (`gensubtitles/cli/main.py`) with 6 Typer flags, progress callbacks, auto-derived output path, and exit codes; 8-test CliRunner suite (`tests/test_cli.py`) passing; all CLI-01 through CLI-04 requirements satisfied (2026-04-06)
+- **Milestone:** v1.0
+- **Active Phase:** Phase 999.1 — GUI Interface (executing)
+- **Last action:** Phase 10 complete — all v1 requirements shipped; started GUI backlog phase 999.1 (2026-04-10)
 
 ## Milestone Progress
 
@@ -32,9 +32,10 @@ progress:
 | 5 | SRT Generation Module | ✅ Complete (1/1 plans) |
 | 6 | Core Pipeline Assembly | ✅ Complete (2/2 plans, completed 2026-04-06) |
 | 7 | CLI Interface | ✅ Complete (2/2 plans, completed 2026-04-06) |
-| 8 | FastAPI REST API Core | ⏳ Not started |
-| 9 | FastAPI Extensions & Docs | ⏳ Not started |
-| 10 | Documentation & End-to-End Validation | ⏳ Not started |
+| 8 | FastAPI REST API Core | ✅ Complete |
+| 9 | FastAPI Extensions & Docs | ✅ Complete |
+| 10 | Documentation & End-to-End Validation | ✅ Complete |
+| 999.1 | GUI Interface | ⏳ Executing |
 
 ## Key Decisions Log
 

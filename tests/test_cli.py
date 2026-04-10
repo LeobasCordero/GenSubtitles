@@ -203,3 +203,29 @@ class TestServeCommand:
         assert result.exit_code == 0
         for flag in ("--host", "--port", "--reload"):
             assert flag in result.output
+
+
+class TestGuiCommand:
+    """Phase 999.1 — covers GUI CLI subcommand."""
+
+    def test_gui_invokes_main(self):
+        """gui subcommand calls gensubtitles.gui.main.main()."""
+        from types import ModuleType
+        from unittest.mock import MagicMock
+
+        # Build a fake gensubtitles.gui.main module to avoid requiring a display
+        mock_gui_main_mod = ModuleType("gensubtitles.gui.main")
+        mock_gui_main_mod.main = MagicMock()  # type: ignore[attr-defined]
+
+        prev = sys.modules.get("gensubtitles.gui.main")
+        sys.modules["gensubtitles.gui.main"] = mock_gui_main_mod
+        try:
+            result = runner.invoke(app, ["gui"])
+        finally:
+            if prev is None:
+                sys.modules.pop("gensubtitles.gui.main", None)
+            else:
+                sys.modules["gensubtitles.gui.main"] = prev
+
+        assert result.exit_code == 0
+        mock_gui_main_mod.main.assert_called_once()

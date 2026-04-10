@@ -45,8 +45,6 @@ class GenSubtitlesApp(ctk.CTk):
         # String variables for entry widgets
         self._input_var = ctk.StringVar()
         self._output_var = ctk.StringVar()
-        self._model_var = ctk.StringVar(value="small")
-        self._device_var = ctk.StringVar(value="auto")
         self._source_lang_var = ctk.StringVar()
         self._target_lang_var = ctk.StringVar()
 
@@ -91,60 +89,40 @@ class GenSubtitlesApp(ctk.CTk):
             row=1, column=2, padx=(8, 0), pady=4
         )
 
-        # Row 2 — Model size
-        ctk.CTkLabel(self._frame, text="Model size:").grid(
-            row=2, column=0, sticky="w", padx=(0, 8), pady=4
-        )
-        ctk.CTkOptionMenu(
-            self._frame,
-            variable=self._model_var,
-            values=["tiny", "base", "small", "medium", "large-v1", "large-v2", "large-v3", "turbo"],
-        ).grid(row=2, column=1, columnspan=2, sticky="ew", pady=4)
-
-        # Row 3 — Device
-        ctk.CTkLabel(self._frame, text="Device:").grid(
-            row=3, column=0, sticky="w", padx=(0, 8), pady=4
-        )
-        ctk.CTkOptionMenu(
-            self._frame,
-            variable=self._device_var,
-            values=["auto", "cpu", "cuda"],
-        ).grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
-
-        # Row 4 — Source language
+        # Row 2 — Source language
         ctk.CTkLabel(self._frame, text="Source language:").grid(
-            row=4, column=0, sticky="w", padx=(0, 8), pady=4
+            row=2, column=0, sticky="w", padx=(0, 8), pady=4
         )
         ctk.CTkEntry(
             self._frame,
             textvariable=self._source_lang_var,
             placeholder_text="auto-detect",
-        ).grid(row=4, column=1, columnspan=2, sticky="ew", pady=4)
+        ).grid(row=2, column=1, columnspan=2, sticky="ew", pady=4)
 
-        # Row 5 — Target language
+        # Row 3 — Target language
         ctk.CTkLabel(self._frame, text="Target language:").grid(
-            row=5, column=0, sticky="w", padx=(0, 8), pady=4
+            row=3, column=0, sticky="w", padx=(0, 8), pady=4
         )
         ctk.CTkEntry(
             self._frame,
             textvariable=self._target_lang_var,
             placeholder_text="(none — no translation)",
-        ).grid(row=5, column=1, columnspan=2, sticky="ew", pady=4)
+        ).grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
 
-        # Row 6 — Generate button
+        # Row 4 — Generate button
         self._btn_generate = ctk.CTkButton(
             self._frame, text="Generate Subtitles", command=self._on_generate
         )
-        self._btn_generate.grid(row=6, column=0, columnspan=3, pady=(12, 4), sticky="ew")
+        self._btn_generate.grid(row=4, column=0, columnspan=3, pady=(12, 4), sticky="ew")
 
-        # Row 7 — Progress bar (hidden initially)
+        # Row 5 — Progress bar (hidden initially)
         self._progress_bar = ctk.CTkProgressBar(self._frame, mode="indeterminate")
-        self._progress_bar.grid(row=7, column=0, columnspan=3, pady=4, sticky="ew")
+        self._progress_bar.grid(row=5, column=0, columnspan=3, pady=4, sticky="ew")
         self._progress_bar.grid_remove()
 
-        # Row 8 — Stage label
+        # Row 6 — Stage label
         self._stage_label = ctk.CTkLabel(self._frame, text="")
-        self._stage_label.grid(row=8, column=0, columnspan=3, pady=4)
+        self._stage_label.grid(row=6, column=0, columnspan=3, pady=4)
 
     # ------------------------------------------------------------------
     # Browse callbacks
@@ -216,8 +194,6 @@ class GenSubtitlesApp(ctk.CTk):
         import requests as req  # noqa: PLC0415
 
         try:
-            model = self._model_var.get()
-            device = self._device_var.get()
             src_lang = self._source_lang_var.get().strip() or None
             tgt_lang = self._target_lang_var.get().strip() or None
 
@@ -226,10 +202,6 @@ class GenSubtitlesApp(ctk.CTk):
                 params["source_lang"] = src_lang
             if tgt_lang:
                 params["target_lang"] = tgt_lang
-
-            # device is sent via a query param that the API understands
-            params["model"] = model
-            params["device"] = device
 
             with open(input_path, "rb") as fh:
                 video_name = Path(input_path).name
@@ -288,7 +260,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._btn_open_folder = ctk.CTkButton(
                 self._frame, text="Open Folder", command=_open_folder
             )
-            self._btn_open_folder.grid(row=9, column=0, columnspan=3, pady=(4, 0), sticky="ew")
+            self._btn_open_folder.grid(row=7, column=0, columnspan=3, pady=(4, 0), sticky="ew")
         else:
             self._btn_open_folder.configure(command=_open_folder)
             self._btn_open_folder.grid()
