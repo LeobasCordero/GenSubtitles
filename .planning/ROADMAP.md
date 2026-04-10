@@ -365,10 +365,10 @@ Plans:
 
 **Goal:** When a user selects a video file, automatically populate the subtitle output path field with the same directory and the same base filename as the video (e.g., selecting `/videos/movie.mp4` sets subtitle path to `/videos/movie.srt`).
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [x] 999.3-01-PLAN.md — Add auto-populate logic to `_browse_input` in `gui/main.py`
 
 ---
 
