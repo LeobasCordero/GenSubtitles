@@ -116,14 +116,27 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._btn_generate.grid(row=4, column=0, columnspan=3, pady=(12, 4), sticky="ew")
 
-        # Row 5 — Progress bar (hidden initially)
+        # Row 5 — Clear button
+        self._btn_clear = ctk.CTkButton(
+            self._frame,
+            text="Clear",
+            command=self._on_clear,
+            state="disabled",
+        )
+        self._btn_clear.grid(row=5, column=0, columnspan=3, pady=(0, 4), sticky="ew")
+
+        # Row 6 — Progress bar (hidden initially)
         self._progress_bar = ctk.CTkProgressBar(self._frame, mode="indeterminate")
-        self._progress_bar.grid(row=5, column=0, columnspan=3, pady=4, sticky="ew")
+        self._progress_bar.grid(row=6, column=0, columnspan=3, pady=4, sticky="ew")
         self._progress_bar.grid_remove()
 
-        # Row 6 — Stage label
+        # Row 7 — Stage label
         self._stage_label = ctk.CTkLabel(self._frame, text="")
-        self._stage_label.grid(row=6, column=0, columnspan=3, pady=4)
+        self._stage_label.grid(row=7, column=0, columnspan=3, pady=4)
+
+        # Reactive enable/disable for Clear button
+        for var in (self._input_var, self._output_var, self._source_lang_var, self._target_lang_var):
+            var.trace_add("write", lambda *_: self._update_clear_state())
 
     # ------------------------------------------------------------------
     # Browse callbacks
@@ -150,6 +163,30 @@ class GenSubtitlesApp(ctk.CTk):
         )
         if path:
             self._output_var.set(path)
+
+    # ------------------------------------------------------------------
+    # Clear button logic
+    # ------------------------------------------------------------------
+
+    def _update_clear_state(self) -> None:
+        """Enable Clear button if any input field is non-empty; disable otherwise."""
+        has_content = any(
+            v.get()
+            for v in (
+                self._input_var,
+                self._output_var,
+                self._source_lang_var,
+                self._target_lang_var,
+            )
+        )
+        self._btn_clear.configure(state="normal" if has_content else "disabled")
+
+    def _on_clear(self) -> None:
+        """Reset all 4 input fields to empty string."""
+        self._input_var.set("")
+        self._output_var.set("")
+        self._source_lang_var.set("")
+        self._target_lang_var.set("")
 
     # ------------------------------------------------------------------
     # Stage label cycling
@@ -186,6 +223,7 @@ class GenSubtitlesApp(ctk.CTk):
         tgt_lang = self._target_lang_var.get().strip() or None
 
         self._btn_generate.configure(state="disabled")
+        self._btn_clear.configure(state="disabled")
         self._progress_bar.grid()
         self._progress_bar.start()
         self._advance_stage(0)
@@ -247,6 +285,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._progress_bar.stop()
         self._progress_bar.grid_remove()
         self._btn_generate.configure(state="normal")
+        self._update_clear_state()
 
         if error:
             from tkinter import messagebox  # noqa: PLC0415
@@ -275,7 +314,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._btn_open_folder = ctk.CTkButton(
                 self._frame, text="Open Folder", command=_open_folder
             )
-            self._btn_open_folder.grid(row=7, column=0, columnspan=3, pady=(4, 0), sticky="ew")
+            self._btn_open_folder.grid(row=8, column=0, columnspan=3, pady=(4, 0), sticky="ew")
         else:
             self._btn_open_folder.configure(command=_open_folder)
             self._btn_open_folder.grid()

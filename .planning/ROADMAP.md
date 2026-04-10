@@ -354,10 +354,10 @@ Plans:
 
 **Goal:** Add a "Clear" button to the GUI that resets all input fields (video path, subtitle path, model, language options) back to their default/empty state in a single click.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [x] 999.2-01-PLAN.md — Add Clear button with reactive enable/disable + human verify
 
 ---
 
@@ -397,6 +397,28 @@ Plans:
 ### Phase 999.6: GUI — Mark Mandatory Fields with Asterisk (BACKLOG)
 
 **Goal:** Add a visual `*` marker next to all mandatory fields in the GUI (e.g., video input path, output path) so users can immediately identify which fields are required before starting generation.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
+### Phase 999.7: GUI — Hide Source Language Input (BACKLOG)
+
+**Goal:** Hide the source language input field from the GUI for now — simplify the interface by removing the option to specify source language (Whisper auto-detection is sufficient for most users).
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
+### Phase 999.8: GUI — Target Language Dropdown (BACKLOG)
+
+**Goal:** Replace the target language free-text input with a dropdown offering "Spanish", "English", and "Other" options to reduce user error and simplify the translation workflow.
 **Requirements:** TBD
 **Plans:** 0 plans
 
