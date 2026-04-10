@@ -20,7 +20,8 @@
 - [x] **Phase 7: CLI Interface** — Typer CLI with all flags, progress output, and exit codes (completed 2026-04-06)
 - [x] **Phase 8: FastAPI REST API Core** — Upload endpoint, lifespan model loading, thread pool execution (completed 2026-04-07)
 - [x] **Phase 9: FastAPI Extensions & Docs** — Languages endpoint, Uvicorn serve, OpenAPI docs (completed 2026-04-07)
-- [ ] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test
+- [x] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test
+ (completed 2026-04-10)
 
 ---
 
@@ -265,11 +266,11 @@ Plans:
 
 ### UAT Criteria
 
-- [ ] Given a developer following only the README, when performing the installation steps on a clean machine (Linux, macOS, or Windows), then `python main.py --help` runs without import errors
-- [ ] Given the README CLI examples, when copy-pasted verbatim into a terminal with a valid sample video, then all example commands complete with exit code 0
-- [ ] Given a real MP4 file with English speech, when `python main.py --input sample.mp4 --model tiny` is run, then a `.srt` file is created with at least one subtitle entry and correct `HH:MM:SS,mmm --> HH:MM:SS,mmm` timecodes
-- [ ] Given the API running locally, when the curl example from the README is executed, then an HTTP 200 response with SRT content is received
-- [ ] Given the README troubleshooting section, then it addresses all three failure modes: missing FFmpeg, model download failure, and missing output directory
+- [x] Given a developer following only the README, when performing the installation steps on a clean machine (Linux, macOS, or Windows), then `python main.py --help` runs without import errors
+- [x] Given the README CLI examples, when copy-pasted verbatim into a terminal with a valid sample video, then all example commands complete with exit code 0
+- [x] Given a real MP4 file with English speech, when `python main.py --input sample.mp4 --model tiny` is run, then a `.srt` file is created with at least one subtitle entry and correct `HH:MM:SS,mmm --> HH:MM:SS,mmm` timecodes
+- [x] Given the API running locally, when the curl example from the README is executed, then an HTTP 200 response with SRT content is received
+- [x] Given the README troubleshooting section, then it addresses all three failure modes: missing FFmpeg, model download failure, and missing output directory
 
 ---
 
@@ -286,7 +287,7 @@ Plans:
 | 7. CLI Interface | 2/2 | Complete | 2026-04-06 |
 | 8. FastAPI REST API Core | 3/3 | Complete | 2026-04-07 |
 | 9. FastAPI Extensions & Docs | 2/2 | Complete | 2026-04-07 |
-| 10. Documentation & End-to-End Validation | 0/9 | Not started | — |
+| 10. Documentation & End-to-End Validation | 3/3 | Complete | 2026-04-10 |
 
 ---
 
@@ -327,7 +328,7 @@ Plans:
 | API-05 | Phase 9 | Complete |
 | API-06 | Phase 9 | Complete |
 | API-07 | Phase 9 | Complete |
-| INF-03 | Phase 10 | Pending |
+| INF-03 | Phase 10 | Complete |
 
 **Coverage: 34/31 v1 requirements mapped** *(31 original + 3 split across Phase 8/9 from API-05/06/07) — all requirements covered ✓*
 
@@ -349,4 +350,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-07 — Phases 1–9 complete (33/34 requirements shipped); UAT verified for all phases 1–9 (FFmpeg installed 2026-04-07); Phase 10 pending*
+*Last updated: 2026-04-10 — All 10 phases complete (34/34 requirements shipped); UAT verified for all phases; Phase 10 (Documentation & E2E Validation) verified 2026-04-10*
