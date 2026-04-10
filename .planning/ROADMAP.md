@@ -20,7 +20,7 @@
 - [x] **Phase 7: CLI Interface** — Typer CLI with all flags, progress output, and exit codes (completed 2026-04-06)
 - [ ] **Phase 8: FastAPI REST API Core** — Upload endpoint, lifespan model loading, thread pool execution
 - [ ] **Phase 9: FastAPI Extensions & Docs** — Languages endpoint, Uvicorn serve, OpenAPI docs
-- [ ] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test
+- [x] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test (completed 2026-04-10)
 
 ---
 
@@ -261,12 +261,12 @@ Plans:
 **Requirements:** INF-03  
 **Estimated complexity:** Low  
 **Depends on:** Phases 7, 9  
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 10-01-PLAN.md — Write README.md (English) with Installation, CLI/API usage, Language Translation, Troubleshooting
-- [ ] 10-02-PLAN.md — Write README.es.md (Spanish) as complete translation with code examples preserved
-- [ ] 10-03-PLAN.md — E2E validation with synthetic video: CLI + API paths, with/without translation
+- [x] 10-01-PLAN.md — Write README.md (English) with Installation, CLI/API usage, Language Translation, Troubleshooting
+- [x] 10-02-PLAN.md — Write README.es.md (Spanish) as complete translation with code examples preserved
+- [x] 10-03-PLAN.md — E2E validation with synthetic video: CLI + API paths, with/without translation
 
 ### UAT Criteria
 
@@ -291,7 +291,7 @@ Plans:
 | 7. CLI Interface | 2/2 | Complete | 2026-04-06 |
 | 8. FastAPI REST API Core | 0/10 | Not started | — |
 | 9. FastAPI Extensions & Docs | 0/8 | Not started | — |
-| 10. Documentation & End-to-End Validation | 3/3 | Planned | — |
+| 10. Documentation & End-to-End Validation | 3/3 | Complete | 2026-04-10 |
 
 ---
 
@@ -332,7 +332,7 @@ Plans:
 | API-05 | Phase 9 | Pending |
 | API-06 | Phase 9 | Pending |
 | API-07 | Phase 9 | Pending |
-| INF-03 | Phase 10 | Pending |
+| INF-03 | Phase 10 | Complete |
 
 **Coverage: 34/31 v1 requirements mapped** *(31 original + 3 split across Phase 8/9 from API-05/06/07) — all requirements covered ✓*
 
@@ -354,4 +354,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-07 — Phases 1–7 complete (26/34 requirements shipped); Phases 8–10 pending*
+*Last updated: 2026-04-10 — Phases 1–7, 10 complete (27/34 requirements shipped); Phases 8–9 pending*
