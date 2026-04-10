@@ -340,7 +340,7 @@ Plans:
 
 ### Phase 999.1: GUI Interface (BACKLOG)
 
-**Goal:** Add a CustomTkinter desktop GUI so non-technical users can generate subtitles without using the CLI or REST API. The window mirrors all 6 CLI flags, auto-launches the Uvicorn server on open, and shuts it down on close.
+**Goal:** Add a CustomTkinter desktop GUI so non-technical users can generate subtitles without using the CLI or REST API. The window exposes the 4 API-supported parameters (input file, output path, source language, target language), auto-launches the Uvicorn server on open, and shuts it down on close. Model size and device are fixed at server startup via lifespan configuration.
 **Requirements:** GUI-01, GUI-02, GUI-03, GUI-04, GUI-05, GUI-06
 **Plans:** 2/2 plans complete
 

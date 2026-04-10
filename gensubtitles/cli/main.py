@@ -141,7 +141,15 @@ def serve(
 @app.command("gui")
 def launch_gui() -> None:
     """Open the GenSubtitles desktop GUI window."""
-    from gensubtitles.gui.main import main as _gui_main  # noqa: PLC0415
+    try:
+        from gensubtitles.gui.main import main as _gui_main  # noqa: PLC0415
+    except ImportError:
+        typer.echo(
+            "Error: GUI dependencies not installed. "
+            "Install them with: pip install gensubtitles[gui]",
+            err=True,
+        )
+        raise typer.Exit(code=1)
 
     _gui_main()
 

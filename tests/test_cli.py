@@ -229,3 +229,19 @@ class TestGuiCommand:
 
         assert result.exit_code == 0
         mock_gui_main_mod.main.assert_called_once()
+
+    def test_gui_missing_deps_exits_one(self):
+        """gui subcommand gives helpful error when GUI deps are not installed."""
+        prev = sys.modules.get("gensubtitles.gui.main")
+        # Force ImportError by injecting None (blocks import)
+        sys.modules["gensubtitles.gui.main"] = None  # type: ignore[assignment]
+        try:
+            result = runner.invoke(app, ["gui"])
+        finally:
+            if prev is None:
+                sys.modules.pop("gensubtitles.gui.main", None)
+            else:
+                sys.modules["gensubtitles.gui.main"] = prev
+
+        assert result.exit_code == 1
+        assert "gensubtitles[gui]" in result.output

@@ -51,6 +51,7 @@ class GenSubtitlesApp(ctk.CTk):
         # Server references
         self._server = None
         self._stage_timer = None
+        self._closing = False
 
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -155,6 +156,8 @@ class GenSubtitlesApp(ctk.CTk):
     # ------------------------------------------------------------------
 
     def _advance_stage(self, idx: int) -> None:
+        if self._closing:
+            return
         if idx < len(_STAGE_LABELS):
             self._stage_label.configure(text=_STAGE_LABELS[idx])
             self._stage_timer = self.after(2500, self._advance_stage, idx + 1)
@@ -178,6 +181,10 @@ class GenSubtitlesApp(ctk.CTk):
             messagebox.showerror("Missing output", "Please choose an output .srt path.")
             return
 
+        # Capture StringVar values on the main thread (Tkinter is not thread-safe)
+        src_lang = self._source_lang_var.get().strip() or None
+        tgt_lang = self._target_lang_var.get().strip() or None
+
         self._btn_generate.configure(state="disabled")
         self._progress_bar.grid()
         self._progress_bar.start()
@@ -185,18 +192,21 @@ class GenSubtitlesApp(ctk.CTk):
 
         thread = threading.Thread(
             target=self._run_api_call,
-            args=(input_path, output_path),
+            args=(input_path, output_path, src_lang, tgt_lang),
             daemon=True,
         )
         thread.start()
 
-    def _run_api_call(self, input_path: str, output_path: str) -> None:
+    def _run_api_call(
+        self,
+        input_path: str,
+        output_path: str,
+        src_lang: str | None,
+        tgt_lang: str | None,
+    ) -> None:
         import requests as req  # noqa: PLC0415
 
         try:
-            src_lang = self._source_lang_var.get().strip() or None
-            tgt_lang = self._target_lang_var.get().strip() or None
-
             params: dict[str, str] = {}
             if src_lang:
                 params["source_lang"] = src_lang
@@ -214,7 +224,8 @@ class GenSubtitlesApp(ctk.CTk):
 
             if resp.status_code == 200:
                 Path(output_path).write_bytes(resp.content)
-                self.after(0, self._finish_generate, None, output_path)
+                if not self._closing:
+                    self.after(0, self._finish_generate, None, output_path)
             else:
                 try:
                     detail = resp.json().get("detail", resp.text)
@@ -222,9 +233,11 @@ class GenSubtitlesApp(ctk.CTk):
                     detail = resp.text
                 if isinstance(detail, list):
                     detail = "; ".join(str(e) for e in detail)
-                self.after(0, self._finish_generate, str(detail), None)
+                if not self._closing:
+                    self.after(0, self._finish_generate, str(detail), None)
         except Exception as exc:  # noqa: BLE001
-            self.after(0, self._finish_generate, str(exc), None)
+            if not self._closing:
+                self.after(0, self._finish_generate, str(exc), None)
 
     def _finish_generate(self, error: str | None, output_path: str | None) -> None:
         if self._stage_timer is not None:
@@ -242,7 +255,9 @@ class GenSubtitlesApp(ctk.CTk):
             messagebox.showerror("Generation failed", error)
         else:
             self._stage_label.configure(text="✓ Done")
-            self._show_success(output_path)  # type: ignore[arg-type]
+            if output_path is None:
+                raise AssertionError("output_path must not be None on success")
+            self._show_success(output_path)
 
     def _show_success(self, output_path: str) -> None:
         output_dir = Path(output_path).parent
@@ -293,6 +308,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._server.should_exit = True
 
     def on_closing(self) -> None:
+        self._closing = True
         self._stop_server()
         self.destroy()
 
