@@ -730,13 +730,149 @@ class GenSubtitlesApp(ctk.CTk):
     # ------------------------------------------------------------------
 
     def _show_tutorial(self) -> None:
-        pass  # Plan 06
+        """Open a scrollable tutorial CTkToplevel window."""
+        win = ctk.CTkToplevel(self)
+        win.title("GenSubtitles \u2014 Tutorial")
+        win.minsize(500, 500)
+        win.grab_set()
+
+        scroll = ctk.CTkScrollableFrame(win)
+        scroll.pack(fill="both", expand=True, padx=16, pady=16)
+
+        tutorial_text = """
+GenSubtitles \u2014 Usage Guide
+==========================
+
+OVERVIEW
+--------
+GenSubtitles converts video files to subtitle files (.srt or .ssa) entirely offline.
+No internet connection or API keys are required once language models are installed.
+
+GENERATE SUBTITLES TAB
+-----------------------
+1. Click "Browse\u2026" next to "Input video" and select your video file (.mp4, .mkv, .avi, .mov, .webm).
+2. The output subtitle path is auto-filled based on the video filename. Change it if needed.
+3. Select a Source Language (or leave as Auto-detect \u2014 Whisper will identify the language automatically).
+4. Select a Target Language if you want translation. Leave as "No target" to keep the original language.
+5. Choose Output Format: SRT (most compatible) or SSA (richer styling).
+6. Click "Generate Subtitles". Progress is shown with the elapsed timer and a progress bar.
+7. When finished, the subtitle file is saved to the chosen output path.
+
+TRANSLATE SUBTITLES TAB
+------------------------
+Use this tab if you already have a subtitle file and only need to translate or convert it.
+
+1. Click "Browse\u2026" next to "Input subtitle" and select a .srt or .ssa file.
+2. The output path is auto-filled as <filename>_translated.<ext>.
+3. Select the source language of the subtitle file.
+4. Select the target language for translation.
+5. (Optional) Check "Convert only" to change file format without translation.
+6. Click "Translate / Convert".
+
+LANGUAGE MODEL INSTALLATION
+-----------------------------
+GenSubtitles uses Argos Translate for offline translation.
+Language models are downloaded automatically on first use (internet required for download only).
+After downloading, all translation works offline.
+
+Use Help > Available Languages to see which pairs are currently installed.
+
+SETTINGS
+---------
+Access via the Settings menu > Preferences.
+- Appearance Mode: Light, Dark, or follow System setting.
+- UI Language: English or Spanish.
+- Default output directory: pre-fills output path (leave blank to use same folder as input).
+
+TROUBLESHOOTING
+----------------
+\u2022 "FFmpeg not found" \u2014 Install FFmpeg and ensure it is in your system PATH.
+\u2022 Translation fails \u2014 The selected language pair may not be installed. Check Help > Available Languages.
+\u2022 Subtitles are blank \u2014 Try a smaller model (tiny or base) or check if audio track exists.
+\u2022 API connection refused \u2014 The background server failed to start. Restart the application.
+"""
+
+        label = ctk.CTkLabel(
+            scroll,
+            text=tutorial_text.strip(),
+            justify="left",
+            anchor="nw",
+            wraplength=440,
+            font=ctk.CTkFont(family="Courier", size=12),
+        )
+        label.pack(fill="both", expand=True)
+
+        ctk.CTkButton(win, text="Close", command=win.destroy).pack(pady=(0, 12))
 
     def _show_language_pairs(self) -> None:
-        pass  # Plan 06
+        """Open a dialog listing currently installed language pairs."""
+        win = ctk.CTkToplevel(self)
+        win.title("Installed Language Pairs")
+        win.minsize(360, 300)
+        win.grab_set()
+
+        ctk.CTkLabel(
+            win,
+            text="Installed Translation Pairs",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(pady=(16, 8))
+
+        pairs = self._language_pairs
+        if not pairs:
+            ctk.CTkLabel(
+                win,
+                text=(
+                    "No language pairs installed.\n"
+                    "Pairs are downloaded automatically on first translation."
+                ),
+            ).pack(pady=20)
+        else:
+            scroll = ctk.CTkScrollableFrame(win)
+            scroll.pack(fill="both", expand=True, padx=16, pady=8)
+            for p in sorted(pairs, key=lambda x: (x["from"], x["to"])):
+                src_label = _CODE_TO_LABEL.get(p["from"], p["from"].upper())
+                dst_label = _CODE_TO_LABEL.get(p["to"], p["to"].upper())
+                ctk.CTkLabel(
+                    scroll,
+                    text=f"  {src_label}  \u2192  {dst_label}",
+                    anchor="w",
+                ).pack(fill="x", pady=2)
+
+        ctk.CTkButton(win, text="Close", command=win.destroy).pack(pady=(8, 16))
 
     def _show_about(self) -> None:
-        pass  # Plan 06
+        """Open About GenSubtitles dialog."""
+        import gensubtitles  # noqa: PLC0415
+
+        version = getattr(gensubtitles, "__version__", "0.1.0")
+
+        win = ctk.CTkToplevel(self)
+        win.title("About GenSubtitles")
+        win.resizable(False, False)
+        win.grab_set()
+
+        ctk.CTkLabel(
+            win,
+            text="GenSubtitles",
+            font=ctk.CTkFont(size=20, weight="bold"),
+        ).pack(pady=(24, 4))
+        ctk.CTkLabel(win, text=f"Version {version}").pack(pady=4)
+        ctk.CTkLabel(
+            win,
+            text="Automatic offline subtitle generation\nusing Whisper + Argos Translate.",
+            justify="center",
+        ).pack(pady=8)
+        ctk.CTkLabel(win, text="License: MIT", text_color="gray").pack(pady=4)
+
+        def _open_github() -> None:
+            import webbrowser  # noqa: PLC0415
+
+            webbrowser.open("https://github.com/leocg/GenSubtitles")
+
+        ctk.CTkButton(win, text="GitHub Project", command=_open_github).pack(pady=(8, 4))
+        ctk.CTkButton(
+            win, text="Close", command=win.destroy, fg_color="gray"
+        ).pack(pady=(4, 24))
 
     # ------------------------------------------------------------------
     # Server lifecycle
