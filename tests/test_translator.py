@@ -324,3 +324,83 @@ def test_list_installed_pairs_returns_dicts():
         pairs = list_installed_pairs()
     assert {"from": "en", "to": "es"} in pairs
     assert {"from": "en", "to": "fr"} in pairs
+
+
+# ── translate_file() tests ────────────────────────────────────────────────────
+
+
+def test_translate_file_missing_input_raises():
+    """translate_file() raises FileNotFoundError if input path does not exist."""
+    en_lang = _make_fake_language("en", ["es"])
+    with _inject_argostranslate(installed_languages=[en_lang]):
+        from gensubtitles.core.translator import translate_file
+
+        with pytest.raises(FileNotFoundError, match="not found"):
+            translate_file("/nonexistent/file.srt", "es", "en")
+
+
+def test_translate_file_same_lang_raises():
+    """translate_file() raises ValueError when source equals target."""
+    import tempfile
+    en_lang = _make_fake_language("en", ["es"])
+    with _inject_argostranslate(installed_languages=[en_lang]):
+        from gensubtitles.core.translator import translate_file
+
+        # Create a minimal SRT file
+        with tempfile.NamedTemporaryFile(suffix=".srt", mode="w", delete=False) as f:
+            f.write("1\n00:00:00,000 --> 00:00:01,000\nHello\n\n")
+            f.flush()
+            try:
+                with pytest.raises(ValueError, match="same"):
+                    translate_file(f.name, "en", "en")
+            finally:
+                import os
+                os.unlink(f.name)
+
+
+def test_translate_file_basic_srt(tmp_path):
+    """translate_file() translates an SRT file and writes output."""
+    en_lang = _make_fake_language("en", ["es"])
+    with _inject_argostranslate(installed_languages=[en_lang]):
+        from gensubtitles.core.translator import translate_file
+
+        srt_content = "1\n00:00:00,000 --> 00:00:01,000\nHello\n\n"
+        input_file = tmp_path / "input.srt"
+        input_file.write_text(srt_content, encoding="utf-8")
+
+        result = translate_file(input_file, "es", "en")
+        assert result.exists()
+        assert "_translated" in result.stem
+
+
+def test_translate_file_custom_output_path(tmp_path):
+    """translate_file() respects a custom output_path."""
+    en_lang = _make_fake_language("en", ["es"])
+    with _inject_argostranslate(installed_languages=[en_lang]):
+        from gensubtitles.core.translator import translate_file
+
+        srt_content = "1\n00:00:00,000 --> 00:00:01,000\nHello\n\n"
+        input_file = tmp_path / "input.srt"
+        input_file.write_text(srt_content, encoding="utf-8")
+
+        custom_out = tmp_path / "custom_output.srt"
+        result = translate_file(input_file, "es", "en", output_path=custom_out)
+        assert result == custom_out
+        assert custom_out.exists()
+
+
+def test_translate_file_defaults_source_to_en(tmp_path, caplog):
+    """translate_file() defaults source_lang to 'en' when omitted."""
+    en_lang = _make_fake_language("en", ["es"])
+    with _inject_argostranslate(installed_languages=[en_lang]):
+        from gensubtitles.core.translator import translate_file
+
+        srt_content = "1\n00:00:00,000 --> 00:00:01,000\nHello\n\n"
+        input_file = tmp_path / "input.srt"
+        input_file.write_text(srt_content, encoding="utf-8")
+
+        with caplog.at_level(logging.WARNING, logger="gensubtitles.core.translator"):
+            result = translate_file(input_file, "es")
+
+        assert result.exists()
+        assert any("defaulting to 'en'" in r.message for r in caplog.records)

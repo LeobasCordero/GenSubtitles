@@ -472,10 +472,15 @@ Plans:
 
 **Goal:** Expand GenSubtitles with a set of user-facing features grouped into five areas: (1) extended translation language pairs (Japanese↔Spanish, English↔Spanish, Chinese↔Spanish, French↔Spanish, Norwegian↔Spanish, Korean↔Spanish); (2) additional format support (3GP video input, SSA subtitle output, SSA↔SRT conversion); (3) standalone portable packaging (single executable for Windows/macOS/Linux, no IDE or Python install required); (4) translation-only mode (accepts an existing SRT/SSA and translates it without transcription); (5) Settings menu (dark mode toggle, configurable defaults for source language and subtitle output path, app UI language); (6) Help menu with embedded tutorial, language pair listing, and About dialog; (7) Menu bar to host Settings and Help menus.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 6/6 plans complete
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [x] 999.10-01-PLAN.md — Core foundations: OutputFormat + SSA write/convert (srt_writer.py) + AppSettings persistence (settings.py); add pysubs2 + platformdirs deps
+- [x] 999.10-02-PLAN.md — translate_file() in translator.py + CLI translate/convert subcommands + --format flag on generate
+- [x] 999.10-03-PLAN.md — GUI dynamic language dropdowns from GET /languages (D-01/D-02) + output format SRT/SSA dropdown (D-08)
+- [x] 999.10-04-PLAN.md — GUI Translate Subtitles tab (CTkTabview, translate/convert-only form, background thread handler) (D-05/D-09)
+- [x] 999.10-05-PLAN.md — Menu bar (tkinter.Menu) + in-window Settings panel with persistence (D-12–D-17)
+- [x] 999.10-06-PLAN.md — Help menu content: Tutorial dialog, Language Pairs dialog, About dialog + human verify (D-18)
 
 **Captured features:**
 - Soporte de pares de traducción: japonés→español, inglés→español, chino→español, francés→español, noruego→español, coreano→español
