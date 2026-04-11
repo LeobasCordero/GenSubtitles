@@ -292,7 +292,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._elapsed_timer = None
         self._elapsed_label.configure(text="00:00:00")
         self._elapsed_start = time.monotonic()
-        self._elapsed_label.grid(row=7, column=0, columnspan=3, pady=4)
+        self._elapsed_label.grid()
         self._tick_elapsed()
 
         thread = threading.Thread(
@@ -348,6 +348,14 @@ class GenSubtitlesApp(ctk.CTk):
         if self._stage_timer is not None:
             self.after_cancel(self._stage_timer)
             self._stage_timer = None
+
+        # Show final elapsed time before cancelling the timer
+        elapsed = int(time.monotonic() - self._elapsed_start)
+        h = elapsed // 3600
+        m = (elapsed % 3600) // 60
+        s = elapsed % 60
+        self._elapsed_label.configure(text=f"{h:02d}:{m:02d}:{s:02d}")
+
         if self._elapsed_timer is not None:
             self.after_cancel(self._elapsed_timer)
             self._elapsed_timer = None
