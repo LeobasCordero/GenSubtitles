@@ -140,6 +140,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._frame,
             values=["No target"],
             variable=self._target_lang_var,
+            command=self._on_target_lang_change,
         )
         self._option_target_lang.grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
 
@@ -310,7 +311,8 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._tl_target_var = ctk.StringVar(value="Spanish")
         self._tl_option_target = ctk.CTkOptionMenu(
-            tf, values=["Spanish"], variable=self._tl_target_var
+            tf, values=["Spanish"], variable=self._tl_target_var,
+            command=self._on_tl_target_lang_change,
         )
         self._tl_option_target.grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
 
@@ -429,18 +431,61 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _on_source_lang_change(self, selection: str) -> None:
         """Filter target language dropdown to valid destinations for selected source."""
-        if selection == "Auto-detect" or not self._language_pairs:
+        all_labels = sorted(_CODE_TO_LABEL.values())
+        if not self._language_pairs:
+            # No pairs installed yet — show all known languages so user can pick;
+            # the pair will be auto-downloaded at generation time.
+            targets = all_labels
+        elif selection == "Auto-detect":
             targets = sorted({_CODE_TO_LABEL.get(p["to"], p["to"]) for p in self._language_pairs})
-            targets = targets or ["No target"]
+            targets = targets or all_labels
         else:
             src_code = _label_to_code(selection)
             targets = [
                 _CODE_TO_LABEL.get(p["to"], p["to"])
                 for p in self._language_pairs if p["from"] == src_code
             ]
-            targets = sorted(set(targets)) or ["No target"]
+            targets = sorted(set(targets)) or all_labels
+        targets = ["No target"] + [t for t in targets if t != "No target"]
         self._option_target_lang.configure(values=targets)
-        self._target_lang_var.set(targets[0])
+        current = self._target_lang_var.get()
+        if current not in targets:
+            self._target_lang_var.set(targets[0])
+
+    def _on_target_lang_change(self, selection: str) -> None:
+        """Trigger background pair download when a target language is picked."""
+        if selection in ("No target", ""):
+            return
+        src_label = self._source_lang_var.get()
+        if src_label == "Auto-detect":
+            return
+        src_code = _label_to_code(src_label)
+        tgt_code = _label_to_code(selection)
+        self._prefetch_pair_bg(src_code, tgt_code)
+
+    def _prefetch_pair_bg(self, src_code: str, tgt_code: str) -> None:
+        """Download an Argos Translate pair in the background and update the stage label."""
+        if src_code == tgt_code:
+            return
+
+        def _worker() -> None:
+            from gensubtitles.core.translator import _is_installed, ensure_pair_installed  # noqa: PLC0415
+            if _is_installed(src_code, tgt_code):
+                return
+            self.after(0, lambda: self._stage_label.configure(
+                text=f"⏬ Downloading {src_code}→{tgt_code} model…"
+            ))
+            try:
+                ensure_pair_installed(src_code, tgt_code)
+                self.after(0, lambda: self._stage_label.configure(
+                    text=f"✓ {src_code}→{tgt_code} model ready"
+                ))
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Background prefetch failed for %s→%s: %s", src_code, tgt_code, exc)
+                msg = f"⚠ Could not prefetch {src_code}→{tgt_code}: {exc}"
+                self.after(0, lambda m=msg: self._stage_label.configure(text=m))
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _on_output_format_change(self, selection: str) -> None:
         """Update output path extension when format changes."""
@@ -463,13 +508,14 @@ class GenSubtitlesApp(ctk.CTk):
             logger.warning("Could not load language pairs from API: %s", exc)
             self._language_pairs = []
 
-        if not self._language_pairs:
-            return  # leave defaults
-        sources = sorted({_CODE_TO_LABEL.get(p["from"], p["from"]) for p in self._language_pairs})
-        sources = ["Auto-detect"] + sources
-        self._option_source_lang.configure(values=sources)
-        self._source_lang_var.set("Auto-detect")
-        self._on_source_lang_change("Auto-detect")
+        if self._language_pairs:
+            sources = sorted({_CODE_TO_LABEL.get(p["from"], p["from"]) for p in self._language_pairs})
+            sources = ["Auto-detect"] + sources
+            self._option_source_lang.configure(values=sources)
+            self._source_lang_var.set("Auto-detect")
+        else:
+            sources = ["Auto-detect"] + sorted(_CODE_TO_LABEL.values())
+        self._on_source_lang_change(self._source_lang_var.get())
         # Also populate Translate tab dropdowns
         non_auto = [s for s in sources if s != "Auto-detect"]
         if non_auto:
@@ -478,20 +524,29 @@ class GenSubtitlesApp(ctk.CTk):
             self._tl_option_source.configure(command=self._on_tl_source_lang_change)
             self._on_tl_source_lang_change(non_auto[0])
 
+    def _on_tl_target_lang_change(self, selection: str) -> None:
+        """Trigger background pair download when Translate tab target is picked."""
+        src_label = self._tl_source_var.get()
+        self._prefetch_pair_bg(_label_to_code(src_label), _label_to_code(selection))
+
     def _on_tl_source_lang_change(self, selection: str) -> None:
         """Filter Translate tab target dropdown to valid destinations for selected source."""
+        all_labels = sorted(_CODE_TO_LABEL.values())
         if not self._language_pairs:
-            return
-        src_code = _label_to_code(selection)
-        targets = [
-            _CODE_TO_LABEL.get(p["to"], p["to"])
-            for p in self._language_pairs if p["from"] == src_code
-        ]
-        targets = sorted(set(targets)) or ["No target"]
+            targets = [t for t in all_labels if t != selection]
+        else:
+            src_code = _label_to_code(selection)
+            targets = [
+                _CODE_TO_LABEL.get(p["to"], p["to"])
+                for p in self._language_pairs if p["from"] == src_code
+            ]
+            targets = sorted(set(targets)) or [t for t in all_labels if t != selection]
         self._tl_option_target.configure(values=targets)
         current = self._tl_target_var.get()
         if current not in targets:
             self._tl_target_var.set(targets[0])
+        # Prefetch the new source+target pair
+        self._prefetch_pair_bg(_label_to_code(selection), _label_to_code(self._tl_target_var.get()))
 
     def _update_clear_state(self) -> None:
         """Enable Clear button if any user-settable input field is non-empty/non-default; disable otherwise."""

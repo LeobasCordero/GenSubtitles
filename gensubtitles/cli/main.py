@@ -14,6 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
+import click
 import typer
 
 app = typer.Typer(
@@ -66,7 +67,7 @@ def generate(
         "-f",
         help="Output subtitle format: srt or ssa.",
         case_sensitive=False,
-        click_type=typer.Choice(["srt", "ssa"], case_sensitive=False),
+        click_type=click.Choice(["srt", "ssa"], case_sensitive=False),
     ),
 ) -> None:
     """Generate subtitles from a video file."""
