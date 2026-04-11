@@ -2,7 +2,7 @@
 
 ## What This Is
 
-GenSubtitles is a Python CLI/API tool that automatically generates subtitles from video files. Given a video, it extracts the audio, transcribes it using faster-whisper, optionally translates the transcription via Argos Translate, and outputs a properly formatted SRT file.
+GenSubtitles is a fully offline Python CLI/API/GUI tool that generates SRT subtitle files from any video. It extracts audio via FFmpeg, transcribes with faster-whisper, optionally translates via Argos Translate, and outputs a properly formatted SRT file. A CustomTkinter desktop GUI provides a point-and-click interface on top of the same pipeline.
 
 ## Core Value
 
@@ -12,37 +12,37 @@ Accurate, offline-capable subtitle generation from any video — no external API
 
 ### Validated
 
-<!-- Shipped and confirmed valuable. -->
+<!-- Shipped and confirmed valuable in v1.0. -->
 
-- [x] Accept a video file as input and extract its audio track via FFmpeg — Validated in Phase 2: audio-extraction-module
-- [x] Support multiple input video formats (mp4, mkv, avi, mov, webm) — Validated in Phase 2: audio-extraction-module
-- [x] Expose functionality via FastAPI REST API (Uvicorn server) — Validated in Phase 9: Language pairs endpoint, CORS middleware, and OpenAPI docs live
-- [x] CLI interface for direct usage without API — Validated in Phase 9: `python main.py serve` launches API; existing `generate` workflow intact
+- ✓ Accept video file input and extract audio via FFmpeg (16kHz mono WAV) — v1.0
+- ✓ Support mp4, mkv, avi, mov, webm input formats — v1.0
+- ✓ Transcribe audio to text using faster-whisper (local, offline) — v1.0
+- ✓ Auto-detect source language — v1.0
+- ✓ Translate transcription using Argos Translate (offline, on-demand model install) — v1.0
+- ✓ Generate valid SRT file using `srt` library — v1.0
+- ✓ FastAPI REST API: `POST /subtitles`, `GET /languages`, Uvicorn, OpenAPI docs — v1.0
+- ✓ Typer CLI with `--input`, `--output`, `--model`, `--target-lang` flags — v1.0
+- ✓ Desktop GUI (CustomTkinter) with full generate workflow, elapsed timer, Clear button — v1.0
+- ✓ 73-test suite covering all core modules — v1.0
 
 ### Active
 
-- [ ] Transcribe audio to text using faster-whisper (local, offline)
-- [ ] Detect source language automatically
-- [ ] Translate transcription to target language using Argos Translate (offline)
-- [ ] Generate a valid SRT subtitle file using the `srt` library
-- [ ] Expose functionality via FastAPI REST API (Uvicorn server)
-- [ ] CLI interface for direct usage without API
-- [ ] Support multiple target languages for translation
+<!-- Requirements for v2.0 — none defined yet. Run /gsd-new-milestone to begin. -->
 
 ### Out of Scope
 
 - Cloud-based speech recognition (e.g., OpenAI Whisper API) — keeping fully offline/local
 - Video editing or burning subtitles into video — output is SRT only
-- Real-time streaming transcription — file-based only for v1
-- Web UI — CLI + REST API is sufficient for v1
+- Real-time streaming transcription — file-based only
+- Subtitle burn-in — out of scope (v2.0 ADV-01 candidate)
 
 ## Context
 
-- **Pipeline:** Video → Audio (FFmpeg) → Transcription (faster-whisper) → Translation (Argos Translate) → SRT (`srt` v3.5.3)
-- **Python 3.11+** is the baseline — no older version compatibility required
-- The project is a skeleton at initialization: `main.py` entry point exists, `requirements.txt` is empty
-- No existing tests, no CI/CD configured yet
-- Argos Translate downloads language models on first use — this needs to be handled gracefully
+- **Pipeline:** Video → Audio (FFmpeg, 16kHz mono) → Transcription (faster-whisper) → Translation (Argos Translate, optional) → SRT (`srt` v3.5.3)
+- **GUI:** CustomTkinter desktop app (`gensubtitles gui`) wraps the same pipeline via FastAPI
+- **Python 3.11+** | ~1,602 LOC in `gensubtitles/` package | 73 tests
+- **v1.0 shipped:** 2026-04-02 → 2026-04-10 (8 days, ~147 commits)
+- Argos Translate downloads language models on first use and caches locally
 
 ## Constraints
 
@@ -55,10 +55,11 @@ Accurate, offline-capable subtitle generation from any video — no external API
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| faster-whisper over openai-whisper | 4x faster, lower memory, CTranslate2 backend | — Pending |
-| Argos Translate for translation | Fully offline, no API keys, supports 100+ language pairs | — Pending |
-| FastAPI for API layer | Modern, async, auto-generated docs, lightweight | — Pending |
-| `srt` library for SRT generation | pysrt unmaintained (2020); `srt` v3.5.3 is actively maintained, no deps, 30% faster | — Pending |
+| faster-whisper over openai-whisper | 4x faster, lower memory, CTranslate2 backend | ✓ Good — delivers fast local transcription |
+| Argos Translate for translation | Fully offline, no API keys, supports 100+ language pairs | ✓ Good — works well, on-demand download UX acceptable |
+| FastAPI for API layer | Modern, async, auto-generated docs, lightweight | ✓ Good — OpenAPI docs at /docs, thread-pool for CPU-bound work |
+| `srt` library for SRT generation | pysrt unmaintained (2020); `srt` v3.5.3 is actively maintained, no deps, 30% faster | ✓ Good — no issues in v1.0 |
+| CustomTkinter for GUI | Cross-platform, modern look, wraps tkinter | ✓ Good — desktop GUI ships without extra dependencies |
 
 ---
-*Last updated: 2026-04-07 — Phase 9 (FastAPI Extensions & API Documentation) complete — `GET /languages`, `CORSMiddleware`, OpenAPI docs, and CLI `serve` subcommand delivered*
+*Last updated: 2026-04-10 after v1.0 milestone — full pipeline, CLI, API, GUI, and 73-test suite shipped*
