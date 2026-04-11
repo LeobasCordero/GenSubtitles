@@ -387,10 +387,10 @@ Plans:
 
 **Goal:** Display an elapsed time counter (e.g., `00:01:23`) above the progress bar that starts from 00:00:00 when generation begins and counts up in real-time. The counter resets to zero at the start of every new subtitle generation run. After completion, display the final elapsed time.
 **Requirements:** TBD
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 999.5-01-PLAN.md — Elapsed counter label, tick loop, lifecycle in _on_generate/_finish_generate (gensubtitles/gui/main.py)
+- [x] 999.5-01-PLAN.md — Elapsed counter label, tick loop, lifecycle in _on_generate/_finish_generate (gensubtitles/gui/main.py)
 
 ---
 
