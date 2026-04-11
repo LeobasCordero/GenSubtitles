@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: v1.0 milestone complete
-last_updated: "2026-04-11T03:59:11.653Z"
+status: Complete
+last_updated: "2026-04-11T14:20:00.000Z"
 progress:
-  total_phases: 16
-  completed_phases: 16
-  total_plans: 30
-  completed_plans: 30
+  total_phases: 20
+  completed_phases: 17
+  total_plans: 42
+  completed_plans: 36
 ---
 
 # GenSubtitles — Project State
@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1.0
-- **Active Phase:** None — all backlog phases complete
-- **Last action:** Phase 999.9 complete — GUI form polish (mandatory markers, hidden source-lang row, target-lang dropdown) human-verified on feature/999.9-gui-form-polish (2026-04-10)
+- **Active Phase:** None
+- **Last action:** Phase 999.10 complete — feature expansion (SSA format, translate_file(), translate/convert CLI, dynamic language dropdowns, Translate tab, Settings panel, Help menu dialogs) human-verified (2026-04-11)
 
 ## Milestone Progress
 
@@ -37,6 +37,7 @@ progress:
 | 10 | Documentation & End-to-End Validation | ✅ Complete |
 | 999.1 | GUI Interface | ✅ Complete |
 | 999.9 | GUI Form Polish | ✅ Complete (1/1 plans) |
+| 999.10 | Feature Expansion — Language, Formats, Settings, Help | ✅ Complete (6/6 plans) |
 
 ## Key Decisions Log
 
