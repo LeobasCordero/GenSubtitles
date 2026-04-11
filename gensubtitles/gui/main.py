@@ -13,6 +13,7 @@ import logging
 import platform
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 import customtkinter as ctk
@@ -54,6 +55,8 @@ class GenSubtitlesApp(ctk.CTk):
         # Server references
         self._server = None
         self._stage_timer = None
+        self._elapsed_timer = None
+        self._elapsed_start: float = 0.0
         self._closing = False
 
         self._build_ui()
@@ -141,14 +144,19 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._btn_clear.grid(row=6, column=0, columnspan=3, pady=(0, 4), sticky="ew")
 
-        # Row 7 — Progress bar (hidden initially)
+        # Row 7 — Elapsed time counter (hidden initially)
+        self._elapsed_label = ctk.CTkLabel(self._frame, text="00:00:00")
+        self._elapsed_label.grid(row=7, column=0, columnspan=3, pady=4)
+        self._elapsed_label.grid_remove()
+
+        # Row 8 — Progress bar (hidden initially)
         self._progress_bar = ctk.CTkProgressBar(self._frame, mode="indeterminate")
-        self._progress_bar.grid(row=7, column=0, columnspan=3, pady=4, sticky="ew")
+        self._progress_bar.grid(row=8, column=0, columnspan=3, pady=4, sticky="ew")
         self._progress_bar.grid_remove()
 
-        # Row 8 — Stage label
+        # Row 9 — Stage label
         self._stage_label = ctk.CTkLabel(self._frame, text="")
-        self._stage_label.grid(row=8, column=0, columnspan=3, pady=4)
+        self._stage_label.grid(row=9, column=0, columnspan=3, pady=4)
 
         # Reactive enable/disable for Clear button
         for var in (self._input_var, self._output_var, self._target_lang_other_var):
@@ -228,6 +236,16 @@ class GenSubtitlesApp(ctk.CTk):
             self._stage_label.configure(text=_STAGE_LABELS[idx])
             self._stage_timer = self.after(2500, self._advance_stage, idx + 1)
 
+    def _tick_elapsed(self) -> None:
+        if self._closing:
+            return
+        elapsed = int(time.monotonic() - self._elapsed_start)
+        h = elapsed // 3600
+        m = (elapsed % 3600) // 60
+        s = elapsed % 60
+        self._elapsed_label.configure(text=f"{h:02d}:{m:02d}:{s:02d}")
+        self._elapsed_timer = self.after(1000, self._tick_elapsed)
+
     # ------------------------------------------------------------------
     # Generate button logic
     # ------------------------------------------------------------------
@@ -267,6 +285,15 @@ class GenSubtitlesApp(ctk.CTk):
         self._progress_bar.grid()
         self._progress_bar.start()
         self._advance_stage(0)
+
+        # Reset and start elapsed timer
+        if self._elapsed_timer is not None:
+            self.after_cancel(self._elapsed_timer)
+            self._elapsed_timer = None
+        self._elapsed_label.configure(text="00:00:00")
+        self._elapsed_start = time.monotonic()
+        self._elapsed_label.grid()
+        self._tick_elapsed()
 
         thread = threading.Thread(
             target=self._run_api_call,
@@ -322,6 +349,17 @@ class GenSubtitlesApp(ctk.CTk):
             self.after_cancel(self._stage_timer)
             self._stage_timer = None
 
+        # Show final elapsed time before cancelling the timer
+        elapsed = int(time.monotonic() - self._elapsed_start)
+        h = elapsed // 3600
+        m = (elapsed % 3600) // 60
+        s = elapsed % 60
+        self._elapsed_label.configure(text=f"{h:02d}:{m:02d}:{s:02d}")
+
+        if self._elapsed_timer is not None:
+            self.after_cancel(self._elapsed_timer)
+            self._elapsed_timer = None
+
         self._progress_bar.stop()
         self._progress_bar.grid_remove()
         self._btn_generate.configure(state="normal")
@@ -361,10 +399,10 @@ class GenSubtitlesApp(ctk.CTk):
             self._btn_open_folder = ctk.CTkButton(
                 self._frame, text="Open Folder", command=_open_folder
             )
-            self._btn_open_folder.grid(row=9, column=0, columnspan=3, pady=(4, 0), sticky="ew")
+            self._btn_open_folder.grid(row=10, column=0, columnspan=3, pady=(4, 0), sticky="ew")
         else:
             self._btn_open_folder.configure(command=_open_folder)
-            self._btn_open_folder.grid()
+            self._btn_open_folder.grid(row=10, column=0, columnspan=3, pady=(4, 0), sticky="ew")
 
     # ------------------------------------------------------------------
     # Server lifecycle
