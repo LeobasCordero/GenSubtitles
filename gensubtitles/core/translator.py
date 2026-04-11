@@ -156,13 +156,17 @@ def translate_file(
     Translate all subtitle text in an existing SRT or SSA file.
 
     Reads input_path with pysubs2 (handles .srt and .ssa/.ass), translates all
-    subtitle events, and writes output preserving the input file format.
+    subtitle events, and by default writes output using the same file format as
+    the input. If output_path is provided, pysubs2 determines the output format
+    from that path's extension.
 
     Args:
         input_path:  Path to the input subtitle file (.srt or .ssa).
         target_lang: Target ISO 639-1 language code.
         source_lang: Source language code. Defaults to 'en' if omitted.
-        output_path: Output path. Defaults to <stem>_translated.<ext>.
+        output_path: Output path. Defaults to <stem>_translated.<ext>; if a
+            different extension is provided, the output is written in the
+            format implied by that extension.
 
     Returns:
         Resolved output Path.

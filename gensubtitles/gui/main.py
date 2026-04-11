@@ -459,9 +459,24 @@ class GenSubtitlesApp(ctk.CTk):
         if non_auto:
             self._tl_option_source.configure(values=non_auto)
             self._tl_source_var.set(non_auto[0])
-            self._tl_option_target.configure(values=non_auto)
-            if len(non_auto) > 1:
-                self._tl_target_var.set(non_auto[1])
+            self._tl_option_source.configure(command=self._on_tl_source_lang_change)
+            self._on_tl_source_lang_change(non_auto[0])
+
+    def _on_tl_source_lang_change(self, selection: str) -> None:
+        """Filter Translate tab target dropdown to valid destinations for selected source."""
+        if not self._language_pairs:
+            return
+        src_code = _label_to_code(selection)
+        targets = [
+            _CODE_TO_LABEL.get(p["to"], p["to"])
+            for p in self._language_pairs if p["from"] == src_code
+        ]
+        targets = sorted(set(targets)) or ["No target"]
+        self._tl_option_target.configure(values=targets)
+        current = self._tl_target_var.get()
+        if current not in targets:
+            self._tl_target_var.set(targets[0])
+
     def _update_clear_state(self) -> None:
         """Enable Clear button if any user-settable input field is non-empty/non-default; disable otherwise."""
         has_content = any(
@@ -518,7 +533,7 @@ class GenSubtitlesApp(ctk.CTk):
         if not output_path:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Missing output", "Please choose an output .srt path.")
+            messagebox.showerror("Missing output", "Please choose an output subtitle path.")
             return
 
         # Capture StringVar values on the main thread (Tkinter is not thread-safe)
@@ -582,16 +597,20 @@ class GenSubtitlesApp(ctk.CTk):
                 )
 
             if resp.status_code == 200:
-                Path(output_path).write_bytes(resp.content)
-                # Convert to SSA if user selected SSA format
+                output_file = Path(output_path)
                 final_path = output_path
+                # Convert to SSA if user selected SSA format
                 if self._output_format_var.get() == "SSA":
                     from gensubtitles.core.srt_writer import convert_srt_to_ssa  # noqa: PLC0415
 
-                    ssa_out = Path(output_path).with_suffix(".ssa")
-                    convert_srt_to_ssa(output_path, ssa_out)
-                    Path(output_path).unlink(missing_ok=True)
+                    temp_srt = output_file.with_suffix(".srt")
+                    ssa_out = output_file.with_suffix(".ssa")
+                    temp_srt.write_bytes(resp.content)
+                    convert_srt_to_ssa(temp_srt, ssa_out)
+                    temp_srt.unlink(missing_ok=True)
                     final_path = str(ssa_out)
+                else:
+                    output_file.write_bytes(resp.content)
                 if not self._closing:
                     self.after(0, self._finish_generate, None, final_path)
             else:

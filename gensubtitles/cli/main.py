@@ -65,6 +65,8 @@ def generate(
         "--format",
         "-f",
         help="Output subtitle format: srt or ssa.",
+        case_sensitive=False,
+        click_type=typer.Choice(["srt", "ssa"], case_sensitive=False),
     ),
 ) -> None:
     """Generate subtitles from a video file."""
@@ -92,7 +94,7 @@ def generate(
 
         result = run_pipeline(
             video_path=video_path,
-            output_path=effective_output,
+            output_path=effective_output if output_format != "ssa" else effective_output.with_suffix(".srt"),
             model_size=model,
             target_lang=target_lang,
             source_lang=source_lang,
@@ -102,9 +104,10 @@ def generate(
         if output_format == "ssa":
             from gensubtitles.core.srt_writer import convert_srt_to_ssa  # noqa: PLC0415
 
+            temp_srt = effective_output.with_suffix(".srt")
             ssa_path = effective_output.with_suffix(".ssa")
-            convert_srt_to_ssa(effective_output, ssa_path)
-            effective_output.unlink(missing_ok=True)
+            convert_srt_to_ssa(temp_srt, ssa_path)
+            temp_srt.unlink(missing_ok=True)
             effective_output = ssa_path
         typer.echo(
             f"Done: {effective_output} "

@@ -125,10 +125,14 @@ def convert_srt_to_ssa(srt_path: str | Path, ssa_path: str | Path) -> None:
 
     Args:
         srt_path: Source SRT file path.
-        ssa_path: Destination SSA file path.
+        ssa_path: Destination SSA file path. Parent dirs are created
+                  automatically if they do not exist.
     """
     import pysubs2
 
+    srt_path = Path(srt_path)
+    ssa_path = Path(ssa_path)
+    ssa_path.parent.mkdir(parents=True, exist_ok=True)
     subs = pysubs2.SSAFile.load(str(srt_path))
     subs.save(str(ssa_path))
 
@@ -139,9 +143,12 @@ def convert_ssa_to_srt(ssa_path: str | Path, srt_path: str | Path) -> None:
 
     Args:
         ssa_path: Source SSA file path.
-        srt_path: Destination SRT file path.
+        srt_path: Destination SRT file path. Parent dirs are created
+                  automatically if they do not exist.
     """
     import pysubs2
 
+    srt_path = Path(srt_path)
+    srt_path.parent.mkdir(parents=True, exist_ok=True)
     subs = pysubs2.SSAFile.load(str(ssa_path))
     subs.save(str(srt_path), format_="srt")
