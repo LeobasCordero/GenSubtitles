@@ -9,7 +9,13 @@ from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
-from gensubtitles.core.srt_writer import segments_to_srt, write_srt
+from gensubtitles.core.srt_writer import (
+    convert_srt_to_ssa,
+    convert_ssa_to_srt,
+    segments_to_srt,
+    write_srt,
+    write_ssa,
+)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -146,3 +152,90 @@ def test_empty_segments_no_exception(tmp_path):
     out = tmp_path / "empty.srt"
     write_srt([], out)
     assert out.exists()
+
+
+# ── SSA write/convert tests ──────────────────────────────────────────────────
+
+
+def test_write_ssa_creates_file(tmp_path):
+    """write_ssa() creates a .ssa file at the given path."""
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    out = tmp_path / "test.ssa"
+    write_ssa([seg], out)
+    assert out.exists()
+
+
+def test_write_ssa_creates_nested_directory(tmp_path):
+    """write_ssa() creates parent directories automatically."""
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    out = tmp_path / "sub" / "dir" / "out.ssa"
+    write_ssa([seg], out)
+    assert out.exists()
+
+
+def test_convert_srt_to_ssa_round_trip(tmp_path):
+    """convert_srt_to_ssa() produces a valid .ssa file from an SRT file."""
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    srt_file = tmp_path / "input.srt"
+    write_srt([seg], srt_file)
+
+    ssa_file = tmp_path / "output.ssa"
+    convert_srt_to_ssa(srt_file, ssa_file)
+    assert ssa_file.exists()
+    content = ssa_file.read_text(encoding="utf-8")
+    assert "Hello world" in content
+
+
+def test_convert_ssa_to_srt_round_trip(tmp_path):
+    """convert_ssa_to_srt() produces a valid .srt file from an SSA file."""
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    ssa_file = tmp_path / "input.ssa"
+    write_ssa([seg], ssa_file)
+
+    srt_file = tmp_path / "output.srt"
+    convert_ssa_to_srt(ssa_file, srt_file)
+    assert srt_file.exists()
+    content = srt_file.read_text(encoding="utf-8")
+    parsed = list(srt.parse(content))
+    assert len(parsed) == 1
+    assert "Hello world" in parsed[0].content
+
+
+def test_convert_srt_to_ssa_creates_parent_dirs(tmp_path):
+    """convert_srt_to_ssa() creates destination parent dirs if they don't exist."""
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    srt_file = tmp_path / "input.srt"
+    write_srt([seg], srt_file)
+
+    ssa_file = tmp_path / "new" / "dir" / "output.ssa"
+    convert_srt_to_ssa(srt_file, ssa_file)
+    assert ssa_file.exists()
+
+
+def test_convert_ssa_to_srt_creates_parent_dirs(tmp_path):
+    """convert_ssa_to_srt() creates destination parent dirs if they don't exist."""
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    ssa_file = tmp_path / "input.ssa"
+    write_ssa([seg], ssa_file)
+
+    srt_file = tmp_path / "new" / "dir" / "output.srt"
+    convert_ssa_to_srt(ssa_file, srt_file)
+    assert srt_file.exists()
+
+
+def test_srt_to_ssa_to_srt_preserves_text(tmp_path):
+    """Full round-trip SRT → SSA → SRT preserves subtitle text."""
+    seg = _make_segment(1.5, 4.0, "Round trip test")
+    srt_file = tmp_path / "original.srt"
+    write_srt([seg], srt_file)
+
+    ssa_file = tmp_path / "intermediate.ssa"
+    convert_srt_to_ssa(srt_file, ssa_file)
+
+    srt_back = tmp_path / "restored.srt"
+    convert_ssa_to_srt(ssa_file, srt_back)
+
+    content = srt_back.read_text(encoding="utf-8")
+    parsed = list(srt.parse(content))
+    assert len(parsed) == 1
+    assert "Round trip test" in parsed[0].content
