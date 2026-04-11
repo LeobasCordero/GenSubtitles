@@ -194,9 +194,10 @@ class GenSubtitlesApp(ctk.CTk):
             )
         else:
             self._entry_target_lang_other.grid_remove()
+        self._update_clear_state()
 
     def _update_clear_state(self) -> None:
-        """Enable Clear button if any user-settable input field is non-empty; disable otherwise."""
+        """Enable Clear button if any user-settable input field is non-empty/non-default; disable otherwise."""
         has_content = any(
             v.get()
             for v in (
@@ -204,7 +205,7 @@ class GenSubtitlesApp(ctk.CTk):
                 self._output_var,
                 self._target_lang_other_var,
             )
-        )
+        ) or self._target_lang_var.get() != "Spanish"
         self._btn_clear.configure(state="normal" if has_content else "disabled")
 
     def _on_clear(self) -> None:
