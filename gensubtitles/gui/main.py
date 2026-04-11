@@ -25,6 +25,8 @@ ctk.set_default_color_theme("blue")
 
 _BASE_URL = "http://127.0.0.1:8000"
 
+_LANG_MAP: dict[str, str] = {"Spanish": "es", "English": "en"}
+
 _STAGE_LABELS = [
     "[1/4] Extracting audio…",
     "[2/4] Transcribing…",
@@ -46,7 +48,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._input_var = ctk.StringVar()
         self._output_var = ctk.StringVar()
         self._source_lang_var = ctk.StringVar()
-        self._target_lang_var = ctk.StringVar()
+        self._target_lang_var = ctk.StringVar(value="Spanish")
+        self._target_lang_other_var = ctk.StringVar()
 
         # Server references
         self._server = None
@@ -69,7 +72,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._frame.columnconfigure(1, weight=1)
 
         # Row 0 — Input video
-        ctk.CTkLabel(self._frame, text="Input video:").grid(
+        ctk.CTkLabel(self._frame, text="Input video *:").grid(
             row=0, column=0, sticky="w", padx=(0, 8), pady=4
         )
         self._entry_input = ctk.CTkEntry(self._frame, textvariable=self._input_var)
@@ -80,7 +83,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_browse_input.grid(row=0, column=2, padx=(8, 0), pady=4)
 
         # Row 1 — Output SRT
-        ctk.CTkLabel(self._frame, text="Output SRT:").grid(
+        ctk.CTkLabel(self._frame, text="Output SRT *:").grid(
             row=1, column=0, sticky="w", padx=(0, 8), pady=4
         )
         self._entry_output = ctk.CTkEntry(self._frame, textvariable=self._output_var)
@@ -90,54 +93,65 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._btn_browse_output.grid(row=1, column=2, padx=(8, 0), pady=4)
 
-        # Row 2 — Source language
-        ctk.CTkLabel(self._frame, text="Source language:").grid(
-            row=2, column=0, sticky="w", padx=(0, 8), pady=4
-        )
+        # Row 2 — Source language (hidden — Whisper auto-detects)
+        self._lbl_source_lang = ctk.CTkLabel(self._frame, text="Source language:")
+        self._lbl_source_lang.grid(row=2, column=0, sticky="w", padx=(0, 8), pady=4)
+        self._lbl_source_lang.grid_remove()
         self._entry_source_lang = ctk.CTkEntry(
             self._frame,
             textvariable=self._source_lang_var,
             placeholder_text="auto-detect",
         )
         self._entry_source_lang.grid(row=2, column=1, columnspan=2, sticky="ew", pady=4)
+        self._entry_source_lang.grid_remove()
 
-        # Row 3 — Target language
+        # Row 3 — Target language dropdown
         ctk.CTkLabel(self._frame, text="Target language:").grid(
             row=3, column=0, sticky="w", padx=(0, 8), pady=4
         )
-        self._entry_target_lang = ctk.CTkEntry(
+        self._option_target_lang = ctk.CTkOptionMenu(
             self._frame,
-            textvariable=self._target_lang_var,
-            placeholder_text="(none — no translation)",
+            values=["Spanish", "English", "Other"],
+            variable=self._target_lang_var,
+            command=self._on_target_lang_change,
         )
-        self._entry_target_lang.grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
+        self._option_target_lang.grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
 
-        # Row 4 — Generate button
+        # Row 4 — Other free-text entry (hidden at rest)
+        self._entry_target_lang_other = ctk.CTkEntry(
+            self._frame,
+            textvariable=self._target_lang_other_var,
+            placeholder_text="language code, e.g. fr",
+        )
+        self._entry_target_lang_other.grid(row=4, column=1, columnspan=2, sticky="ew", pady=4)
+        self._entry_target_lang_other.grid_remove()
+
+        # Row 5 — Generate button
         self._btn_generate = ctk.CTkButton(
             self._frame, text="Generate Subtitles", command=self._on_generate
         )
-        self._btn_generate.grid(row=4, column=0, columnspan=3, pady=(12, 4), sticky="ew")
+        self._btn_generate.grid(row=5, column=0, columnspan=3, pady=(12, 4), sticky="ew")
 
-        # Row 5 — Clear button
+        # Row 6 — Clear button
         self._btn_clear = ctk.CTkButton(
             self._frame,
             text="Clear",
             command=self._on_clear,
             state="disabled",
         )
-        self._btn_clear.grid(row=5, column=0, columnspan=3, pady=(0, 4), sticky="ew")
+        self._btn_clear.grid(row=6, column=0, columnspan=3, pady=(0, 4), sticky="ew")
 
-        # Row 6 — Progress bar (hidden initially)
+        # Row 7 — Progress bar (hidden initially)
         self._progress_bar = ctk.CTkProgressBar(self._frame, mode="indeterminate")
-        self._progress_bar.grid(row=6, column=0, columnspan=3, pady=4, sticky="ew")
+        self._progress_bar.grid(row=7, column=0, columnspan=3, pady=4, sticky="ew")
         self._progress_bar.grid_remove()
 
-        # Row 7 — Stage label
+        # Row 8 — Stage label
         self._stage_label = ctk.CTkLabel(self._frame, text="")
-        self._stage_label.grid(row=7, column=0, columnspan=3, pady=4)
+        self._stage_label.grid(row=8, column=0, columnspan=3, pady=4)
 
         # Reactive enable/disable for Clear button
-        for var in (self._input_var, self._output_var, self._source_lang_var, self._target_lang_var):
+        for var in (self._input_var, self._output_var, self._target_lang_other_var):
             var.trace_add("write", lambda *_: self._update_clear_state())
 
     # ------------------------------------------------------------------
@@ -172,25 +186,35 @@ class GenSubtitlesApp(ctk.CTk):
     # Clear button logic
     # ------------------------------------------------------------------
 
+    def _on_target_lang_change(self, selection: str) -> None:
+        """Show/hide the 'Other' free-text entry based on dropdown selection."""
+        if selection == "Other":
+            self._entry_target_lang_other.grid(
+                row=4, column=1, columnspan=2, sticky="ew", pady=4
+            )
+        else:
+            self._entry_target_lang_other.grid_remove()
+
     def _update_clear_state(self) -> None:
-        """Enable Clear button if any input field is non-empty; disable otherwise."""
+        """Enable Clear button if any user-settable input field is non-empty; disable otherwise."""
         has_content = any(
             v.get()
             for v in (
                 self._input_var,
                 self._output_var,
-                self._source_lang_var,
-                self._target_lang_var,
+                self._target_lang_other_var,
             )
         )
         self._btn_clear.configure(state="normal" if has_content else "disabled")
 
     def _on_clear(self) -> None:
-        """Reset all 4 input fields to empty string."""
+        """Reset input fields; return dropdown to default and hide Other entry."""
         self._input_var.set("")
         self._output_var.set("")
         self._source_lang_var.set("")
-        self._target_lang_var.set("")
+        self._target_lang_var.set("Spanish")
+        self._target_lang_other_var.set("")
+        self._entry_target_lang_other.grid_remove()
 
     # ------------------------------------------------------------------
     # Stage label cycling
@@ -224,14 +248,19 @@ class GenSubtitlesApp(ctk.CTk):
 
         # Capture StringVar values on the main thread (Tkinter is not thread-safe)
         src_lang = self._source_lang_var.get().strip() or None
-        tgt_lang = self._target_lang_var.get().strip() or None
+        selected = self._target_lang_var.get()
+        if selected in _LANG_MAP:
+            tgt_lang: str | None = _LANG_MAP[selected]
+        else:  # "Other"
+            tgt_lang = self._target_lang_other_var.get().strip() or None
 
         self._btn_generate.configure(state="disabled")
         self._btn_clear.configure(state="disabled")
         self._entry_input.configure(state="disabled")
         self._entry_output.configure(state="disabled")
         self._entry_source_lang.configure(state="disabled")
-        self._entry_target_lang.configure(state="disabled")
+        self._option_target_lang.configure(state="disabled")
+        self._entry_target_lang_other.configure(state="disabled")
         self._btn_browse_input.configure(state="disabled")
         self._btn_browse_output.configure(state="disabled")
         self._progress_bar.grid()
@@ -298,7 +327,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._entry_input.configure(state="normal")
         self._entry_output.configure(state="normal")
         self._entry_source_lang.configure(state="normal")
-        self._entry_target_lang.configure(state="normal")
+        self._option_target_lang.configure(state="normal")
+        self._entry_target_lang_other.configure(state="normal")
         self._btn_browse_input.configure(state="normal")
         self._btn_browse_output.configure(state="normal")
         self._update_clear_state()
@@ -330,7 +360,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._btn_open_folder = ctk.CTkButton(
                 self._frame, text="Open Folder", command=_open_folder
             )
-            self._btn_open_folder.grid(row=8, column=0, columnspan=3, pady=(4, 0), sticky="ew")
+            self._btn_open_folder.grid(row=9, column=0, columnspan=3, pady=(4, 0), sticky="ew")
         else:
             self._btn_open_folder.configure(command=_open_folder)
             self._btn_open_folder.grid()
