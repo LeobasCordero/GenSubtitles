@@ -6,6 +6,7 @@ Offline translation engine using Argos Translate.
 Provides:
     TranslatedSegment          — namedtuple with (start, end, text) for downstream SRT generation
     translate_segments()       — translate a segment list from source to target language
+    translate_file()           — translate an existing SRT/SSA subtitle file to another language
     ensure_pair_installed()    — install Argos language package on demand
     is_pair_available()        — check if a language pair is installed or remotely available
     list_installed_pairs()     — list all installed language pairs as {"from", "to"} dicts
@@ -143,3 +144,76 @@ def translate_segments(
         )
         result.append(TranslatedSegment(start=seg.start, end=seg.end, text=translated_text))
     return result
+
+
+def translate_file(
+    input_path: "str | Path",
+    target_lang: str,
+    source_lang: "str | None" = None,
+    output_path: "str | Path | None" = None,
+) -> "Path":
+    """
+    Translate all subtitle text in an existing SRT or SSA file.
+
+    Reads input_path with pysubs2 (handles .srt and .ssa/.ass), translates all
+    subtitle events, and writes output preserving the input file format.
+
+    Args:
+        input_path:  Path to the input subtitle file (.srt or .ssa).
+        target_lang: Target ISO 639-1 language code.
+        source_lang: Source language code. Defaults to 'en' if omitted.
+        output_path: Output path. Defaults to <stem>_translated.<ext>.
+
+    Returns:
+        Resolved output Path.
+
+    Raises:
+        FileNotFoundError: If input_path does not exist.
+        ValueError: If source_lang equals target_lang.
+    """
+    from pathlib import Path as _Path
+    from types import SimpleNamespace
+
+    import pysubs2
+
+    input_path = _Path(input_path)
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input file not found: {input_path}")
+
+    if source_lang is None:
+        source_lang = "en"
+        logger.warning(
+            "translate_file: source_lang not specified — defaulting to 'en'"
+        )
+
+    if source_lang == target_lang:
+        raise ValueError(
+            f"Source and target language are the same: {source_lang}"
+        )
+
+    ensure_pair_installed(source_lang, target_lang)
+
+    subs = pysubs2.SSAFile.load(str(input_path))
+
+    segments_in = [
+        SimpleNamespace(start=e.start / 1000.0, end=e.end / 1000.0, text=e.plaintext)
+        for e in subs
+        if e.text.strip()
+    ]
+
+    translated = translate_segments(segments_in, source_lang, target_lang)
+
+    ti = 0
+    for e in subs:
+        if e.text.strip():
+            e.text = translated[ti].text
+            ti += 1
+
+    out = (
+        _Path(output_path)
+        if output_path
+        else input_path.with_stem(input_path.stem + "_translated")
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    subs.save(str(out))
+    return out

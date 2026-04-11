@@ -60,6 +60,12 @@ def generate(
         "--device",
         help="Compute device: auto / cpu / cuda.",
     ),
+    output_format: str = typer.Option(
+        "srt",
+        "--format",
+        "-f",
+        help="Output subtitle format: srt or ssa.",
+    ),
 ) -> None:
     """Generate subtitles from a video file."""
     # If a subcommand (e.g. 'serve') is being invoked, skip generate logic entirely.
@@ -93,8 +99,15 @@ def generate(
             device=device,
             progress_callback=_progress,
         )
+        if output_format == "ssa":
+            from gensubtitles.core.srt_writer import convert_srt_to_ssa  # noqa: PLC0415
+
+            ssa_path = effective_output.with_suffix(".ssa")
+            convert_srt_to_ssa(effective_output, ssa_path)
+            effective_output.unlink(missing_ok=True)
+            effective_output = ssa_path
         typer.echo(
-            f"Done: {result.srt_path} "
+            f"Done: {effective_output} "
             f"({result.segment_count} segments, lang={result.detected_language})"
         )
         raise typer.Exit(code=0)
@@ -103,6 +116,71 @@ def generate(
     except FileNotFoundError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1)
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command("translate")
+def translate_subtitles(
+    input_file: Path = typer.Argument(..., help="Input subtitle file (.srt or .ssa)."),
+    target_lang: str = typer.Option(
+        ..., "--target-lang", "-t", help="Target ISO 639-1 language code."
+    ),
+    source_lang: Optional[str] = typer.Option(
+        None, "--source-lang", "-s", help="Source language code. Defaults to 'en' if omitted."
+    ),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Output path. Defaults to <input>_translated.<ext>."
+    ),
+) -> None:
+    """Translate an existing subtitle file (.srt or .ssa) to another language."""
+    if not input_file.is_file():
+        typer.echo(f"Error: Input file not found: {input_file}", err=True)
+        raise typer.Exit(code=1)
+    try:
+        from gensubtitles.core.translator import translate_file  # noqa: PLC0415
+
+        result_path = translate_file(input_file, target_lang, source_lang, output)
+        typer.echo(f"Done: {result_path}")
+        raise typer.Exit(code=0)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command("convert")
+def convert_subtitles(
+    input_file: Path = typer.Argument(..., help="Input subtitle file (.srt or .ssa)."),
+    output_file: Path = typer.Argument(
+        ..., help="Output subtitle file (.srt or .ssa). Format inferred from extension."
+    ),
+) -> None:
+    """Convert a subtitle file between formats (.srt \u2194 .ssa)."""
+    if not input_file.is_file():
+        typer.echo(f"Error: Input file not found: {input_file}", err=True)
+        raise typer.Exit(code=1)
+    try:
+        from gensubtitles.core.srt_writer import convert_ssa_to_srt, convert_srt_to_ssa  # noqa: PLC0415
+
+        src_ext = input_file.suffix.lower()
+        dst_ext = output_file.suffix.lower()
+        if src_ext == ".srt" and dst_ext in (".ssa", ".ass"):
+            convert_srt_to_ssa(input_file, output_file)
+        elif src_ext in (".ssa", ".ass") and dst_ext == ".srt":
+            convert_ssa_to_srt(input_file, output_file)
+        else:
+            typer.echo(
+                f"Error: Unsupported conversion: {src_ext} \u2192 {dst_ext}. Supported: .srt\u2194.ssa",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        typer.echo(f"Done: {output_file}")
+        raise typer.Exit(code=0)
+    except typer.Exit:
+        raise
     except Exception as exc:  # noqa: BLE001
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1)
