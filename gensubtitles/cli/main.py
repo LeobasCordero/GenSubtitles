@@ -92,9 +92,14 @@ def generate(
         # Lazy import — keeps CLI importable even without FFmpeg/GPU installed
         from gensubtitles.core.pipeline import run_pipeline  # noqa: PLC0415
 
+        # When SSA output is requested, pipeline writes to a temp .srt path
+        # so we can convert it afterward without file extension conflicts.
+        pipeline_output = (
+            effective_output.with_suffix(".srt") if output_format == "ssa" else effective_output
+        )
         result = run_pipeline(
             video_path=video_path,
-            output_path=effective_output if output_format != "ssa" else effective_output.with_suffix(".srt"),
+            output_path=pipeline_output,
             model_size=model,
             target_lang=target_lang,
             source_lang=source_lang,
