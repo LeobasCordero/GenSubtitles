@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-last_updated: "2026-04-10T23:12:50.805Z"
+status: completed
+last_updated: "2026-04-11T03:29:23.825Z"
 progress:
-  total_phases: 18
-  completed_phases: 13
-  total_plans: 27
-  completed_plans: 27
+  total_phases: 16
+  completed_phases: 15
+  total_plans: 30
+  completed_plans: 30
 ---
 
 # GenSubtitles — Project State
@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1.0
-- **Active Phase:** Phase 999.1 — GUI Interface (executing)
-- **Last action:** Phase 10 complete — all v1 requirements shipped; started GUI backlog phase 999.1 (2026-04-10)
+- **Active Phase:** None — all backlog phases complete
+- **Last action:** Phase 999.9 complete — GUI form polish (mandatory markers, hidden source-lang row, target-lang dropdown) human-verified on feature/999.9-gui-form-polish (2026-04-10)
 
 ## Milestone Progress
 
@@ -35,7 +35,8 @@ progress:
 | 8 | FastAPI REST API Core | ✅ Complete |
 | 9 | FastAPI Extensions & Docs | ✅ Complete |
 | 10 | Documentation & End-to-End Validation | ✅ Complete |
-| 999.1 | GUI Interface | ⏳ Executing |
+| 999.1 | GUI Interface | ✅ Complete |
+| 999.9 | GUI Form Polish | ✅ Complete (1/1 plans) |
 
 ## Key Decisions Log
 
