@@ -75,10 +75,12 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_elapsed_start: float = 0.0
         self._tl_elapsed_timer = None
         self._closing = False
+        self._current_settings = None
 
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self._start_server()
+        self._apply_startup_settings()
 
     # ------------------------------------------------------------------
     # UI construction
@@ -188,6 +190,81 @@ class GenSubtitlesApp(ctk.CTk):
 
         # Build Translate tab
         self._build_translate_tab()
+        # Build Settings panel and menu bar
+        self._build_settings_panel()
+        self._build_menu_bar()
+
+    def _build_menu_bar(self) -> None:
+        import tkinter as tk  # noqa: PLC0415
+
+        menubar = tk.Menu(self)
+        self.configure(menu=menubar)
+
+        # Settings menu
+        settings_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Settings", menu=settings_menu)
+        settings_menu.add_command(label="Preferences\u2026", command=self._show_settings)
+
+        # Help menu (stubs \u2014 Plan 06 will implement the dialog bodies)
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="Tutorial", command=self._show_tutorial)
+        help_menu.add_command(label="Available Languages", command=self._show_language_pairs)
+        help_menu.add_separator()
+        help_menu.add_command(label="About GenSubtitles", command=self._show_about)
+
+    def _build_settings_panel(self) -> None:
+        self._settings_frame = ctk.CTkFrame(self)
+        # Not packed yet \u2014 shown via _show_settings
+
+        sf = self._settings_frame
+        sf.columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(sf, text="Settings", font=ctk.CTkFont(size=16, weight="bold")).grid(
+            row=0, column=0, columnspan=2, pady=(12, 8), sticky="w", padx=12
+        )
+
+        # Appearance Mode
+        ctk.CTkLabel(sf, text="Appearance Mode:").grid(
+            row=1, column=0, sticky="w", padx=(12, 8), pady=6
+        )
+        self._settings_appearance_var = ctk.StringVar(value="System")
+        ctk.CTkOptionMenu(
+            sf, values=["System", "Light", "Dark"],
+            variable=self._settings_appearance_var,
+        ).grid(row=1, column=1, sticky="ew", padx=(0, 12), pady=6)
+
+        # UI Language
+        ctk.CTkLabel(sf, text="UI Language:").grid(
+            row=2, column=0, sticky="w", padx=(12, 8), pady=6
+        )
+        self._settings_lang_var = ctk.StringVar(value="English")
+        ctk.CTkOptionMenu(
+            sf, values=["English", "Spanish"],
+            variable=self._settings_lang_var,
+        ).grid(row=2, column=1, sticky="ew", padx=(0, 12), pady=6)
+
+        # Default Output Directory
+        ctk.CTkLabel(sf, text="Default output dir:").grid(
+            row=3, column=0, sticky="w", padx=(12, 8), pady=6
+        )
+        self._settings_outdir_var = ctk.StringVar()
+        ctk.CTkEntry(
+            sf, textvariable=self._settings_outdir_var,
+            placeholder_text="(same directory as input)",
+        ).grid(row=3, column=1, sticky="ew", padx=(0, 12), pady=6)
+
+        # Save / Back buttons
+        btn_frame = ctk.CTkFrame(sf, fg_color="transparent")
+        btn_frame.grid(row=4, column=0, columnspan=2, pady=(16, 12), padx=12, sticky="ew")
+        btn_frame.columnconfigure(0, weight=1)
+        btn_frame.columnconfigure(1, weight=1)
+        ctk.CTkButton(btn_frame, text="Save", command=self._save_settings).grid(
+            row=0, column=0, padx=(0, 4), sticky="ew"
+        )
+        ctk.CTkButton(
+            btn_frame, text="Back", fg_color="gray", command=self._hide_settings
+        ).grid(row=0, column=1, padx=(4, 0), sticky="ew")
 
     def _build_translate_tab(self) -> None:
         tf = self._tabview.tab("Translate Subtitles")
@@ -589,6 +666,77 @@ class GenSubtitlesApp(ctk.CTk):
         else:
             self._btn_open_folder.configure(command=_open_folder)
             self._btn_open_folder.grid(row=10, column=0, columnspan=3, pady=(4, 0), sticky="ew")
+
+    # ------------------------------------------------------------------
+    # Settings
+    # ------------------------------------------------------------------
+
+    def _apply_startup_settings(self) -> None:
+        """Load persisted settings and apply appearance mode on startup."""
+        try:
+            from gensubtitles.core.settings import AppSettings, load_settings  # noqa: PLC0415
+
+            self._current_settings = load_settings()
+            ctk.set_appearance_mode(self._current_settings.appearance_mode)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not load settings: %s", exc)
+            from gensubtitles.core.settings import AppSettings  # noqa: PLC0415
+
+            self._current_settings = AppSettings()
+
+    def _show_settings(self) -> None:
+        """Show settings panel, hide main tabview. Populate from current settings."""
+        if self._current_settings:
+            self._settings_appearance_var.set(self._current_settings.appearance_mode)
+            lang_label = "Spanish" if self._current_settings.ui_language == "es" else "English"
+            self._settings_lang_var.set(lang_label)
+            self._settings_outdir_var.set(self._current_settings.default_output_dir)
+        self._tabview.pack_forget()
+        self._settings_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+    def _hide_settings(self) -> None:
+        """Hide settings panel, restore tabview."""
+        self._settings_frame.pack_forget()
+        self._tabview.pack(fill="both", expand=True, padx=10, pady=10)
+
+    def _save_settings(self) -> None:
+        """Persist settings and apply immediately."""
+        try:
+            from gensubtitles.core.settings import AppSettings, save_settings  # noqa: PLC0415
+
+            lang_code = "es" if self._settings_lang_var.get() == "Spanish" else "en"
+            new_settings = AppSettings(
+                appearance_mode=self._settings_appearance_var.get(),
+                ui_language=lang_code,
+                default_output_dir=self._settings_outdir_var.get().strip(),
+                default_source_lang=(
+                    self._current_settings.default_source_lang
+                    if self._current_settings
+                    else ""
+                ),
+            )
+            save_settings(new_settings)
+            self._current_settings = new_settings
+            ctk.set_appearance_mode(new_settings.appearance_mode)
+        except Exception as exc:  # noqa: BLE001
+            from tkinter import messagebox  # noqa: PLC0415
+
+            messagebox.showerror("Settings error", f"Could not save settings: {exc}")
+        finally:
+            self._hide_settings()
+
+    # ------------------------------------------------------------------
+    # Help stubs (implemented in Plan 06)
+    # ------------------------------------------------------------------
+
+    def _show_tutorial(self) -> None:
+        pass  # Plan 06
+
+    def _show_language_pairs(self) -> None:
+        pass  # Plan 06
+
+    def _show_about(self) -> None:
+        pass  # Plan 06
 
     # ------------------------------------------------------------------
     # Server lifecycle
