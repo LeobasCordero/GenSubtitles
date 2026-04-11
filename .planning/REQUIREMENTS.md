@@ -89,12 +89,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUD-01 to AUD-04 | Phase 2 | Complete |
-| TRN-01 to TRN-06 | Phase 3 | Complete |
-| TRANS-01 to TRANS-05 | Phase 4 | Complete |
-| SRT-01 to SRT-04 | Phase 5 | Complete |
-| CLI-01 to CLI-04 | Phase 7 | Complete |
-| API-01 to API-04 | Phase 8 | Complete |
+| AUD-01 to AUD-04 | Phase 2 (verification: Phase 11) | Complete — VERIFICATION.md pending |
+| TRN-01 to TRN-06 | Phase 3 (verification: Phase 11) | Complete — VERIFICATION.md pending |
+| TRANS-01 to TRANS-05 | Phase 4 (verification: Phase 11) | Complete — VERIFICATION.md pending |
+| SRT-01 to SRT-04 | Phase 5 (verification: Phase 11) | Complete — VERIFICATION.md pending |
+| CLI-01 to CLI-04 | Phase 7 (verification: Phase 12) | Complete — VERIFICATION.md pending |
+| API-01 to API-04 | Phase 8 (integration: Phase 12) | Complete — run_pipeline wiring pending |
 | API-05 to API-07 | Phase 9 | Complete |
 | INF-01 to INF-04 | Phase 1 | Complete |
 
@@ -103,7 +103,8 @@
 - Mapped to phases: 31
 - Unmapped: 0 ✓
 - All requirements checked off: 31/31 ✓
+- Gap closure phases added: 11 (verification), 12 (verification + refactor), 13 (Nyquist compliance)
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-10 — v1.0 milestone complete — all 31 requirements shipped*
+*Last updated: 2026-04-11 — gap closure phases 11–13 added via /gsd-plan-milestone-gaps*

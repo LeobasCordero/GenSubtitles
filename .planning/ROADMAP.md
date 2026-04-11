@@ -22,6 +22,9 @@
 - [x] **Phase 9: FastAPI Extensions & Docs** — Languages endpoint, Uvicorn serve, OpenAPI docs (completed 2026-04-07)
 - [x] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test
  (completed 2026-04-10)
+- [ ] **Phase 11: Retroactive Verification — Core Modules** — Formal VERIFICATION.md for phases 2–5 (Audio, Transcription, Translation, SRT)
+- [ ] **Phase 12: Retroactive Verification + Pipeline Refactor** — Formal VERIFICATION.md for phases 6–7 + wire API router through run_pipeline()
+- [ ] **Phase 13: Nyquist Compliance — All Phases** — Create/complete VALIDATION.md for all 10 phases
 
 ---
 
@@ -288,6 +291,9 @@ Plans:
 | 8. FastAPI REST API Core | 3/3 | Complete | 2026-04-07 |
 | 9. FastAPI Extensions & Docs | 2/2 | Complete | 2026-04-07 |
 | 10. Documentation & End-to-End Validation | 3/3 | Complete | 2026-04-10 |
+| 11. Retroactive Verification — Core Modules | 0/0 | Pending | — |
+| 12. Retroactive Verification + Pipeline Refactor | 0/0 | Pending | — |
+| 13. Nyquist Compliance — All Phases | 0/0 | Pending | — |
 
 ---
 
@@ -298,33 +304,33 @@ Plans:
 | INF-01 | Phase 1 | Complete |
 | INF-02 | Phase 1 | Complete |
 | INF-04 | Phase 1 | Complete |
-| AUD-01 | Phase 2 | Complete |
-| AUD-02 | Phase 2 | Complete |
-| AUD-03 | Phase 2 | Complete |
-| AUD-04 | Phase 2 | Complete |
-| TRN-01 | Phase 3 | Complete |
-| TRN-02 | Phase 3 | Complete |
-| TRN-03 | Phase 3 | Complete |
-| TRN-04 | Phase 3 | Complete |
-| TRN-05 | Phase 3 | Complete |
-| TRN-06 | Phase 3 | Complete |
-| TRANS-01 | Phase 4 | Complete |
-| TRANS-02 | Phase 4 | Complete |
-| TRANS-03 | Phase 4 | Complete |
-| TRANS-04 | Phase 4 | Complete |
-| TRANS-05 | Phase 4 | Complete |
-| SRT-01 | Phase 5 | Complete |
-| SRT-02 | Phase 5 | Complete |
-| SRT-03 | Phase 5 | Complete |
-| SRT-04 | Phase 5 | Complete |
-| CLI-01 | Phase 7 | Complete |
-| CLI-02 | Phase 7 | Complete |
-| CLI-03 | Phase 7 | Complete |
-| CLI-04 | Phase 7 | Complete |
-| API-01 | Phase 8 | Complete |
-| API-02 | Phase 8 | Complete |
-| API-03 | Phase 8 | Complete |
-| API-04 | Phase 8 | Complete |
+| AUD-01 | Phase 2 | Complete (verification: Phase 11) |
+| AUD-02 | Phase 2 | Complete (verification: Phase 11) |
+| AUD-03 | Phase 2 | Complete (verification: Phase 11) |
+| AUD-04 | Phase 2 | Complete (verification: Phase 11) |
+| TRN-01 | Phase 3 | Complete (verification: Phase 11) |
+| TRN-02 | Phase 3 | Complete (verification: Phase 11) |
+| TRN-03 | Phase 3 | Complete (verification: Phase 11) |
+| TRN-04 | Phase 3 | Complete (verification: Phase 11) |
+| TRN-05 | Phase 3 | Complete (verification: Phase 11) |
+| TRN-06 | Phase 3 | Complete (verification: Phase 11) |
+| TRANS-01 | Phase 4 | Complete (verification: Phase 11) |
+| TRANS-02 | Phase 4 | Complete (verification: Phase 11) |
+| TRANS-03 | Phase 4 | Complete (verification: Phase 11) |
+| TRANS-04 | Phase 4 | Complete (verification: Phase 11) |
+| TRANS-05 | Phase 4 | Complete (verification: Phase 11) |
+| SRT-01 | Phase 5 | Complete (verification: Phase 11) |
+| SRT-02 | Phase 5 | Complete (verification: Phase 11) |
+| SRT-03 | Phase 5 | Complete (verification: Phase 11) |
+| SRT-04 | Phase 5 | Complete (verification: Phase 11) |
+| CLI-01 | Phase 7 | Complete (verification: Phase 12) |
+| CLI-02 | Phase 7 | Complete (verification: Phase 12) |
+| CLI-03 | Phase 7 | Complete (verification: Phase 12) |
+| CLI-04 | Phase 7 | Complete (verification: Phase 12) |
+| API-01 | Phase 8 | Complete (integration: Phase 12) |
+| API-02 | Phase 8 | Complete (integration: Phase 12) |
+| API-03 | Phase 8 | Complete (integration: Phase 12) |
+| API-04 | Phase 8 | Complete (integration: Phase 12) |
 | API-05 | Phase 9 | Complete |
 | API-06 | Phase 9 | Complete |
 | API-07 | Phase 9 | Complete |
@@ -333,6 +339,64 @@ Plans:
 **Coverage: 34/31 v1 requirements mapped** *(31 original + 3 split across Phase 8/9 from API-05/06/07) — all requirements covered ✓*
 
 > **Note on pysrt → srt migration:** REQUIREMENTS.md references `srt` library (SRT-01 already corrected from pysrt). PROJECT.md still mentions `pysrt` in the pipeline description and Key Decisions table — recommend updating PROJECT.md to reflect `srt` (v3.5.3) as the chosen library per research finding.
+
+---
+
+### Phase 11: Retroactive Verification — Core Modules
+
+**Goal:** Formally close the verification gate for phases 2–5 by running gsd-verify-work retroactively and producing a VERIFICATION.md for each phase. All code is complete and tests pass — this captures the formal exit record.
+**Requirements:** AUD-01, AUD-02, AUD-03, AUD-04, TRN-01, TRN-02, TRN-03, TRN-04, TRN-05, TRN-06, TRANS-01, TRANS-02, TRANS-03, TRANS-04, TRANS-05, SRT-01, SRT-02, SRT-03, SRT-04
+**Gap Closure:** Closes verification gaps from audit — phases 02, 03, 04, 05 missing VERIFICATION.md
+**Estimated complexity:** Low
+**Depends on:** Phase 10 (milestone audit complete)
+
+**Plans:** 0 plans
+
+### UAT Criteria
+
+- [ ] Given Phase 02 directory, when verification runs, then VERIFICATION.md exists with status:passed and all AUD-01 to AUD-04 listed as verified
+- [ ] Given Phase 03 directory, when verification runs, then VERIFICATION.md exists with status:passed and all TRN-01 to TRN-06 listed as verified
+- [ ] Given Phase 04 directory, when verification runs, then VERIFICATION.md exists with status:passed and all TRANS-01 to TRANS-05 listed as verified
+- [ ] Given Phase 05 directory, when verification runs, then VERIFICATION.md exists with status:passed and all SRT-01 to SRT-04 listed as verified
+
+---
+
+### Phase 12: Retroactive Verification + Pipeline Refactor
+
+**Goal:** Formally verify phases 6–7 and close integration gap #1 from the audit: add an optional `transcriber=` parameter to `run_pipeline()` so the API router can reuse the preloaded model instead of reimplementing pipeline logic inline.
+**Requirements:** CLI-01, CLI-02, CLI-03, CLI-04, API-01, API-02, API-03, API-04
+**Gap Closure:** Closes verification gaps for phases 06 and 07; closes Integration Gap #1 (API router bypasses run_pipeline)
+**Estimated complexity:** Medium
+**Depends on:** Phase 11
+
+**Plans:** 0 plans
+
+### UAT Criteria
+
+- [ ] Given Phase 06 directory, when verification runs, then VERIFICATION.md exists with status:passed
+- [ ] Given Phase 07 directory, when verification runs, then VERIFICATION.md exists with status:passed and all CLI-01 to CLI-04 listed as verified
+- [ ] Given `run_pipeline(..., transcriber=preloaded_instance)`, when called, then the preloaded transcriber is used and no new WhisperModel is instantiated
+- [ ] Given `api/routers/subtitles.py`, when POST /subtitles is called, then `run_pipeline()` is invoked (not manual inline orchestration)
+- [ ] Given both CLI and API paths, when run end-to-end, then both produce identical SRT output for the same input
+
+---
+
+### Phase 13: Nyquist Compliance — All Phases
+
+**Goal:** Create or complete VALIDATION.md for all 10 v1.0 phases, achieving Nyquist wave 0 compliance across the milestone. Phase 05 is already compliant; all others need VALIDATION.md created or upgraded from draft.
+**Requirements:** (Process compliance — no new feature requirements)
+**Gap Closure:** Closes Nyquist tech debt for phases 01, 02 (draft→compliant) and phases 03, 04, 06, 07, 08, 09, 10 (missing→created)
+**Estimated complexity:** Medium
+**Depends on:** Phase 12
+
+**Plans:** 0 plans
+
+### UAT Criteria
+
+- [ ] Given Phase 01 VALIDATION.md, when read, then `nyquist_compliant: true` and `wave_0_complete: true`
+- [ ] Given Phase 02 VALIDATION.md, when read, then `nyquist_compliant: true` and `wave_0_complete: true`
+- [ ] Given phases 03, 04, 06, 07, 08, 09, 10, when each is checked, then a VALIDATION.md exists with `nyquist_compliant: true`
+- [ ] Given all 10 phases, when Nyquist status is tallied, then at least 9/10 phases report `nyquist_compliant: true`
 
 ---
 
