@@ -469,5 +469,28 @@ Plans:
 
 ---
 
+### Phase 999.10: Feature Expansion — Language Support, Formats, Packaging, Settings & Help (BACKLOG)
+
+**Goal:** Expand GenSubtitles with a set of user-facing features grouped into five areas: (1) extended translation language pairs (Japanese↔Spanish, English↔Spanish, Chinese↔Spanish, French↔Spanish, Norwegian↔Spanish, Korean↔Spanish); (2) additional format support (3GP video input, SSA subtitle output, SSA↔SRT conversion); (3) standalone portable packaging (single executable for Windows/macOS/Linux, no IDE or Python install required); (4) translation-only mode (accepts an existing SRT/SSA and translates it without transcription); (5) Settings menu (dark mode toggle, configurable defaults for source language and subtitle output path, app UI language); (6) Help menu with embedded tutorial, language pair listing, and About dialog; (7) Menu bar to host Settings and Help menus.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Captured features:**
+- Soporte de pares de traducción: japonés→español, inglés→español, chino→español, francés→español, noruego→español, coreano→español
+- Barra de menú con acceso a Settings y Ayuda
+- Tutorial de uso integrado en la aplicación
+- Modo de solo traducción de subtítulos (entrada: SRT/SSA existente, sin transcripción)
+- Empaquetado portable standalone (ejecutable sin IDE ni Python — Windows, macOS, Linux)
+- Soporte de formato de video 3GP como entrada
+- Soporte de formato SSA en la salida de subtítulos
+- Conversión bidireccional SSA ↔ SRT
+- Menú Settings: dark mode, valores por defecto (idioma principal, ruta de salida relativa al video), idioma de la interfaz
+- Menú Ayuda: tutorial, listado de idiomas disponibles, Acerca de...
+
+---
+
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-10 — All 10 phases complete (34/34 requirements shipped); UAT verified for all phases; Phase 10 (Documentation & E2E Validation) verified 2026-04-10*
+*Last updated: 2026-04-11 — Gap closure phases 11–13 added; backlog item 999.10 added (feature expansion)*
