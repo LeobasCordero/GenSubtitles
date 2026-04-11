@@ -26,7 +26,19 @@ ctk.set_default_color_theme("blue")
 
 _BASE_URL = "http://127.0.0.1:8000"
 
-_LANG_MAP: dict[str, str] = {"Spanish": "es", "English": "en"}
+_CODE_TO_LABEL: dict[str, str] = {
+    "en": "English", "es": "Spanish", "fr": "French",
+    "de": "German", "it": "Italian", "pt": "Portuguese",
+    "zh": "Chinese", "ja": "Japanese", "ko": "Korean",
+    "ru": "Russian", "ar": "Arabic", "nl": "Dutch",
+    "no": "Norwegian", "sv": "Swedish", "pl": "Polish",
+}
+
+
+def _label_to_code(label: str) -> str:
+    """Return ISO code for a display label, or the label itself as fallback."""
+    rev = {v: k for k, v in _CODE_TO_LABEL.items()}
+    return rev.get(label, label.lower())
 
 _STAGE_LABELS = [
     "[1/4] Extracting audio…",
@@ -49,8 +61,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._input_var = ctk.StringVar()
         self._output_var = ctk.StringVar()
         self._source_lang_var = ctk.StringVar()
-        self._target_lang_var = ctk.StringVar(value="Spanish")
-        self._target_lang_other_var = ctk.StringVar()
+        self._target_lang_var = ctk.StringVar(value="No target")
+        self._output_format_var = ctk.StringVar(value="SRT")
+
+        # Dynamic language pairs loaded from API
+        self._language_pairs: list[dict] = []
 
         # Server references
         self._server = None
@@ -96,38 +111,39 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._btn_browse_output.grid(row=1, column=2, padx=(8, 0), pady=4)
 
-        # Row 2 — Source language (hidden — Whisper auto-detects)
+        # Row 2 — Source language (dynamic CTkOptionMenu, populated after server starts)
         self._lbl_source_lang = ctk.CTkLabel(self._frame, text="Source language:")
         self._lbl_source_lang.grid(row=2, column=0, sticky="w", padx=(0, 8), pady=4)
-        self._lbl_source_lang.grid_remove()
-        self._entry_source_lang = ctk.CTkEntry(
+        self._option_source_lang = ctk.CTkOptionMenu(
             self._frame,
-            textvariable=self._source_lang_var,
-            placeholder_text="auto-detect",
+            values=["Auto-detect"],
+            variable=self._source_lang_var,
+            command=self._on_source_lang_change,
         )
-        self._entry_source_lang.grid(row=2, column=1, columnspan=2, sticky="ew", pady=4)
-        self._entry_source_lang.grid_remove()
+        self._option_source_lang.grid(row=2, column=1, columnspan=2, sticky="ew", pady=4)
 
-        # Row 3 — Target language dropdown
+        # Row 3 — Target language dropdown (populated dynamically)
         ctk.CTkLabel(self._frame, text="Target language:").grid(
             row=3, column=0, sticky="w", padx=(0, 8), pady=4
         )
         self._option_target_lang = ctk.CTkOptionMenu(
             self._frame,
-            values=["Spanish", "English", "Other"],
+            values=["No target"],
             variable=self._target_lang_var,
-            command=self._on_target_lang_change,
         )
         self._option_target_lang.grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
 
-        # Row 4 — Other free-text entry (hidden at rest)
-        self._entry_target_lang_other = ctk.CTkEntry(
-            self._frame,
-            textvariable=self._target_lang_other_var,
-            placeholder_text="language code, e.g. fr",
+        # Row 4 — Output format dropdown
+        ctk.CTkLabel(self._frame, text="Output format:").grid(
+            row=4, column=0, sticky="w", padx=(0, 8), pady=4
         )
-        self._entry_target_lang_other.grid(row=4, column=1, columnspan=2, sticky="ew", pady=4)
-        self._entry_target_lang_other.grid_remove()
+        self._option_output_format = ctk.CTkOptionMenu(
+            self._frame,
+            values=["SRT", "SSA"],
+            variable=self._output_format_var,
+            command=self._on_output_format_change,
+        )
+        self._option_output_format.grid(row=4, column=1, columnspan=2, sticky="ew", pady=4)
 
         # Row 5 — Generate button
         self._btn_generate = ctk.CTkButton(
@@ -159,7 +175,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._stage_label.grid(row=9, column=0, columnspan=3, pady=4)
 
         # Reactive enable/disable for Clear button
-        for var in (self._input_var, self._output_var, self._target_lang_other_var):
+        for var in (self._input_var, self._output_var, self._target_lang_var):
             var.trace_add("write", lambda *_: self._update_clear_state())
 
     # ------------------------------------------------------------------
@@ -178,14 +194,22 @@ class GenSubtitlesApp(ctk.CTk):
         if path:
             self._input_var.set(path)
             if not self._output_var.get():
-                self._output_var.set(str(Path(path).with_suffix(".srt")))
+                ext = ".ssa" if self._output_format_var.get() == "SSA" else ".srt"
+                self._output_var.set(str(Path(path).with_suffix(ext)))
 
     def _browse_output(self) -> None:
         from tkinter import filedialog  # noqa: PLC0415
 
+        fmt = self._output_format_var.get()
+        if fmt == "SSA":
+            ftypes = [("SSA subtitles", "*.ssa"), ("All files", "*.*")]
+            defext = ".ssa"
+        else:
+            ftypes = [("SRT subtitles", "*.srt"), ("All files", "*.*")]
+            defext = ".srt"
         path = filedialog.asksaveasfilename(
-            defaultextension=".srt",
-            filetypes=[("SRT subtitles", "*.srt")],
+            defaultextension=defext,
+            filetypes=ftypes,
         )
         if path:
             self._output_var.set(path)
@@ -194,15 +218,49 @@ class GenSubtitlesApp(ctk.CTk):
     # Clear button logic
     # ------------------------------------------------------------------
 
-    def _on_target_lang_change(self, selection: str) -> None:
-        """Show/hide the 'Other' free-text entry based on dropdown selection."""
-        if selection == "Other":
-            self._entry_target_lang_other.grid(
-                row=4, column=1, columnspan=2, sticky="ew", pady=4
-            )
+    def _on_source_lang_change(self, selection: str) -> None:
+        """Filter target language dropdown to valid destinations for selected source."""
+        if selection == "Auto-detect" or not self._language_pairs:
+            targets = sorted({_CODE_TO_LABEL.get(p["to"], p["to"]) for p in self._language_pairs})
+            targets = targets or ["No target"]
         else:
-            self._entry_target_lang_other.grid_remove()
-        self._update_clear_state()
+            src_code = _label_to_code(selection)
+            targets = [
+                _CODE_TO_LABEL.get(p["to"], p["to"])
+                for p in self._language_pairs if p["from"] == src_code
+            ]
+            targets = sorted(set(targets)) or ["No target"]
+        self._option_target_lang.configure(values=targets)
+        self._target_lang_var.set(targets[0])
+
+    def _on_output_format_change(self, selection: str) -> None:
+        """Update output path extension when format changes."""
+        current = self._output_var.get()
+        if not current:
+            return
+        p = Path(current)
+        new_ext = ".ssa" if selection == "SSA" else ".srt"
+        self._output_var.set(str(p.with_suffix(new_ext)))
+
+    def _populate_language_dropdowns(self) -> None:
+        """Called after server is ready. Queries GET /languages and updates dropdowns."""
+        import requests as req  # noqa: PLC0415
+
+        try:
+            resp = req.get(f"{_BASE_URL}/languages", timeout=5)
+            resp.raise_for_status()
+            self._language_pairs = resp.json().get("pairs", [])
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not load language pairs from API: %s", exc)
+            self._language_pairs = []
+
+        if not self._language_pairs:
+            return  # leave defaults
+        sources = sorted({_CODE_TO_LABEL.get(p["from"], p["from"]) for p in self._language_pairs})
+        sources = ["Auto-detect"] + sources
+        self._option_source_lang.configure(values=sources)
+        self._source_lang_var.set("Auto-detect")
+        self._on_source_lang_change("Auto-detect")
 
     def _update_clear_state(self) -> None:
         """Enable Clear button if any user-settable input field is non-empty/non-default; disable otherwise."""
@@ -211,19 +269,17 @@ class GenSubtitlesApp(ctk.CTk):
             for v in (
                 self._input_var,
                 self._output_var,
-                self._target_lang_other_var,
             )
-        ) or self._target_lang_var.get() != "Spanish"
+        ) or self._target_lang_var.get() not in ("No target", "")
         self._btn_clear.configure(state="normal" if has_content else "disabled")
 
     def _on_clear(self) -> None:
-        """Reset input fields; return dropdown to default and hide Other entry."""
+        """Reset input fields; return dropdowns to defaults."""
         self._input_var.set("")
         self._output_var.set("")
-        self._source_lang_var.set("")
-        self._target_lang_var.set("Spanish")
-        self._target_lang_other_var.set("")
-        self._entry_target_lang_other.grid_remove()
+        self._source_lang_var.set("Auto-detect")
+        self._target_lang_var.set("No target")
+        self._output_format_var.set("SRT")
 
     # ------------------------------------------------------------------
     # Stage label cycling
@@ -266,20 +322,18 @@ class GenSubtitlesApp(ctk.CTk):
             return
 
         # Capture StringVar values on the main thread (Tkinter is not thread-safe)
-        src_lang = self._source_lang_var.get().strip() or None
-        selected = self._target_lang_var.get()
-        if selected in _LANG_MAP:
-            tgt_lang: str | None = _LANG_MAP[selected]
-        else:  # "Other"
-            tgt_lang = self._target_lang_other_var.get().strip() or None
+        src_selected = self._source_lang_var.get()
+        src_lang = None if src_selected in ("Auto-detect", "") else _label_to_code(src_selected)
+        tgt_selected = self._target_lang_var.get()
+        tgt_lang: str | None = None if tgt_selected in ("No target", "") else _label_to_code(tgt_selected)
 
         self._btn_generate.configure(state="disabled")
         self._btn_clear.configure(state="disabled")
         self._entry_input.configure(state="disabled")
         self._entry_output.configure(state="disabled")
-        self._entry_source_lang.configure(state="disabled")
+        self._option_source_lang.configure(state="disabled")
         self._option_target_lang.configure(state="disabled")
-        self._entry_target_lang_other.configure(state="disabled")
+        self._option_output_format.configure(state="disabled")
         self._btn_browse_input.configure(state="disabled")
         self._btn_browse_output.configure(state="disabled")
         self._progress_bar.grid()
@@ -329,8 +383,17 @@ class GenSubtitlesApp(ctk.CTk):
 
             if resp.status_code == 200:
                 Path(output_path).write_bytes(resp.content)
+                # Convert to SSA if user selected SSA format
+                final_path = output_path
+                if self._output_format_var.get() == "SSA":
+                    from gensubtitles.core.srt_writer import convert_srt_to_ssa  # noqa: PLC0415
+
+                    ssa_out = Path(output_path).with_suffix(".ssa")
+                    convert_srt_to_ssa(output_path, ssa_out)
+                    Path(output_path).unlink(missing_ok=True)
+                    final_path = str(ssa_out)
                 if not self._closing:
-                    self.after(0, self._finish_generate, None, output_path)
+                    self.after(0, self._finish_generate, None, final_path)
             else:
                 try:
                     detail = resp.json().get("detail", resp.text)
@@ -365,9 +428,9 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_generate.configure(state="normal")
         self._entry_input.configure(state="normal")
         self._entry_output.configure(state="normal")
-        self._entry_source_lang.configure(state="normal")
+        self._option_source_lang.configure(state="normal")
         self._option_target_lang.configure(state="normal")
-        self._entry_target_lang_other.configure(state="normal")
+        self._option_output_format.configure(state="normal")
         self._btn_browse_input.configure(state="normal")
         self._btn_browse_output.configure(state="normal")
         self._update_clear_state()
@@ -424,8 +487,22 @@ class GenSubtitlesApp(ctk.CTk):
             except OSError as exc:
                 logger.error("GUI server failed to start: %s", exc)
 
+        def _wait_for_server() -> None:
+            import requests as req  # noqa: PLC0415
+
+            for _ in range(60):  # up to 60 seconds
+                time.sleep(1)
+                try:
+                    req.get(f"{_BASE_URL}/languages", timeout=1)
+                    if not self._closing:
+                        self.after(0, self._populate_language_dropdowns)
+                    return
+                except Exception:  # noqa: BLE001
+                    continue
+
         thread = threading.Thread(target=_run, daemon=True)
         thread.start()
+        threading.Thread(target=_wait_for_server, daemon=True).start()
 
     def _stop_server(self) -> None:
         if self._server is not None:
