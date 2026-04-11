@@ -398,7 +398,7 @@ Plans:
 
 **Goal:** Three small form improvements bundled together: (1) add a visual `*` marker next to all mandatory fields (video input, output path) so users can identify required fields at a glance; (2) hide the source language input field — Whisper auto-detection is sufficient for most users and the field adds noise; (3) replace the target language free-text input with a dropdown offering "Spanish", "English", and "Other" to reduce user error. Merges former 999.6, 999.7, 999.8.
 **Requirements:** TBD
-**Plans:** 1 plan
+**Plans:** 0/1 plans executed
 
 Plans:
 - [ ] 999.9-01-PLAN.md — Mandatory field markers, source-lang hide, target-lang dropdown + Other entry (gensubtitles/gui/main.py)
