@@ -5,8 +5,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import patch
-
 from gensubtitles.core.settings import AppSettings, load_settings, save_settings, settings_path
 
 

@@ -110,8 +110,8 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._btn_browse_input.grid(row=0, column=2, padx=(8, 0), pady=4)
 
-        # Row 1 — Output SRT
-        ctk.CTkLabel(self._frame, text="Output SRT *:").grid(
+        # Row 1 — Output file
+        ctk.CTkLabel(self._frame, text="Output file *:").grid(
             row=1, column=0, sticky="w", padx=(0, 8), pady=4
         )
         self._entry_output = ctk.CTkEntry(self._frame, textvariable=self._output_var)
@@ -359,9 +359,25 @@ class GenSubtitlesApp(ctk.CTk):
     def _tl_browse_output(self) -> None:
         from tkinter import filedialog  # noqa: PLC0415
 
+        current_output = self._tl_output_var.get().strip()
+        current_input = self._tl_input_var.get().strip()
+
+        suffix = ""
+        if current_output:
+            suffix = Path(current_output).suffix.lower()
+        elif current_input:
+            suffix = Path(current_input).suffix.lower()
+
+        if suffix in {".ssa", ".ass"}:
+            defext = ".ssa"
+            ftypes = [("Subtitle files", "*.ssa *.srt"), ("All files", "*.*")]
+        else:
+            defext = ".srt"
+            ftypes = [("Subtitle files", "*.srt *.ssa"), ("All files", "*.*")]
+
         path = filedialog.asksaveasfilename(
-            defaultextension=".srt",
-            filetypes=[("Subtitle files", "*.srt *.ssa"), ("All files", "*.*")],
+            defaultextension=defext,
+            filetypes=ftypes,
         )
         if path:
             self._tl_output_var.set(path)

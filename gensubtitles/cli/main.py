@@ -35,7 +35,7 @@ def generate(
         None,
         "--output",
         "-o",
-        help="Destination .srt path. Defaults to <input>.srt in the same directory.",
+        help="Destination subtitle path. Defaults to <input>.<format> in the same directory.",
     ),
     model: str = typer.Option(
         "small",
@@ -82,8 +82,14 @@ def generate(
         typer.echo(f"Error: Input file not found: {video_path}", err=True)
         raise typer.Exit(code=1)
 
-    # Auto-derive output path from input stem when --output not provided
-    effective_output: Path = output if output is not None else video_path.with_suffix(".srt")
+    # Auto-derive output path from input stem when --output not provided;
+    # respect --format when choosing the default extension.
+    if output is not None:
+        effective_output: Path = output
+    elif output_format == "ssa":
+        effective_output = video_path.with_suffix(".ssa")
+    else:
+        effective_output = video_path.with_suffix(".srt")
 
     def _progress(label: str, current: int, total: int) -> None:
         typer.echo(f"[{current}/{total}] {label}...")
