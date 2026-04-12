@@ -41,6 +41,7 @@ def run_pipeline(
     source_lang: Optional[str] = None,
     device: str = "auto",
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    engine: str = "argos",
 ) -> PipelineResult:
     """
     Orchestrate audio extraction → transcription → translation → SRT write.
@@ -111,7 +112,7 @@ def run_pipeline(
         if target_lang is not None:
             progress_callback("Translating", 3, 4)
             try:
-                segments = translate_segments(segments, detected_lang, target_lang)
+                segments = translate_segments(segments, detected_lang, target_lang, engine=engine)
             except Exception as exc:
                 raise PipelineError(f"[translation] {exc}") from exc
         else:

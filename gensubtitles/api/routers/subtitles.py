@@ -58,6 +58,11 @@ def post_subtitles(
     background_tasks: BackgroundTasks,
     target_lang: Optional[str] = Query(default=None, description="ISO 639-1 target language for translation (e.g. 'es'). Omit to skip translation."),
     source_lang: Optional[str] = Query(default=None, description="Force source language detection (e.g. 'en'). Omit for auto-detect."),
+    engine: str = Query(
+        default="argos",
+        description="Translation engine: argos (offline default), deepl, or libretranslate.",
+        pattern="^(argos|deepl|libretranslate)$",
+    ),
     transcriber: WhisperTranscriber = Depends(get_transcriber),
 ) -> FileResponse:
     """
@@ -126,7 +131,7 @@ def post_subtitles(
                     total,
                 )
 
-            segments = translate_segments(segments, detected_lang, target_lang, progress_callback=_on_seg_progress)
+            segments = translate_segments(segments, detected_lang, target_lang, progress_callback=_on_seg_progress, engine=engine)
         else:
             _set_progress("translating", "[3/4] Translation skipped", 0, 0)
 

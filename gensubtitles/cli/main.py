@@ -69,6 +69,12 @@ def generate(
         case_sensitive=False,
         click_type=click.Choice(["srt", "ssa"], case_sensitive=False),
     ),
+    engine: str = typer.Option(
+        "argos",
+        "--engine",
+        help="Translation engine: argos (offline default) / deepl / libretranslate.",
+        click_type=click.Choice(["argos", "deepl", "libretranslate"], case_sensitive=False),
+    ),
 ) -> None:
     """Generate subtitles from a video file."""
     # If a subcommand (e.g. 'serve') is being invoked, skip generate logic entirely.
@@ -112,6 +118,7 @@ def generate(
             source_lang=source_lang,
             device=device,
             progress_callback=_progress,
+            engine=engine,
         )
         if output_format == "ssa":
             from gensubtitles.core.srt_writer import convert_srt_to_ssa  # noqa: PLC0415
