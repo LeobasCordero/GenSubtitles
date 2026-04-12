@@ -82,6 +82,57 @@ def _p(key: str) -> str:
     mode = ctk.get_appearance_mode()  # resolves "System" → "Dark" or "Light"
     return _PALETTES.get(mode, _PALETTES["Dark"])[key]
 
+
+# ---------------------------------------------------------------------------
+# Typography scale
+# ---------------------------------------------------------------------------
+# Sizes are identical in both modes (Header 20 px · Body 14 px).
+# Weight is reduced in Dark mode (bold → normal) because light-on-dark
+# rendering makes strokes appear thicker, causing fonts to look "pasted-on".
+#
+# Roles:
+#   "header"     — 20 px · bold (Light) / normal (Dark)
+#   "subheader"  — 16 px · bold (Light) / normal (Dark)
+#   "body_bold"  — 14 px · bold (Light) / normal (Dark)
+#   "body"       — 14 px · normal (both modes)
+#   "mono"       — 12 px Courier · normal (both modes)
+
+_FONT_SIZES: dict[str, int] = {
+    "header":    20,
+    "subheader": 16,
+    "body_bold": 14,
+    "body":      14,
+    "mono":      12,
+}
+_FONT_FAMILIES: dict[str, str | None] = {
+    "header":    None,   # system default
+    "subheader": None,
+    "body_bold": None,
+    "body":      None,
+    "mono":      "Courier",
+}
+# Roles that carry bold weight — reduced to "normal" in Dark to avoid heaviness
+_BOLD_ROLES: frozenset[str] = frozenset({"header", "subheader", "body_bold"})
+
+
+def _font(role: str = "body") -> ctk.CTkFont:
+    """Return a CTkFont for *role* appropriate for the current appearance mode.
+
+    In Dark mode bold roles use weight='normal' to counter the heavier
+    optical rendering of light text on a dark background.
+    """
+    mode = ctk.get_appearance_mode()
+    is_dark = (mode == "Dark")
+    weight = "normal" if (is_dark and role in _BOLD_ROLES) else (
+        "bold" if role in _BOLD_ROLES else "normal"
+    )
+    family = _FONT_FAMILIES.get(role)
+    size = _FONT_SIZES.get(role, 14)
+    if family:
+        return ctk.CTkFont(family=family, size=size, weight=weight)
+    return ctk.CTkFont(size=size, weight=weight)
+
+
 _BASE_URL = "http://127.0.0.1:8000"
 
 _CODE_TO_LABEL: dict[str, str] = {
@@ -321,7 +372,12 @@ class GenSubtitlesApp(ctk.CTk):
         sf = self._settings_frame
         sf.columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(sf, text="Settings", font=ctk.CTkFont(size=16, weight="bold")).grid(
+        self._settings_header_lbl = ctk.CTkLabel(
+            sf, text="Settings",
+            font=_font("subheader"),
+            text_color=_p("text_primary"),
+        )
+        self._settings_header_lbl.grid(
             row=0, column=0, columnspan=2, pady=(12, 8), sticky="w", padx=12
         )
 
@@ -1018,6 +1074,12 @@ class GenSubtitlesApp(ctk.CTk):
                 fg_color=_p("input_bg"), text_color=_p("text_primary")
             )
 
+        if hasattr(self, "_settings_header_lbl"):
+            self._settings_header_lbl.configure(
+                font=_font("subheader"),
+                text_color=_p("text_primary"),
+            )
+
         # tkinter Menu bar (not a CTK widget — must be reconfigured manually)
         if hasattr(self, "_menubar") and hasattr(self, "_menus"):
             _menu_clr = {
@@ -1163,7 +1225,8 @@ TROUBLESHOOTING
             justify="left",
             anchor="nw",
             wraplength=440,
-            font=ctk.CTkFont(family="Courier", size=12),
+            font=_font("mono"),
+            text_color=_p("text_primary"),
         )
         label.pack(fill="both", expand=True)
 
@@ -1179,7 +1242,8 @@ TROUBLESHOOTING
         ctk.CTkLabel(
             win,
             text="Installed Translation Pairs",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=_font("body_bold"),
+            text_color=_p("text_primary"),
         ).pack(pady=(16, 8))
 
         pairs = self._language_pairs
@@ -1219,13 +1283,16 @@ TROUBLESHOOTING
         ctk.CTkLabel(
             win,
             text="GenSubtitles",
-            font=ctk.CTkFont(size=20, weight="bold"),
+            font=_font("header"),
+            text_color=_p("text_primary"),
         ).pack(pady=(24, 4))
-        ctk.CTkLabel(win, text=f"Version {version}").pack(pady=4)
+        ctk.CTkLabel(win, text=f"Version {version}", font=_font("body"), text_color=_p("text_primary")).pack(pady=4)
         ctk.CTkLabel(
             win,
             text="Automatic offline subtitle generation\nusing Whisper + Argos Translate.",
             justify="center",
+            font=_font("body"),
+            text_color=_p("text_primary"),
         ).pack(pady=8)
         ctk.CTkLabel(win, text="License: MIT", text_color="gray").pack(pady=4)
 
