@@ -496,5 +496,42 @@ Plans:
 
 ---
 
+---
+
+### Phase 999.11: Subtitle Silence — VAD & Timestamp Quality (BACKLOG)
+
+**Goal:** Reduce the duration a subtitle stays on screen during silence by tuning the VAD parameters exposed by faster-whisper, and enable word-level timestamps so each segment is cut exactly where speech ends instead of at the chunk boundary.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Lower `min_silence_duration_ms` from default 2000ms to ~400ms so subtitles disappear faster after speech ends
+- Add `speech_pad_ms` (200ms) and `min_speech_duration_ms` (250ms) to avoid residual noise segments
+- Enable `word_timestamps=True` for precise per-word start/end times instead of chunk-level padding
+- Consider bumping default model from `small` to `medium` for better English timestamp precision
+
+---
+
+### Phase 999.12: Translation Quality — Context-Aware & Engine Upgrade (BACKLOG)
+
+**Goal:** Improve subtitle translation quality in two dimensions: (1) pass all segments as a single block to Argos Translate so it has sentence context, instead of translating each line independently; (2) add optional support for a higher-quality engine (DeepL Free API) as a configurable alternative to Argos.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Current: each segment `.text` is translated independently — no context between lines, leading to inconsistent pronouns, names, and idioms
+- Improvement A: concatenate all segment texts with a delimiter, translate as one block, split back by delimiter — gives cross-sentence context to Argos
+- Improvement B: optional DeepL Free API integration (500k chars/month free tier) as a quality-mode alternative; keep Argos as offline fallback
+- Improvement C: optional LibreTranslate self-hosted integration for privacy-conscious users
+- Pivot chain quality note: `ja→en` Argos model is the weakest link for Japanese→Spanish; better `ja→en` base quality would cascade to better `en→es` output
+
+---
+
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-11 — Gap closure phases 11–13 added; backlog item 999.10 added (feature expansion)*
+*Last updated: 2026-04-11 — Gap closure phases 11–13 added; backlog items 999.10–999.12 added*
