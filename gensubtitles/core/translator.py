@@ -221,6 +221,9 @@ def translate_segments(
     if source_lang == target_lang:
         return list(segments)  # D-07: return original references unchanged
 
+    if not segments:
+        return []
+
     # --- Non-Argos engines: direct API call, no pivot chain ---
     if engine == "deepl":
         texts = [seg.text for seg in segments]
@@ -306,7 +309,13 @@ def _translate_libretranslate(
     texts: list[str], source_lang: str, target_lang: str
 ) -> list[str]:
     """Translate a list of texts using LibreTranslate REST API."""
-    import requests  # noqa: PLC0415
+    try:
+        import requests  # noqa: PLC0415
+    except ImportError:
+        raise RuntimeError(
+            "The 'requests' package is required for LibreTranslate. "
+            "Install it with: pip install requests"
+        )
 
     settings = load_settings()
     url = settings.libretranslate_url

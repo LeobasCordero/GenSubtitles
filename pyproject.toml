@@ -19,12 +19,12 @@ dependencies = [
     "python-multipart>=0.0.20",
     "typer[all]>=0.15.0",
     "deepl>=1.18",
+    "requests>=2.31.0",
 ]
 
 [project.optional-dependencies]
 gui = [
     "customtkinter>=5.2.0",
-    "requests>=2.31.0",
 ]
 dev = [
     "pytest>=8.0.0",
