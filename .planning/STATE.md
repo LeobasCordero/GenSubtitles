@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-last_updated: "2026-04-11T14:20:00.000Z"
+status: Complete
+last_updated: "2026-04-11T00:00:00.000Z"
 progress:
-  total_phases: 20
-  completed_phases: 17
-  total_plans: 42
-  completed_plans: 36
+  total_phases: 22
+  completed_phases: 18
+  total_plans: 38
+  completed_plans: 38
 ---
 
 # GenSubtitles — Project State
@@ -19,7 +19,7 @@ progress:
 
 - **Milestone:** v1.0
 - **Active Phase:** None
-- **Last action:** Phase 999.10 complete — feature expansion (SSA format, translate_file(), translate/convert CLI, dynamic language dropdowns, Translate tab, Settings panel, Help menu dialogs) human-verified (2026-04-11)
+- **Last action:** Phase 999.11 complete — VAD tuning, word timestamps, end-time tightening, medium model default, documentation updated (2026-04-11)
 
 ## Milestone Progress
 
@@ -38,6 +38,7 @@ progress:
 | 999.1 | GUI Interface | ✅ Complete |
 | 999.9 | GUI Form Polish | ✅ Complete (1/1 plans) |
 | 999.10 | Feature Expansion — Language, Formats, Settings, Help | ✅ Complete (6/6 plans) |
+| 999.11 | Subtitle Silence VAD Quality | ✅ Complete (2/2 plans) |
 
 ## Key Decisions Log
 
