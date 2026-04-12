@@ -502,10 +502,11 @@ Plans:
 
 **Goal:** Reduce the duration a subtitle stays on screen during silence by tuning the VAD parameters exposed by faster-whisper, and enable word-level timestamps so each segment is cut exactly where speech ends instead of at the chunk boundary.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] 999.11-01-PLAN.md — TDD: VAD params + word timestamps + wordless segment drop + default model=medium (transcriber.py + tests)
+- [ ] 999.11-02-PLAN.md — Docs: update README.md, README.es.md, and GUI tutorial for medium default
 
 **Context captured:**
 - Lower `min_silence_duration_ms` from default 2000ms to ~400ms so subtitles disappear faster after speech ends
