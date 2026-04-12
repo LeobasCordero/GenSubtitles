@@ -78,7 +78,7 @@ python main.py --input video.mp4 --model base --device cpu
 | `--device` | Dispositivo de cálculo: `auto`, `cpu`, `cuda` | `auto` |
 
 > **Primera ejecución:** El modelo por defecto (`small`) requiere una descarga única de ~470 MB.
-> Usa `--model base` (~140 MB) o `--model tiny` (~75 MB) para una descarga inicial más pequeña.
+> Usa `--model tiny` (~75 MB) para una descarga inicial más pequeña, o `--model medium` (~1,5 GB) para un modelo más grande.
 
 Para las opciones completas:
 ```bash
