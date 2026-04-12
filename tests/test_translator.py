@@ -405,6 +405,35 @@ def test_translate_segments_batch_calls_translate_once_per_hop():
     assert fake_translate.translate.call_count == 1
 
 
+def test_translate_segments_batch_string_uses_xml_markers():
+    """TRANS-BATCH-01b: The batch string passed to translate() contains <1>…<N> XML markers."""
+    import re as _re
+
+    en_lang = _make_fake_language("en", ["es"])
+    captured: list[str] = []
+
+    def capture_batch(text: str, src: str, tgt: str) -> str:
+        captured.append(text)
+        return _batch_aware_translate(text, src, tgt)
+
+    with _inject_argostranslate(installed_languages=[en_lang]) as (_, fake_translate):
+        fake_translate.translate.side_effect = capture_batch
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [_make_fake_segment(0, 1, "Hello"), _make_fake_segment(1, 2, "World"), _make_fake_segment(2, 3, "Foo")]
+        translate_segments(segs, "en", "es")
+
+    assert len(captured) == 1
+    batch = captured[0]
+    assert "<1>" in batch and "</1>" in batch
+    assert "<2>" in batch and "</2>" in batch
+    assert "<3>" in batch and "</3>" in batch
+    # All 3 segment texts are inside their markers
+    assert "Hello" in batch
+    assert "World" in batch
+    assert "Foo" in batch
+
+
 def test_translate_segments_batch_output_correct():
     """TRANS-BATCH-02: Marker round-trip returns the correct translated text for each segment."""
     en_lang = _make_fake_language("en", ["es"])
