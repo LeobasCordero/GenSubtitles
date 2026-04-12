@@ -268,7 +268,7 @@ def translate_segments(
         if actual_keys != expected_keys:
             raise RuntimeError(
                 f"Batched translation marker mismatch: "
-                f"expected markers {expected_keys}, got {actual_keys}"
+                f"expected markers {sorted(expected_keys)}, got {sorted(actual_keys)}"
             )
 
         current = [
