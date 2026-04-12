@@ -24,25 +24,63 @@ os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
 logger = logging.getLogger(__name__)
 
-# Appearance defaults
+# Appearance defaults — Dark is the default; System follows the OS.
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
-# --- Process States Color Palette ---
-_CLR_BG             = "#212121"  # Window / frame background
-_CLR_INPUT_BG       = "#333333"  # Entry / field background
-_CLR_INPUT_FG       = "#E0E0E0"  # Entry text
-_CLR_ACCENT         = "#2196F3"  # Primary button & processing state
-_CLR_ACCENT_HOV     = "#42A5F5"  # Hover — ~10% lighter than accent
-_CLR_SECONDARY      = "#424242"  # Secondary / Clear buttons
-_CLR_SECONDARY_HOV  = "#616161"  # Hover for secondary buttons
-_CLR_PROGRESS_IDLE  = "#757575"  # Progress bar when inactive / reset
-_CLR_PROGRESS_PROC  = "#2196F3"  # Progress bar during processing
-_CLR_PROGRESS_DONE  = "#4CAF50"  # Progress bar on completion
-_CLR_PROGRESS_ERR   = "#F44336"  # Progress bar / input border on error
-_CLR_MENU_BG        = "#1A1A1A"  # Menu bar background
-_CLR_MENU_FG        = "#E0E0E0"  # Menu bar text
-_CLR_MENU_ACTIVE_BG = "#2D2D2D"  # Menu item hover background
+# ---------------------------------------------------------------------------
+# Dual-mode colour palettes
+# ---------------------------------------------------------------------------
+# Dark palette  (default)
+#   BG #121212 · Surface #1E1E1E · Text #E0E0E0
+# Light palette (System/Light)
+#   BG #F5F5F5 · Surface #FFFFFF · Text #212121
+# Accent blue/green are stable but slightly desaturated in Light mode for
+# WCAG contrast.  Error red is darker in Light (#B00020) vs Dark (#CF6679).
+_PALETTES: dict[str, dict[str, str]] = {
+    "Dark": {
+        "bg":             "#121212",
+        "surface":        "#1E1E1E",
+        "input_bg":       "#2C2C2C",
+        "text_primary":   "#E0E0E0",
+        "text_secondary": "#BDBDBD",
+        "accent":         "#2196F3",  # Blue — stable, readable on dark
+        "accent_hov":     "#42A5F5",
+        "secondary":      "#424242",
+        "secondary_hov":  "#616161",
+        "progress_idle":  "#757575",
+        "progress_proc":  "#2196F3",
+        "progress_done":  "#4CAF50",  # Green — stable, readable on dark
+        "progress_err":   "#CF6679",
+        "menu_bg":        "#0F0F0F",
+        "menu_fg":        "#E0E0E0",
+        "menu_active_bg": "#2D2D2D",
+    },
+    "Light": {
+        "bg":             "#F5F5F5",
+        "surface":        "#FFFFFF",
+        "input_bg":       "#EEEEEE",
+        "text_primary":   "#212121",
+        "text_secondary": "#616161",
+        "accent":         "#1976D2",  # Slightly desaturated blue for light
+        "accent_hov":     "#1565C0",
+        "secondary":      "#E0E0E0",
+        "secondary_hov":  "#BDBDBD",
+        "progress_idle":  "#9E9E9E",
+        "progress_proc":  "#1976D2",
+        "progress_done":  "#388E3C",  # Slightly desaturated green for light
+        "progress_err":   "#B00020",  # Darker red — WCAG AA on white
+        "menu_bg":        "#FFFFFF",
+        "menu_fg":        "#212121",
+        "menu_active_bg": "#F5F5F5",
+    },
+}
+
+
+def _p(key: str) -> str:
+    """Return the colour token for the current effective appearance mode."""
+    mode = ctk.get_appearance_mode()  # resolves "System" → "Dark" or "Light"
+    return _PALETTES.get(mode, _PALETTES["Dark"])[key]
 
 _BASE_URL = "http://127.0.0.1:8000"
 
@@ -76,7 +114,7 @@ class GenSubtitlesApp(ctk.CTk):
 
         self.title("GenSubtitles")
         self.minsize(580, 480)
-        self.configure(fg_color=_CLR_BG)
+        self.configure(fg_color=_p("bg"))
 
         # String variables for entry widgets
         self._input_var = ctk.StringVar()
@@ -134,7 +172,7 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._entry_input = ctk.CTkEntry(
             self._frame, textvariable=self._input_var,
-            fg_color=_CLR_INPUT_BG, text_color=_CLR_INPUT_FG,
+            fg_color=_p("input_bg"), text_color=_p("text_primary"),
         )
         self._entry_input.grid(row=0, column=1, sticky="ew", pady=(0, 8))
         self._btn_browse_input = ctk.CTkButton(
@@ -148,7 +186,7 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._entry_output = ctk.CTkEntry(
             self._frame, textvariable=self._output_var,
-            fg_color=_CLR_INPUT_BG, text_color=_CLR_INPUT_FG,
+            fg_color=_p("input_bg"), text_color=_p("text_primary"),
         )
         self._entry_output.grid(row=1, column=1, sticky="ew", pady=(0, 24))
         self._btn_browse_output = ctk.CTkButton(
@@ -206,7 +244,7 @@ class GenSubtitlesApp(ctk.CTk):
         # Row 6 — Generate button (disabled until server is ready)
         self._btn_generate = ctk.CTkButton(
             self._frame, text="Generate Subtitles", command=self._on_generate, height=44,
-            fg_color=_CLR_ACCENT, hover_color=_CLR_ACCENT_HOV,
+            fg_color=_p("accent"), hover_color=_p("accent_hov"),
             state="disabled",
         )
         self._btn_generate.grid(row=6, column=0, columnspan=3, pady=(24, 0), sticky="ew")
@@ -218,8 +256,8 @@ class GenSubtitlesApp(ctk.CTk):
             command=self._on_clear,
             state="disabled",
             height=44,
-            fg_color=_CLR_SECONDARY,
-            hover_color=_CLR_SECONDARY_HOV,
+            fg_color=_p("secondary"),
+            hover_color=_p("secondary_hov"),
         )
         self._btn_clear.grid(row=7, column=0, columnspan=3, pady=(16, 8), sticky="ew")
 
@@ -231,13 +269,13 @@ class GenSubtitlesApp(ctk.CTk):
         # Row 9 — Progress bar (hidden initially)
         self._progress_bar = ctk.CTkProgressBar(
             self._frame, mode="indeterminate", height=16,
-            progress_color=_CLR_PROGRESS_IDLE,
+            progress_color=_p("progress_idle"),
         )
         self._progress_bar.grid(row=9, column=0, columnspan=3, pady=(32, 32), sticky="ew")
         self._progress_bar.grid_remove()
 
         # Row 10 — Stage label (also used for server status)
-        self._stage_label = ctk.CTkLabel(self._frame, text="⏳ Starting server…", text_color="#BDBDBD")
+        self._stage_label = ctk.CTkLabel(self._frame, text="⏳ Starting server…", text_color=_p("text_secondary"))
         self._stage_label.grid(row=10, column=0, columnspan=3, pady=4)
 
         # Reactive enable/disable for Clear button
@@ -254,12 +292,13 @@ class GenSubtitlesApp(ctk.CTk):
         import tkinter as tk  # noqa: PLC0415
 
         _menu_cfg = dict(
-            bg=_CLR_MENU_BG, fg=_CLR_MENU_FG,
-            activebackground=_CLR_MENU_ACTIVE_BG, activeforeground=_CLR_MENU_FG,
+            bg=_p("menu_bg"), fg=_p("menu_fg"),
+            activebackground=_p("menu_active_bg"), activeforeground=_p("menu_fg"),
             bd=0, tearoff=0,
         )
         menubar = tk.Menu(self, **{k: v for k, v in _menu_cfg.items() if k != "tearoff"})
         self.configure(menu=menubar)
+        self._menubar = menubar
 
         # Settings menu
         settings_menu = tk.Menu(menubar, **_menu_cfg)
@@ -273,6 +312,7 @@ class GenSubtitlesApp(ctk.CTk):
         help_menu.add_command(label="Available Languages", command=self._show_language_pairs)
         help_menu.add_separator()
         help_menu.add_command(label="About GenSubtitles", command=self._show_about)
+        self._menus = [settings_menu, help_menu]
 
     def _build_settings_panel(self) -> None:
         self._settings_frame = ctk.CTkFrame(self)
@@ -310,25 +350,28 @@ class GenSubtitlesApp(ctk.CTk):
             row=3, column=0, sticky="w", padx=(12, 8), pady=6
         )
         self._settings_outdir_var = ctk.StringVar()
-        ctk.CTkEntry(
+        self._settings_outdir_entry = ctk.CTkEntry(
             sf, textvariable=self._settings_outdir_var,
             placeholder_text="(same directory as input)",
-            fg_color=_CLR_INPUT_BG, text_color=_CLR_INPUT_FG,
-        ).grid(row=3, column=1, sticky="ew", padx=(0, 12), pady=6)
+            fg_color=_p("input_bg"), text_color=_p("text_primary"),
+        )
+        self._settings_outdir_entry.grid(row=3, column=1, sticky="ew", padx=(0, 12), pady=6)
 
         # Save / Back buttons
         btn_frame = ctk.CTkFrame(sf, fg_color="transparent")
         btn_frame.grid(row=4, column=0, columnspan=2, pady=(16, 12), padx=12, sticky="ew")
         btn_frame.columnconfigure(0, weight=1)
         btn_frame.columnconfigure(1, weight=1)
-        ctk.CTkButton(
+        self._btn_settings_save = ctk.CTkButton(
             btn_frame, text="Save", command=self._save_settings, height=44,
-            fg_color=_CLR_ACCENT, hover_color=_CLR_ACCENT_HOV,
-        ).grid(row=0, column=0, padx=(0, 4), sticky="ew")
-        ctk.CTkButton(
+            fg_color=_p("accent"), hover_color=_p("accent_hov"),
+        )
+        self._btn_settings_save.grid(row=0, column=0, padx=(0, 4), sticky="ew")
+        self._btn_settings_back = ctk.CTkButton(
             btn_frame, text="Back", command=self._hide_settings, height=44,
-            fg_color=_CLR_SECONDARY, hover_color=_CLR_SECONDARY_HOV,
-        ).grid(row=0, column=1, padx=(4, 0), sticky="ew")
+            fg_color=_p("secondary"), hover_color=_p("secondary_hov"),
+        )
+        self._btn_settings_back.grid(row=0, column=1, padx=(4, 0), sticky="ew")
 
     def _build_translate_tab(self) -> None:
         _tab_tl = self._tabview.tab("Translate Subtitles")
@@ -343,7 +386,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_input_var = ctk.StringVar()
         self._tl_entry_input = ctk.CTkEntry(
             tf, textvariable=self._tl_input_var,
-            fg_color=_CLR_INPUT_BG, text_color=_CLR_INPUT_FG,
+            fg_color=_p("input_bg"), text_color=_p("text_primary"),
         )
         self._tl_entry_input.grid(row=0, column=1, sticky="ew", pady=(0, 8))
         self._tl_btn_browse = ctk.CTkButton(
@@ -358,7 +401,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_output_var = ctk.StringVar()
         self._tl_entry_output = ctk.CTkEntry(
             tf, textvariable=self._tl_output_var,
-            fg_color=_CLR_INPUT_BG, text_color=_CLR_INPUT_FG,
+            fg_color=_p("input_bg"), text_color=_p("text_primary"),
         )
         self._tl_entry_output.grid(row=1, column=1, sticky="ew", pady=(0, 24))
         self._tl_btn_browse_out = ctk.CTkButton(
@@ -400,7 +443,7 @@ class GenSubtitlesApp(ctk.CTk):
         # Row 5 — Translate button (disabled until server is ready)
         self._tl_btn_translate = ctk.CTkButton(
             tf, text="Translate / Convert", command=self._on_translate, height=44,
-            fg_color=_CLR_ACCENT, hover_color=_CLR_ACCENT_HOV,
+            fg_color=_p("accent"), hover_color=_p("accent_hov"),
             state="disabled",
         )
         self._tl_btn_translate.grid(row=5, column=0, columnspan=3, pady=(24, 8), sticky="ew")
@@ -413,7 +456,7 @@ class GenSubtitlesApp(ctk.CTk):
         # Row 7 — Progress bar
         self._tl_progress_bar = ctk.CTkProgressBar(
             tf, mode="indeterminate", height=16,
-            progress_color=_CLR_PROGRESS_IDLE,
+            progress_color=_p("progress_idle"),
         )
         self._tl_progress_bar.grid(row=7, column=0, columnspan=3, pady=(32, 32), sticky="ew")
         self._tl_progress_bar.grid_remove()
@@ -699,12 +742,12 @@ class GenSubtitlesApp(ctk.CTk):
     def _hide_generate_progress(self) -> None:
         """Reset and hide the generate-tab progress bar after state feedback delay."""
         if not self._job_active:
-            self._progress_bar.configure(progress_color=_CLR_PROGRESS_IDLE)
+            self._progress_bar.configure(progress_color=_p("progress_idle"))
             self._progress_bar.grid_remove()
 
     def _hide_translate_progress(self) -> None:
         """Reset and hide the translate-tab progress bar after state feedback delay."""
-        self._tl_progress_bar.configure(progress_color=_CLR_PROGRESS_IDLE)
+        self._tl_progress_bar.configure(progress_color=_p("progress_idle"))
         self._tl_progress_bar.grid_remove()
 
     def _apply_progress(self, data: dict) -> None:
@@ -722,10 +765,10 @@ class GenSubtitlesApp(ctk.CTk):
             pct = current / total
             if self._progress_bar.cget("mode") != "determinate":
                 self._progress_bar.stop()
-                self._progress_bar.configure(mode="determinate", progress_color=_CLR_PROGRESS_PROC)
+                self._progress_bar.configure(mode="determinate", progress_color=_p("progress_proc"))
             self._progress_bar.set(pct)
         elif self._progress_bar.cget("mode") != "indeterminate":
-            self._progress_bar.configure(mode="indeterminate", progress_color=_CLR_PROGRESS_PROC)
+            self._progress_bar.configure(mode="indeterminate", progress_color=_p("progress_proc"))
             self._progress_bar.start()
 
     def _tick_elapsed(self) -> None:
@@ -775,7 +818,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_browse_input.configure(state="disabled")
         self._btn_browse_output.configure(state="disabled")
         self._progress_bar.grid()
-        self._progress_bar.configure(mode="indeterminate", progress_color=_CLR_PROGRESS_PROC)
+        self._progress_bar.configure(mode="indeterminate", progress_color=_p("progress_proc"))
         self._progress_bar.start()
         self._job_active = True
         self._poll_progress()
@@ -874,13 +917,13 @@ class GenSubtitlesApp(ctk.CTk):
 
         if error:
             self._progress_bar.stop()
-            self._progress_bar.configure(mode="determinate", progress_color=_CLR_PROGRESS_ERR)
+            self._progress_bar.configure(mode="determinate", progress_color=_p("progress_err"))
             self._progress_bar.set(1.0)
             self._progress_bar.grid()
             self.after(2000, self._hide_generate_progress)
         else:
             self._progress_bar.stop()
-            self._progress_bar.configure(mode="determinate", progress_color=_CLR_PROGRESS_DONE)
+            self._progress_bar.configure(mode="determinate", progress_color=_p("progress_done"))
             self._progress_bar.set(1.0)
             self._progress_bar.grid()
             self.after(2000, self._hide_generate_progress)
@@ -928,6 +971,66 @@ class GenSubtitlesApp(ctk.CTk):
             self._btn_open_folder.grid(row=10, column=0, columnspan=3, pady=(4, 0), sticky="ew")
 
     # ------------------------------------------------------------------
+    # Theme / colour palette
+    # ------------------------------------------------------------------
+
+    def _apply_theme(self) -> None:
+        """Re-apply all hard-coded colours after an appearance-mode change.
+
+        CustomTkinter handles its own widget colours automatically when
+        set_appearance_mode() is called, but colours passed as explicit hex
+        strings in constructors are static and must be refreshed here.
+        """
+        self.configure(fg_color=_p("bg"))
+
+        # Entry fields
+        for entry in (
+            self._entry_input, self._entry_output,
+            self._tl_entry_input, self._tl_entry_output,
+        ):
+            entry.configure(fg_color=_p("input_bg"), text_color=_p("text_primary"))
+
+        # Accent (primary) buttons
+        for btn in (self._btn_generate, self._tl_btn_translate):
+            btn.configure(fg_color=_p("accent"), hover_color=_p("accent_hov"))
+
+        # Secondary buttons
+        self._btn_clear.configure(
+            fg_color=_p("secondary"), hover_color=_p("secondary_hov")
+        )
+
+        # Progress bars — reset to idle colour only (active colour is set dynamically)
+        for pb in (self._progress_bar, self._tl_progress_bar):
+            if pb.cget("mode") == "indeterminate" and not self._job_active:
+                pb.configure(progress_color=_p("progress_idle"))
+
+        # Settings panel widgets
+        if hasattr(self, "_btn_settings_save"):
+            self._btn_settings_save.configure(
+                fg_color=_p("accent"), hover_color=_p("accent_hov")
+            )
+        if hasattr(self, "_btn_settings_back"):
+            self._btn_settings_back.configure(
+                fg_color=_p("secondary"), hover_color=_p("secondary_hov")
+            )
+        if hasattr(self, "_settings_outdir_entry"):
+            self._settings_outdir_entry.configure(
+                fg_color=_p("input_bg"), text_color=_p("text_primary")
+            )
+
+        # tkinter Menu bar (not a CTK widget — must be reconfigured manually)
+        if hasattr(self, "_menubar") and hasattr(self, "_menus"):
+            _menu_clr = {
+                "bg": _p("menu_bg"),
+                "fg": _p("menu_fg"),
+                "activebackground": _p("menu_active_bg"),
+                "activeforeground": _p("menu_fg"),
+            }
+            self._menubar.configure(**_menu_clr)
+            for menu in self._menus:
+                menu.configure(**_menu_clr)
+
+    # ------------------------------------------------------------------
     # Settings
     # ------------------------------------------------------------------
 
@@ -938,6 +1041,7 @@ class GenSubtitlesApp(ctk.CTk):
 
             self._current_settings = load_settings()
             ctk.set_appearance_mode(self._current_settings.appearance_mode)
+            self._apply_theme()
         except Exception as exc:  # noqa: BLE001
             logger.warning("Could not load settings: %s", exc)
             from gensubtitles.core.settings import AppSettings  # noqa: PLC0415
@@ -978,6 +1082,7 @@ class GenSubtitlesApp(ctk.CTk):
             save_settings(new_settings)
             self._current_settings = new_settings
             ctk.set_appearance_mode(new_settings.appearance_mode)
+            self._apply_theme()
         except Exception as exc:  # noqa: BLE001
             from tkinter import messagebox  # noqa: PLC0415
 
@@ -1166,7 +1271,7 @@ TROUBLESHOOTING
             w.configure(state="disabled")
 
         self._tl_progress_bar.grid()
-        self._tl_progress_bar.configure(progress_color=_CLR_PROGRESS_PROC)
+        self._tl_progress_bar.configure(progress_color=_p("progress_proc"))
         self._tl_progress_bar.start()
         self._tl_stage_label.configure(
             text="Translating…" if not convert_only else "Converting…"
@@ -1234,13 +1339,13 @@ TROUBLESHOOTING
             self._tl_elapsed_timer = None
         if error:
             self._tl_progress_bar.stop()
-            self._tl_progress_bar.configure(mode="determinate", progress_color=_CLR_PROGRESS_ERR)
+            self._tl_progress_bar.configure(mode="determinate", progress_color=_p("progress_err"))
             self._tl_progress_bar.set(1.0)
             self._tl_progress_bar.grid()
             self.after(2000, self._hide_translate_progress)
         else:
             self._tl_progress_bar.stop()
-            self._tl_progress_bar.configure(mode="determinate", progress_color=_CLR_PROGRESS_DONE)
+            self._tl_progress_bar.configure(mode="determinate", progress_color=_p("progress_done"))
             self._tl_progress_bar.set(1.0)
             self._tl_progress_bar.grid()
             self.after(2000, self._hide_translate_progress)
@@ -1323,7 +1428,7 @@ TROUBLESHOOTING
         thread.start()
         threading.Thread(target=_wait_for_server, daemon=True).start()
         # Show startup progress bar immediately
-        self._progress_bar.configure(mode="indeterminate", progress_color=_CLR_PROGRESS_IDLE)
+        self._progress_bar.configure(mode="indeterminate", progress_color=_p("progress_idle"))
         self._progress_bar.grid()
         self._progress_bar.start()
 
@@ -1338,12 +1443,12 @@ TROUBLESHOOTING
             # Determinate — real percentage available (downloading)
             if self._progress_bar.cget("mode") != "determinate":
                 self._progress_bar.stop()
-                self._progress_bar.configure(mode="determinate", progress_color=_CLR_ACCENT)
+                self._progress_bar.configure(mode="determinate", progress_color=_p("accent"))
             self._progress_bar.set(progress / 100)
         else:
             # Indeterminate — loading into memory or waiting
             if self._progress_bar.cget("mode") != "indeterminate":
-                self._progress_bar.configure(mode="indeterminate", progress_color=_CLR_PROGRESS_IDLE)
+                self._progress_bar.configure(mode="indeterminate", progress_color=_p("progress_idle"))
                 self._progress_bar.start()
 
     def _on_server_ready(self) -> None:
@@ -1351,21 +1456,21 @@ TROUBLESHOOTING
         self._server_ready = True
         self._progress_bar.stop()
         self._progress_bar.grid_remove()
-        self._progress_bar.configure(progress_color=_CLR_PROGRESS_IDLE)
+        self._progress_bar.configure(progress_color=_p("progress_idle"))
         self._btn_generate.configure(state="normal")
         self._tl_btn_translate.configure(state="normal")
-        self._stage_label.configure(text="", text_color="#E0E0E0")
+        self._stage_label.configure(text="", text_color=_p("text_secondary"))
         # Run in background — list_installed_pairs() can be slow on first Argos load
         threading.Thread(target=self._populate_language_dropdowns, daemon=True).start()
 
     def _on_server_failed(self) -> None:
         """Called on main thread if the server never became reachable."""
         self._progress_bar.stop()
-        self._progress_bar.configure(mode="determinate", progress_color=_CLR_PROGRESS_ERR)
+        self._progress_bar.configure(mode="determinate", progress_color=_p("progress_err"))
         self._progress_bar.set(1.0)
         self._stage_label.configure(
             text="❌ Server failed to start. Restart the app.",
-            text_color=_CLR_PROGRESS_ERR,
+            text_color=_p("progress_err"),
         )
 
     def on_closing(self) -> None:
