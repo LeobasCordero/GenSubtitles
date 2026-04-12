@@ -537,5 +537,23 @@ Plans:
 
 ---
 
+### Phase 999.13: Subtitle Style Settings (BACKLOG)
+
+**Goal:** Add a subtitle styling submenu in Settings → Preferences where users can configure visual appearance of generated subtitles: font family, font size, text color, and outline/border color.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Applies primarily to SSA/ASS output format (which natively supports style metadata in the `[V4+ Styles]` section)
+- SRT format has no standard styling — could write inline HTML tags (`<font color>`, `<b>`, `<i>`) supported by some players (VLC, YouTube) but ignored by others
+- Fields to expose: font family (text input or dropdown of common fonts), font size (integer spinner), primary color (color picker), outline color (color picker), outline width (numeric)
+- Should persist through `AppSettings` (new `subtitle_style` nested config or flat fields)
+- Default values should match current hardcoded SSA defaults in `srt_writer.py`
+
+---
+
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-11 — Gap closure phases 11–13 added; backlog items 999.10–999.12 added*
+*Last updated: 2026-04-12 — Backlog item 999.13 added (subtitle style settings)*
