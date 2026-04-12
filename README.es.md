@@ -72,13 +72,13 @@ python main.py --input video.mp4 --model base --device cpu
 |------|-------------|-------------|
 | `--input`, `-i` | Ruta al archivo de vídeo de entrada (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`) | Requerido |
 | `--output`, `-o` | Ruta de destino del archivo `.srt` | `<input>.srt` |
-| `--model`, `-m` | Tamaño del modelo Whisper: `tiny`, `base`, `small`, `medium`, `large-v1`, `large-v2`, `large-v3`, `turbo` | `small` |
+| `--model`, `-m` | Tamaño del modelo Whisper: `tiny`, `base`, `small`, `medium`, `large-v1`, `large-v2`, `large-v3`, `turbo` | `medium` |
 | `--target-lang`, `-t` | Código de idioma ISO 639-1 de destino para la traducción (ej., `es`, `fr`, `de`) | Ninguno (sin traducción) |
 | `--source-lang`, `-s` | Código de idioma de origen (omitir para detección automática) | Detección automática |
 | `--device` | Dispositivo de cálculo: `auto`, `cpu`, `cuda` | `auto` |
 
-> **Primera ejecución:** El modelo por defecto (`small`) requiere una descarga única de ~470 MB.
-> Usa `--model tiny` (~75 MB) para una descarga inicial más pequeña, o `--model medium` (~1,5 GB) para un modelo más grande.
+> **Primera ejecución:** El modelo por defecto (`medium`) requiere una descarga única de ~1,5 GB.
+> Usa `--model small` (~470 MB) o `--model tiny` (~75 MB) para una descarga inicial más pequeña.
 
 Para las opciones completas:
 ```bash

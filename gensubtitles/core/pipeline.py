@@ -36,7 +36,7 @@ class PipelineResult:
 def run_pipeline(
     video_path: str | Path,
     output_path: str | Path,
-    model_size: str = "small",
+    model_size: str = "medium",
     target_lang: Optional[str] = None,
     source_lang: Optional[str] = None,
     device: str = "auto",
@@ -48,7 +48,7 @@ def run_pipeline(
     Args:
         video_path:        Path to the input video file.
         output_path:       Destination path for the generated .srt file.
-        model_size:        faster-whisper model size (default "small").
+        model_size:        faster-whisper model size (default "medium").
         target_lang:       ISO 639-1 target language for translation;
                            None skips translation entirely.
         source_lang:       Force audio source language; None = auto-detect.

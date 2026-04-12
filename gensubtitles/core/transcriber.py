@@ -47,7 +47,7 @@ class WhisperTranscriber:
     model-size validation, and VAD-filtered transcription.
 
     Usage:
-        transcriber = WhisperTranscriber(model_size="small", device="auto")
+        transcriber = WhisperTranscriber(model_size="medium", device="auto")
         result = transcriber.transcribe("audio.wav")
         for seg in result.segments:
             print(seg.start, seg.end, seg.text)
