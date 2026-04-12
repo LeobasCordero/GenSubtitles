@@ -71,15 +71,31 @@ def find_route(from_code: str, to_code: str) -> list[tuple[str, str]]:
     - No direct pair, but both from→en and en→to exist → [(from, 'en'), ('en', to)]
     - Otherwise raises RuntimeError.
     """
-    available = {(p.from_code, p.to_code) for p in _get_available_packages()}
+    available: set[tuple[str, str]] | None = None
+
+    def _is_available(f: str, t: str) -> bool:
+        nonlocal available
+        if available is None:
+            available = {(p.from_code, p.to_code) for p in _get_available_packages()}
+        return (f, t) in available
 
     def _reachable(f: str, t: str) -> bool:
-        return _is_installed(f, t) or (f, t) in available
+        return _is_installed(f, t) or _is_available(f, t)
 
+    # Check installed packages first (avoids network for common cases)
+    if _is_installed(from_code, to_code):
+        return [(from_code, to_code)]
+
+    # Try English as pivot using installed packages first
+    if from_code != "en" and to_code != "en":
+        if _is_installed(from_code, "en") and _is_installed("en", to_code):
+            return [(from_code, "en"), ("en", to_code)]
+
+    # Fall back to checking remote index
     if _reachable(from_code, to_code):
         return [(from_code, to_code)]
 
-    # Try English as pivot language
+    # Try English as pivot language with remote packages
     if from_code != "en" and to_code != "en":
         if _reachable(from_code, "en") and _reachable("en", to_code):
             return [(from_code, "en"), ("en", to_code)]

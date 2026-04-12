@@ -75,6 +75,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_elapsed_start: float = 0.0
         self._tl_elapsed_timer = None
         self._closing = False
+        self._prefetch_in_progress: set[tuple[str, str]] = set()
+        self._prefetch_lock = threading.Lock()
         self._current_settings = None
 
         self._build_ui()
@@ -468,6 +470,12 @@ class GenSubtitlesApp(ctk.CTk):
         if src_code == tgt_code:
             return
 
+        pair_key = (src_code, tgt_code)
+        with self._prefetch_lock:
+            if pair_key in self._prefetch_in_progress:
+                return  # already being prefetched
+            self._prefetch_in_progress.add(pair_key)
+
         def _worker() -> None:
             from gensubtitles.core.translator import (  # noqa: PLC0415
                 _is_installed,
@@ -498,6 +506,9 @@ class GenSubtitlesApp(ctk.CTk):
                 logger.warning("Background prefetch failed for %s→%s: %s", src_code, tgt_code, exc)
                 msg = f"⚠ Could not download model for {src_code}→{tgt_code}: {exc}"
                 self.after(0, lambda m=msg: self._stage_label.configure(text=m))
+            finally:
+                with self._prefetch_lock:
+                    self._prefetch_in_progress.discard(pair_key)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -529,6 +540,8 @@ class GenSubtitlesApp(ctk.CTk):
             self._source_lang_var.set("Auto-detect")
         else:
             sources = ["Auto-detect"] + sorted(_CODE_TO_LABEL.values())
+            self._option_source_lang.configure(values=sources)
+            self._source_lang_var.set("Auto-detect")
         self._on_source_lang_change(self._source_lang_var.get())
         # Also populate Translate tab dropdowns
         non_auto = [s for s in sources if s != "Auto-detect"]
@@ -585,34 +598,43 @@ class GenSubtitlesApp(ctk.CTk):
     # ------------------------------------------------------------------
 
     def _poll_progress(self) -> None:
-        """Poll GET /progress every second and update the stage label + progress bar."""
+        """Poll GET /progress every second via a background thread to avoid blocking Tk."""
         if self._closing:
             return
-        try:
-            import requests as req  # noqa: PLC0415
-            resp = req.get(f"{_BASE_URL}/progress", timeout=1)
-            if resp.status_code == 200:
-                data = resp.json()
-                label = data.get("label", "")
-                current = data.get("current", 0)
-                total = data.get("total", 0)
-                stage = data.get("stage", "")
-                if label:
-                    self._stage_label.configure(text=label)
-                # Switch progress bar to determinate mode during translation
-                if stage == "translating" and total > 0:
-                    pct = current / total
-                    if self._progress_bar.cget("mode") != "determinate":
-                        self._progress_bar.stop()
-                        self._progress_bar.configure(mode="determinate")
-                    self._progress_bar.set(pct)
-                elif self._progress_bar.cget("mode") != "indeterminate":
-                    self._progress_bar.configure(mode="indeterminate")
-                    self._progress_bar.start()
-        except Exception:  # noqa: BLE001
-            pass  # server may not be ready yet
 
-        self._stage_timer = self.after(1000, self._poll_progress)
+        def _fetch() -> None:
+            try:
+                import requests as req  # noqa: PLC0415
+                resp = req.get(f"{_BASE_URL}/progress", timeout=1)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    self.after(0, lambda d=data: self._apply_progress(d))
+            except Exception:  # noqa: BLE001
+                pass  # server may not be ready yet
+            finally:
+                if not self._closing:
+                    self.after(1000, self._poll_progress)
+
+        threading.Thread(target=_fetch, daemon=True).start()
+
+    def _apply_progress(self, data: dict) -> None:
+        """Apply progress data to UI widgets (must run on Tk main thread)."""
+        label = data.get("label", "")
+        current = data.get("current", 0)
+        total = data.get("total", 0)
+        stage = data.get("stage", "")
+        if label:
+            self._stage_label.configure(text=label)
+        # Switch progress bar to determinate mode during translation
+        if stage == "translating" and total > 0:
+            pct = current / total
+            if self._progress_bar.cget("mode") != "determinate":
+                self._progress_bar.stop()
+                self._progress_bar.configure(mode="determinate")
+            self._progress_bar.set(pct)
+        elif self._progress_bar.cget("mode") != "indeterminate":
+            self._progress_bar.configure(mode="indeterminate")
+            self._progress_bar.start()
 
     def _tick_elapsed(self) -> None:
         if self._closing:

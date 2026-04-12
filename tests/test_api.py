@@ -316,3 +316,49 @@ class TestGetLanguages:
         """GET /docs returns HTTP 200 (Swagger UI accessible)."""
         response = client.get("/docs")
         assert response.status_code == 200
+
+
+class TestGetProgress:
+    """Tests for the GET /progress endpoint."""
+
+    def _reset_progress(self):
+        """Reset module-level progress state to idle."""
+        from gensubtitles.api.routers.subtitles import _set_progress
+        _set_progress("idle", "Idle", 0, 0)
+
+    def test_progress_returns_200_with_expected_schema(self, client):
+        """GET /progress returns HTTP 200 with stage/current/total/label keys."""
+        self._reset_progress()
+        response = client.get("/progress")
+        assert response.status_code == 200
+        body = response.json()
+        assert "stage" in body
+        assert "current" in body
+        assert "total" in body
+        assert "label" in body
+
+    def test_progress_idle_by_default(self, client):
+        """GET /progress returns idle state when no job is running."""
+        self._reset_progress()
+        response = client.get("/progress")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["stage"] == "idle"
+
+    def test_progress_reflects_updates_during_subtitles_request(self, client, video_bytes):
+        """GET /progress reflects stage updates set during POST /subtitles."""
+        self._reset_progress()
+
+        # Before any request, should be idle
+        resp_before = client.get("/progress")
+        assert resp_before.json()["stage"] == "idle"
+
+        # After a subtitle request completes, progress should be "done"
+        response = client.post(
+            "/subtitles",
+            files={"file": ("video.mp4", video_bytes, "video/mp4")},
+        )
+        assert response.status_code == 200
+        resp_after = client.get("/progress")
+        assert resp_after.json()["stage"] == "done"
+        assert resp_after.json()["label"] == "✓ Done"
