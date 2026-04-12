@@ -75,6 +75,10 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_elapsed_start: float = 0.0
         self._tl_elapsed_timer = None
         self._closing = False
+        self._prefetch_in_progress: set[tuple[str, str]] = set()
+        self._prefetch_lock = threading.Lock()
+        self._poll_in_flight = False
+        self._job_active = False
         self._current_settings = None
 
         self._build_ui()
@@ -140,6 +144,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._frame,
             values=["No target"],
             variable=self._target_lang_var,
+            command=self._on_target_lang_change,
         )
         self._option_target_lang.grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
 
@@ -310,7 +315,8 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._tl_target_var = ctk.StringVar(value="Spanish")
         self._tl_option_target = ctk.CTkOptionMenu(
-            tf, values=["Spanish"], variable=self._tl_target_var
+            tf, values=["Spanish"], variable=self._tl_target_var,
+            command=self._on_tl_target_lang_change,
         )
         self._tl_option_target.grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
 
@@ -429,18 +435,84 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _on_source_lang_change(self, selection: str) -> None:
         """Filter target language dropdown to valid destinations for selected source."""
-        if selection == "Auto-detect" or not self._language_pairs:
+        all_labels = sorted(_CODE_TO_LABEL.values())
+        if not self._language_pairs:
+            # No pairs installed yet — show all known languages so user can pick;
+            # the pair will be auto-downloaded at generation time.
+            targets = all_labels
+        elif selection == "Auto-detect":
             targets = sorted({_CODE_TO_LABEL.get(p["to"], p["to"]) for p in self._language_pairs})
-            targets = targets or ["No target"]
+            targets = targets or all_labels
         else:
             src_code = _label_to_code(selection)
             targets = [
                 _CODE_TO_LABEL.get(p["to"], p["to"])
                 for p in self._language_pairs if p["from"] == src_code
             ]
-            targets = sorted(set(targets)) or ["No target"]
+            targets = sorted(set(targets)) or all_labels
+        targets = ["No target"] + [t for t in targets if t != "No target"]
         self._option_target_lang.configure(values=targets)
-        self._target_lang_var.set(targets[0])
+        current = self._target_lang_var.get()
+        if current not in targets:
+            self._target_lang_var.set(targets[0])
+
+    def _on_target_lang_change(self, selection: str) -> None:
+        """Trigger background pair download when a target language is picked."""
+        if selection in ("No target", ""):
+            return
+        src_label = self._source_lang_var.get()
+        if src_label == "Auto-detect":
+            return
+        src_code = _label_to_code(src_label)
+        tgt_code = _label_to_code(selection)
+        self._prefetch_pair_bg(src_code, tgt_code)
+
+    def _prefetch_pair_bg(self, src_code: str, tgt_code: str) -> None:
+        """Download Argos Translate packages for src→tgt in the background (supports two-hop routing)."""
+        if src_code == tgt_code:
+            return
+
+        pair_key = (src_code, tgt_code)
+        with self._prefetch_lock:
+            if pair_key in self._prefetch_in_progress:
+                return  # already being prefetched
+            self._prefetch_in_progress.add(pair_key)
+
+        def _worker() -> None:
+            from gensubtitles.core.translator import (  # noqa: PLC0415
+                _is_installed,
+                ensure_route_installed,
+                find_route,
+            )
+            try:
+                route = find_route(src_code, tgt_code)
+            except RuntimeError as exc:
+                logger.warning("No route for %s→%s: %s", src_code, tgt_code, exc)
+                msg = f"⚠ No translation route available for {src_code}→{tgt_code}"
+                self.after(0, lambda m=msg: self._stage_label.configure(text=m))
+                return
+
+            if all(_is_installed(f, t) for f, t in route):
+                return  # already installed, nothing to do
+
+            via = " → ".join(f"{f}→{t}" for f, t in route)
+            self.after(0, lambda v=via: self._stage_label.configure(
+                text=f"⏬ Downloading {v} model…"
+            ))
+            try:
+                ensure_route_installed(src_code, tgt_code)
+                self.after(0, lambda v=via: self._stage_label.configure(
+                    text=f"✓ {v} model ready"
+                ))
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Background prefetch failed for %s→%s: %s", src_code, tgt_code, exc)
+                msg = f"⚠ Could not download model for {src_code}→{tgt_code}: {exc}"
+                self.after(0, lambda m=msg: self._stage_label.configure(text=m))
+            finally:
+                with self._prefetch_lock:
+                    self._prefetch_in_progress.discard(pair_key)
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _on_output_format_change(self, selection: str) -> None:
         """Update output path extension when format changes."""
@@ -463,13 +535,16 @@ class GenSubtitlesApp(ctk.CTk):
             logger.warning("Could not load language pairs from API: %s", exc)
             self._language_pairs = []
 
-        if not self._language_pairs:
-            return  # leave defaults
-        sources = sorted({_CODE_TO_LABEL.get(p["from"], p["from"]) for p in self._language_pairs})
-        sources = ["Auto-detect"] + sources
-        self._option_source_lang.configure(values=sources)
-        self._source_lang_var.set("Auto-detect")
-        self._on_source_lang_change("Auto-detect")
+        if self._language_pairs:
+            sources = sorted({_CODE_TO_LABEL.get(p["from"], p["from"]) for p in self._language_pairs})
+            sources = ["Auto-detect"] + sources
+            self._option_source_lang.configure(values=sources)
+            self._source_lang_var.set("Auto-detect")
+        else:
+            sources = ["Auto-detect"] + sorted(_CODE_TO_LABEL.values())
+            self._option_source_lang.configure(values=sources)
+            self._source_lang_var.set("Auto-detect")
+        self._on_source_lang_change(self._source_lang_var.get())
         # Also populate Translate tab dropdowns
         non_auto = [s for s in sources if s != "Auto-detect"]
         if non_auto:
@@ -478,20 +553,28 @@ class GenSubtitlesApp(ctk.CTk):
             self._tl_option_source.configure(command=self._on_tl_source_lang_change)
             self._on_tl_source_lang_change(non_auto[0])
 
+    def _on_tl_target_lang_change(self, selection: str) -> None:
+        """Trigger background pair download when Translate tab target is picked."""
+        src_label = self._tl_source_var.get()
+        self._prefetch_pair_bg(_label_to_code(src_label), _label_to_code(selection))
+
     def _on_tl_source_lang_change(self, selection: str) -> None:
         """Filter Translate tab target dropdown to valid destinations for selected source."""
+        all_labels = sorted(_CODE_TO_LABEL.values())
         if not self._language_pairs:
-            return
-        src_code = _label_to_code(selection)
-        targets = [
-            _CODE_TO_LABEL.get(p["to"], p["to"])
-            for p in self._language_pairs if p["from"] == src_code
-        ]
-        targets = sorted(set(targets)) or ["No target"]
+            targets = [t for t in all_labels if t != selection]
+        else:
+            src_code = _label_to_code(selection)
+            targets = [
+                _CODE_TO_LABEL.get(p["to"], p["to"])
+                for p in self._language_pairs if p["from"] == src_code
+            ]
+            targets = sorted(set(targets)) or [t for t in all_labels if t != selection]
         self._tl_option_target.configure(values=targets)
         current = self._tl_target_var.get()
         if current not in targets:
             self._tl_target_var.set(targets[0])
+        # NOTE: no prefetch here — this fires on init. Prefetch only on explicit target selection.
 
     def _update_clear_state(self) -> None:
         """Enable Clear button if any user-settable input field is non-empty/non-default; disable otherwise."""
@@ -513,15 +596,51 @@ class GenSubtitlesApp(ctk.CTk):
         self._output_format_var.set("SRT")
 
     # ------------------------------------------------------------------
-    # Stage label cycling
+    # Progress polling (replaces static stage cycling)
     # ------------------------------------------------------------------
 
-    def _advance_stage(self, idx: int) -> None:
-        if self._closing:
+    def _poll_progress(self) -> None:
+        """Poll GET /progress every second via a background thread to avoid blocking Tk."""
+        if self._closing or self._poll_in_flight or not self._job_active:
             return
-        if idx < len(_STAGE_LABELS):
-            self._stage_label.configure(text=_STAGE_LABELS[idx])
-            self._stage_timer = self.after(2500, self._advance_stage, idx + 1)
+        self._poll_in_flight = True
+
+        def _fetch() -> None:
+            try:
+                import requests as req  # noqa: PLC0415
+                resp = req.get(f"{_BASE_URL}/progress", timeout=1)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    self.after(0, lambda d=data: self._apply_progress(d))
+            except Exception:  # noqa: BLE001
+                pass  # server may not be ready yet
+            finally:
+                self._poll_in_flight = False
+                if not self._closing and self._job_active:
+                    self.after(1000, self._poll_progress)
+
+        threading.Thread(target=_fetch, daemon=True).start()
+
+    def _apply_progress(self, data: dict) -> None:
+        """Apply progress data to UI widgets (must run on Tk main thread)."""
+        if not self._job_active:
+            return  # ignore stale progress updates after job finished
+        label = data.get("label", "")
+        current = data.get("current", 0)
+        total = data.get("total", 0)
+        stage = data.get("stage", "")
+        if label:
+            self._stage_label.configure(text=label)
+        # Switch progress bar to determinate mode during translation
+        if stage == "translating" and total > 0:
+            pct = current / total
+            if self._progress_bar.cget("mode") != "determinate":
+                self._progress_bar.stop()
+                self._progress_bar.configure(mode="determinate")
+            self._progress_bar.set(pct)
+        elif self._progress_bar.cget("mode") != "indeterminate":
+            self._progress_bar.configure(mode="indeterminate")
+            self._progress_bar.start()
 
     def _tick_elapsed(self) -> None:
         if self._closing:
@@ -568,8 +687,10 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_browse_input.configure(state="disabled")
         self._btn_browse_output.configure(state="disabled")
         self._progress_bar.grid()
+        self._progress_bar.configure(mode="indeterminate")
         self._progress_bar.start()
-        self._advance_stage(0)
+        self._job_active = True
+        self._poll_progress()
 
         # Reset and start elapsed timer
         if self._elapsed_timer is not None:
@@ -643,6 +764,9 @@ class GenSubtitlesApp(ctk.CTk):
                 self.after(0, self._finish_generate, str(exc), None)
 
     def _finish_generate(self, error: str | None, output_path: str | None) -> None:
+        # Stop progress polling first to prevent stale UI updates
+        self._job_active = False
+
         if self._stage_timer is not None:
             self.after_cancel(self._stage_timer)
             self._stage_timer = None
@@ -659,6 +783,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._elapsed_timer = None
 
         self._progress_bar.stop()
+        self._progress_bar.configure(mode="indeterminate")
         self._progress_bar.grid_remove()
         self._btn_generate.configure(state="normal")
         self._entry_input.configure(state="normal")

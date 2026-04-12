@@ -21,6 +21,23 @@ logger = logging.getLogger(__name__)
 
 TranslatedSegment = namedtuple("TranslatedSegment", ["start", "end", "text"])
 
+# Module-level cache for available packages (refreshed once per session)
+_pkg_index_cache: list | None = None
+
+
+def _get_available_packages(force_refresh: bool = False) -> list:
+    """Return cached list of available Argos Translate packages."""
+    import argostranslate.package
+
+    global _pkg_index_cache  # noqa: PLW0603
+    if _pkg_index_cache is None or force_refresh:
+        try:
+            argostranslate.package.update_package_index()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not update package index: %s", exc)
+        _pkg_index_cache = argostranslate.package.get_available_packages()
+    return _pkg_index_cache
+
 
 def _is_installed(from_code: str, to_code: str) -> bool:
     """Return True if the from_code→to_code pair is already installed."""
@@ -45,6 +62,68 @@ def list_installed_pairs() -> list[dict]:
     return pairs
 
 
+def find_route(from_code: str, to_code: str) -> list[tuple[str, str]]:
+    """
+    Find a translation route from from_code to to_code.
+
+    Returns a list of (from, to) hops:
+    - Direct pair available → [(from, to)]
+    - No direct pair, but both from→en and en→to exist → [(from, 'en'), ('en', to)]
+    - Otherwise raises RuntimeError.
+
+    Preference order:
+    1. Direct installed pair (no network)
+    2. Direct remotely-available pair (preferred over pivot for quality)
+    3. Installed English pivot (no network, but 2-hop)
+    4. Remote English pivot
+    """
+    available: set[tuple[str, str]] | None = None
+
+    def _is_available(f: str, t: str) -> bool:
+        nonlocal available
+        if available is None:
+            available = {(p.from_code, p.to_code) for p in _get_available_packages()}
+        return (f, t) in available
+
+    def _reachable(f: str, t: str) -> bool:
+        return _is_installed(f, t) or _is_available(f, t)
+
+    # 1. Check installed direct pair first (avoids network for common cases)
+    if _is_installed(from_code, to_code):
+        return [(from_code, to_code)]
+
+    # 2. Prefer a direct route whenever one is available, including remotely
+    if _reachable(from_code, to_code):
+        return [(from_code, to_code)]
+
+    # 3. If no direct route exists, prefer an already-installed English pivot
+    if from_code != "en" and to_code != "en":
+        if _is_installed(from_code, "en") and _is_installed("en", to_code):
+            return [(from_code, "en"), ("en", to_code)]
+
+    # 4. Fall back to an English pivot with remote packages
+    if from_code != "en" and to_code != "en":
+        if _reachable(from_code, "en") and _reachable("en", to_code):
+            return [(from_code, "en"), ("en", to_code)]
+
+    raise RuntimeError(
+        f"Language pair '{from_code}\u2192{to_code}' is not available: "
+        "no direct package and no English pivot route found in the Argos Translate index."
+    )
+
+
+def ensure_route_installed(from_code: str, to_code: str) -> list[tuple[str, str]]:
+    """
+    Ensure all packages needed to translate from_code→to_code are installed.
+
+    Returns the route as a list of (from, to) hops.
+    """
+    route = find_route(from_code, to_code)
+    for hop_from, hop_to in route:
+        ensure_pair_installed(hop_from, hop_to)
+    return route
+
+
 def ensure_pair_installed(from_code: str, to_code: str) -> None:
     """
     Ensure the from_code→to_code Argos Translate package is installed.
@@ -55,26 +134,27 @@ def ensure_pair_installed(from_code: str, to_code: str) -> None:
     if _is_installed(from_code, to_code):
         return  # already cached — D-05
 
-    # Best-effort index update (D-04)
-    try:
-        argostranslate.package.update_package_index()
-    except Exception as exc:
-        logger.warning(
-            "Failed to update Argos Translate package index (offline?): %s. "
-            "Falling back to cached packages.",
-            exc,
-        )
+    # Try the cached index first (avoids network on repeated calls)
+    available = _get_available_packages()
 
-    # Re-check after index update attempt
-    if _is_installed(from_code, to_code):
-        return
-
-    # Find the package in available list
-    available = argostranslate.package.get_available_packages()
     pkg = next(
         (p for p in available if p.from_code == from_code and p.to_code == to_code),
         None,
     )
+
+    # If not found in cache, force a single refresh and retry
+    if pkg is None:
+        available = _get_available_packages(force_refresh=True)
+
+        # Re-check installed state after refresh (another thread may have installed it)
+        if _is_installed(from_code, to_code):
+            return
+
+        pkg = next(
+            (p for p in available if p.from_code == from_code and p.to_code == to_code),
+            None,
+        )
+
     if pkg is None:
         raise RuntimeError(
             f"Language pair '{from_code}→{to_code}' could not be downloaded: "
@@ -118,7 +198,8 @@ def is_pair_available(from_code: str, to_code: str) -> bool:
 
 
 def translate_segments(
-    segments: list[Any], source_lang: str, target_lang: str
+    segments: list[Any], source_lang: str, target_lang: str,
+    progress_callback: "Any | None" = None,
 ) -> list:
     """
     Translate segment texts from source_lang to target_lang using Argos Translate.
@@ -128,22 +209,33 @@ def translate_segments(
     Otherwise, ensures the language package is installed (TRANS-03/TRANS-05), then
     translates each segment's .text while preserving .start and .end (TRANS-01).
 
+    progress_callback: optional callable(current: int, total: int) called after each segment.
+
     Returns a list of TranslatedSegment namedtuples (or a shallow copy of the input list when no-op).
     """
     if source_lang == target_lang:
         return list(segments)  # D-07: return original references unchanged
 
-    ensure_pair_installed(source_lang, target_lang)
+    route = ensure_route_installed(source_lang, target_lang)
 
     import argostranslate.translate
 
-    result = []
-    for seg in segments:
-        translated_text = argostranslate.translate.translate(
-            seg.text, source_lang, target_lang
-        )
-        result.append(TranslatedSegment(start=seg.start, end=seg.end, text=translated_text))
-    return result
+    current = list(segments)
+    total = len(current)
+    for hop_idx, (hop_from, hop_to) in enumerate(route):
+        next_segs = []
+        for seg_idx, seg in enumerate(current):
+            translated_text = argostranslate.translate.translate(
+                seg.text, hop_from, hop_to
+            )
+            next_segs.append(TranslatedSegment(start=seg.start, end=seg.end, text=translated_text))
+            if progress_callback is not None:
+                # For multi-hop: report overall position across all hops
+                overall = hop_idx * total + (seg_idx + 1)
+                overall_total = len(route) * total
+                progress_callback(overall, overall_total)
+        current = next_segs
+    return current
 
 
 def translate_file(
@@ -195,7 +287,7 @@ def translate_file(
             f"Source and target language are the same: {source_lang}"
         )
 
-    ensure_pair_installed(source_lang, target_lang)
+    ensure_route_installed(source_lang, target_lang)
 
     subs = pysubs2.SSAFile.load(str(input_path))
 
