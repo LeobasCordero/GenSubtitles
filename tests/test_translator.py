@@ -407,8 +407,6 @@ def test_translate_segments_batch_calls_translate_once_per_hop():
 
 def test_translate_segments_batch_string_uses_xml_markers():
     """TRANS-BATCH-01b: The batch string passed to translate() contains <1>…<N> XML markers."""
-    import re as _re
-
     en_lang = _make_fake_language("en", ["es"])
     captured: list[str] = []
 
@@ -468,7 +466,7 @@ def test_translate_segments_batch_mismatch_raises_runtime_error():
         segs = [_make_fake_segment(i, i + 1, f"s{i}") for i in range(3)]
         with pytest.raises(
             RuntimeError,
-            match=r"Batched translation marker mismatch: expected 3 segments, got 1",
+            match=r"Batched translation marker mismatch: expected markers",
         ):
             translate_segments(segs, "en", "es")
 

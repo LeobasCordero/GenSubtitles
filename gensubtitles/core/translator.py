@@ -262,11 +262,13 @@ def translate_segments(
         matches = _re.findall(r"<(\d+)>(.*?)</\1>", translated_batch, _re.DOTALL)
         texts_by_idx: dict[int, str] = {int(m[0]): m[1] for m in matches}
 
-        # D-02: raise immediately on count mismatch
-        if len(texts_by_idx) != len(current):
+        # D-02: raise immediately on count or index mismatch
+        expected_keys = set(range(1, len(current) + 1))
+        actual_keys = set(texts_by_idx)
+        if actual_keys != expected_keys:
             raise RuntimeError(
                 f"Batched translation marker mismatch: "
-                f"expected {len(current)} segments, got {len(texts_by_idx)}"
+                f"expected markers {expected_keys}, got {actual_keys}"
             )
 
         current = [
