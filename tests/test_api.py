@@ -10,6 +10,7 @@ FastAPI automatically dispatches to a thread pool executor.
 """
 from __future__ import annotations
 
+import os
 import sys
 import textwrap
 from collections import namedtuple
@@ -97,6 +98,9 @@ def client(mock_transcriber):
     in the router executes. This bypasses the import-time FFmpeg check in
     audio.py without requiring FFmpeg to be installed.
 
+    Sets GENSUBTITLES_SKIP_HF_PREFETCH=1 so the background loader thread
+    skips HuggingFace Hub network calls when WhisperTranscriber is mocked.
+
     Uses the context-manager form of TestClient so lifespan startup/shutdown
     run reliably and resources are cleaned up between tests.
     """
@@ -108,15 +112,22 @@ def client(mock_transcriber):
     # Save prior state (None if not yet imported)
     prev_audio = sys.modules.get("gensubtitles.core.audio")
     prev_srt = sys.modules.get("gensubtitles.core.srt_writer")
+    prev_skip = os.environ.get("GENSUBTITLES_SKIP_HF_PREFETCH")
 
     sys.modules["gensubtitles.core.audio"] = mock_audio
     sys.modules["gensubtitles.core.srt_writer"] = mock_srt
+    os.environ["GENSUBTITLES_SKIP_HF_PREFETCH"] = "1"
 
     try:
         with patch("gensubtitles.api.main.WhisperTranscriber", return_value=mock_transcriber), TestClient(app) as c:
             yield c
     finally:
         app.dependency_overrides.clear()
+        # Restore prior env state
+        if prev_skip is None:
+            os.environ.pop("GENSUBTITLES_SKIP_HF_PREFETCH", None)
+        else:
+            os.environ["GENSUBTITLES_SKIP_HF_PREFETCH"] = prev_skip
         # Restore prior sys.modules state
         if prev_audio is None:
             sys.modules.pop("gensubtitles.core.audio", None)
@@ -260,29 +271,36 @@ class TestLifespan:
         import time
 
         mock_transcriber_instance = MagicMock()
+        prev_skip = os.environ.get("GENSUBTITLES_SKIP_HF_PREFETCH")
+        os.environ["GENSUBTITLES_SKIP_HF_PREFETCH"] = "1"
 
-        with (
-            patch("gensubtitles.api.main.WhisperTranscriber", return_value=mock_transcriber_instance) as mock_cls,
-            patch("huggingface_hub.snapshot_download"),
-        ):
-            with TestClient(app) as lifespan_client:
-                # Model loading happens in a background thread; poll /status until ready
-                deadline = time.monotonic() + 10
-                ready = False
-                while time.monotonic() < deadline:
-                    resp = lifespan_client.get("/status")
-                    if resp.json().get("stage") == "ready":
-                        ready = True
-                        break
-                    time.sleep(0.1)
-                assert ready, "Server did not reach 'ready' state within timeout"
-                # After startup, transcriber is on app.state
-                assert app.state.transcriber is mock_transcriber_instance
-            # After shutdown, transcriber is released
-            assert app.state.transcriber is None
+        try:
+            with (
+                patch("gensubtitles.api.main.WhisperTranscriber", return_value=mock_transcriber_instance) as mock_cls,
+            ):
+                with TestClient(app) as lifespan_client:
+                    # Model loading happens in a background thread; poll /status until ready
+                    deadline = time.monotonic() + 10
+                    ready = False
+                    while time.monotonic() < deadline:
+                        resp = lifespan_client.get("/status")
+                        if resp.json().get("stage") == "ready":
+                            ready = True
+                            break
+                        time.sleep(0.1)
+                    assert ready, "Server did not reach 'ready' state within timeout"
+                    # After startup, transcriber is on app.state
+                    assert app.state.transcriber is mock_transcriber_instance
+                # After shutdown, transcriber is released
+                assert app.state.transcriber is None
 
-        # WhisperTranscriber was instantiated exactly once (not per-request)
-        mock_cls.assert_called_once()
+            # WhisperTranscriber was instantiated exactly once (not per-request)
+            mock_cls.assert_called_once()
+        finally:
+            if prev_skip is None:
+                os.environ.pop("GENSUBTITLES_SKIP_HF_PREFETCH", None)
+            else:
+                os.environ["GENSUBTITLES_SKIP_HF_PREFETCH"] = prev_skip
 
 
 class TestGetLanguages:
