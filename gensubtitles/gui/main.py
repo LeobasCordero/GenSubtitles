@@ -133,6 +133,62 @@ def _font(role: str = "body") -> ctk.CTkFont:
     return ctk.CTkFont(size=size, weight=weight)
 
 
+# ---------------------------------------------------------------------------
+# OS theme detection
+# ---------------------------------------------------------------------------
+
+def _detect_os_theme() -> str:
+    """Return the current OS theme as ``"Dark"`` or ``"Light"``.
+
+    Resolution order:
+    1. ``darkdetect`` library (cross-platform, preferred).
+    2. Windows registry fallback (``AppsUseLightTheme``).
+    3. macOS ``defaults read -g AppleInterfaceStyle`` subprocess fallback.
+    4. Hard fallback → ``"Dark"`` (never raises).
+    """
+    # --- 1. darkdetect (preferred) ---
+    try:
+        import darkdetect  # type: ignore[import-untyped]  # noqa: PLC0415
+
+        result = darkdetect.theme()  # "Dark" | "Light" | None
+        if result in ("Dark", "Light"):
+            return result
+    except Exception:  # noqa: BLE001
+        pass
+
+    # --- 2. Windows registry ---
+    if platform.system() == "Windows":
+        try:
+            import winreg  # noqa: PLC0415
+
+            key_path = (
+                r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+            )
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+                value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            return "Light" if value else "Dark"
+        except Exception:  # noqa: BLE001
+            pass
+
+    # --- 3. macOS defaults ---
+    if platform.system() == "Darwin":
+        try:
+            import subprocess  # noqa: PLC0415
+
+            result_bytes = subprocess.check_output(
+                ["defaults", "read", "-g", "AppleInterfaceStyle"],  # noqa: S603,S607
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+            )
+            return "Dark" if result_bytes.strip().lower() == b"dark" else "Light"
+        except Exception:  # noqa: BLE001
+            # Command exits non-zero in Light mode (key doesn't exist)
+            return "Light"
+
+    # --- 4. Hard fallback ---
+    return "Dark"
+
+
 _BASE_URL = "http://127.0.0.1:8000"
 
 _CODE_TO_LABEL: dict[str, str] = {
@@ -192,6 +248,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._job_active = False
         self._current_settings = None
         self._server_ready = False
+        self._os_listener_active = False  # guard for the darkdetect listener thread
 
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -1093,6 +1150,82 @@ class GenSubtitlesApp(ctk.CTk):
                 menu.configure(**_menu_clr)
 
     # ------------------------------------------------------------------
+    # OS theme detection & live sync
+    # ------------------------------------------------------------------
+
+    def sync_with_os(self, os_theme: str | None = None) -> None:
+        """Align the application's appearance with the current OS theme.
+
+        Only acts when the user's saved ``appearance_mode`` is ``"System"``.
+        If *os_theme* is supplied (by the darkdetect listener callback) it is
+        used directly; otherwise the theme is freshly detected via
+        ``_detect_os_theme()``.
+
+        Safe to call from any thread — always dispatches UI work to the Tk
+        main thread.
+        """
+        if self._closing:
+            return
+        # Only auto-follow the OS when the setting is "System"
+        mode = (
+            self._current_settings.appearance_mode
+            if self._current_settings
+            else "System"
+        )
+        if mode != "System":
+            return
+
+        effective = os_theme if os_theme in ("Dark", "Light") else _detect_os_theme()
+
+        def _apply(theme: str = effective) -> None:
+            if self._closing:
+                return
+            ctk.set_appearance_mode(theme)
+            self._apply_theme()
+            logger.debug("OS theme sync: applied %s", theme)
+
+        # Dispatch to Tk main thread (safe whether we're already on it or not)
+        self.after(0, _apply)
+
+    def _start_os_theme_listener(self) -> None:
+        """Spawn a daemon thread that watches for OS theme changes.
+
+        Uses ``darkdetect.listener()`` when available; the callback fires with
+        ``"Dark"`` or ``"Light"`` and routes to ``sync_with_os()`` on the main
+        thread.  If ``darkdetect`` is unavailable the method is a no-op — the
+        initial ``sync_with_os()`` call at startup still provides correct
+        one-time detection.
+        """
+        try:
+            import darkdetect  # type: ignore[import-untyped]  # noqa: PLC0415
+        except ImportError:
+            logger.debug("darkdetect not available — OS theme listener disabled")
+            return
+
+        if self._os_listener_active:
+            return
+        self._os_listener_active = True
+
+        def _listener_worker() -> None:
+            try:
+                darkdetect.listener(
+                    lambda theme: (
+                        None if self._closing else self.sync_with_os(theme)
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("OS theme listener exited: %s", exc)
+            finally:
+                self._os_listener_active = False
+
+        t = threading.Thread(target=_listener_worker, daemon=True, name="os-theme-listener")
+        t.start()
+
+    def _stop_os_theme_listener(self) -> None:
+        """Signal the listener to stop (handled via the ``_closing`` flag)."""
+        self._os_listener_active = False
+
+    # ------------------------------------------------------------------
     # Settings
     # ------------------------------------------------------------------
 
@@ -1109,6 +1242,11 @@ class GenSubtitlesApp(ctk.CTk):
             from gensubtitles.core.settings import AppSettings  # noqa: PLC0415
 
             self._current_settings = AppSettings()
+
+        # Detect current OS theme immediately and start live-sync listener.
+        # sync_with_os() is a no-op if appearance_mode != "System".
+        self.sync_with_os()
+        self._start_os_theme_listener()
 
     def _show_settings(self) -> None:
         """Show settings panel, hide main tabview. Populate from current settings."""
@@ -1145,6 +1283,11 @@ class GenSubtitlesApp(ctk.CTk):
             self._current_settings = new_settings
             ctk.set_appearance_mode(new_settings.appearance_mode)
             self._apply_theme()
+            # If the user just switched to "System", sync immediately and
+            # ensure the live listener is running.
+            if new_settings.appearance_mode == "System":
+                self.sync_with_os()
+                self._start_os_theme_listener()
         except Exception as exc:  # noqa: BLE001
             from tkinter import messagebox  # noqa: PLC0415
 
@@ -1542,6 +1685,7 @@ TROUBLESHOOTING
 
     def on_closing(self) -> None:
         self._closing = True
+        self._stop_os_theme_listener()
         self._stop_server()
         self.destroy()
 
