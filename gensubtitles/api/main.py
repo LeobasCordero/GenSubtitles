@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load WhisperTranscriber once at startup; release on shutdown."""
-    model_size = os.environ.get("WHISPER_MODEL_SIZE", "small")
+    model_size = os.environ.get("WHISPER_MODEL_SIZE", "medium")
     device = os.environ.get("WHISPER_DEVICE", "auto")
     logger.info(
         "GenSubtitles API startup — loading WhisperTranscriber "

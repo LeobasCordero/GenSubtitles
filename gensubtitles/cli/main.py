@@ -39,7 +39,7 @@ def generate(
         help="Destination subtitle path. Defaults to <input>.<format> in the same directory.",
     ),
     model: str = typer.Option(
-        "small",
+        "medium",
         "--model",
         "-m",
         help="Whisper model size: tiny / base / small / medium / large-v1 / large-v2 / large-v3 / turbo.",

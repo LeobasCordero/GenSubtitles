@@ -948,7 +948,7 @@ TROUBLESHOOTING
 ----------------
 \u2022 "FFmpeg not found" \u2014 Install FFmpeg and ensure it is in your system PATH.
 \u2022 Translation fails \u2014 The selected language pair may not be installed. Check Help > Available Languages.
-\u2022 Subtitles are blank \u2014 Try a smaller model (tiny or base) or check if audio track exists.
+\u2022 Subtitles are blank \u2014 The default speech model is `medium` (~1.5 GB first-run download). If this is the first run, make sure the model download completed successfully and that you had internet access during setup. Also check whether the video has an audio track.
 \u2022 API connection refused \u2014 The background server failed to start. Restart the application.
 """
 

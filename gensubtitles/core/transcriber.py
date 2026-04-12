@@ -47,7 +47,7 @@ class WhisperTranscriber:
     model-size validation, and VAD-filtered transcription.
 
     Usage:
-        transcriber = WhisperTranscriber(model_size="small", device="auto")
+        transcriber = WhisperTranscriber(model_size="medium", device="auto")
         result = transcriber.transcribe("audio.wav")
         for seg in result.segments:
             print(seg.start, seg.end, seg.text)
@@ -55,7 +55,7 @@ class WhisperTranscriber:
 
     def __init__(
         self,
-        model_size: str = "small",
+        model_size: str = "medium",
         device: str = "auto",
         compute_type: Optional[str] = None,
     ) -> None:
@@ -135,6 +135,14 @@ class WhisperTranscriber:
             where duration is the total audio duration in seconds.
         """
         kwargs: dict = {"vad_filter": True, "beam_size": 5}
+        # TRN-VAD: tuned silence detection (D-01)
+        kwargs["vad_parameters"] = {
+            "min_silence_duration_ms": 400,
+            "speech_pad_ms": 200,
+            "min_speech_duration_ms": 250,
+        }
+        # TRN-WT: word-level timestamps for end-time tightening (D-02)
+        kwargs["word_timestamps"] = True
         if language is not None:
             kwargs["language"] = language
         if self._device == "cuda":
@@ -146,6 +154,21 @@ class WhisperTranscriber:
             # TRN-05: materialise the lazy generator immediately to ensure transcription
             # completes before caller receives control.
             segments = list(segments_gen)
+
+            # TRN-WT: tighten end-times and drop wordless segments (D-03, D-04)
+            patched: list = []
+            for seg in segments:
+                words = getattr(seg, "words", None)
+                if not words:  # None or empty list — silence-only segment, drop (D-04)
+                    continue
+                try:
+                    seg = seg._replace(end=words[-1].end)  # namedtuple path (D-03)
+                except AttributeError:
+                    import copy as _copy
+                    seg = _copy.copy(seg)
+                    seg.end = words[-1].end  # SimpleNamespace fallback (D-03)
+                patched.append(seg)
+            segments = patched
         except Exception as exc:
             raise TranscriptionError(
                 f"Transcription failed for {audio_path!r}: {exc}"
@@ -187,7 +210,7 @@ class WhisperTranscriber:
 
 def transcribe_audio(
     audio_path: str | Path,
-    model_size: str = "small",
+    model_size: str = "medium",
     device: str = "auto",
     language: Optional[str] = None,
 ) -> TranscriptionResult:
@@ -198,7 +221,7 @@ def transcribe_audio(
 
     Args:
         audio_path:  Path to audio file.
-        model_size:  One of VALID_MODEL_SIZES (default "small").
+        model_size:  One of VALID_MODEL_SIZES (default "medium").
         device:      "auto", "cpu", or "cuda".
         language:    ISO 639-1 code or None for auto-detect.
 

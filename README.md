@@ -72,10 +72,13 @@ python main.py --input video.mp4 --model base --device cpu
 |------|-------------|---------|
 | `--input`, `-i` | Path to input video file (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`) | Required |
 | `--output`, `-o` | Destination `.srt` path | `<input>.srt` |
-| `--model`, `-m` | Whisper model size: `tiny`, `base`, `small`, `medium`, `large-v1`, `large-v2`, `large-v3`, `turbo` | `small` |
+| `--model`, `-m` | Whisper model size: `tiny`, `base`, `small`, `medium`, `large-v1`, `large-v2`, `large-v3`, `turbo` | `medium` |
 | `--target-lang`, `-t` | Target ISO 639-1 language code for translation (e.g., `es`, `fr`, `de`) | None (no translation) |
 | `--source-lang`, `-s` | Source language code (omit for auto-detection) | Auto-detect |
 | `--device` | Compute device: `auto`, `cpu`, `cuda` | `auto` |
+
+> **First run:** The default model (`medium`) requires a one-time ~1.5 GB download.
+> Use `--model small` (~470 MB) or `--model tiny` (~75 MB) for a smaller initial download.
 
 For full options:
 ```bash
