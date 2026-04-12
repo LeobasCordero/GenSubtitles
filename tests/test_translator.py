@@ -39,6 +39,26 @@ def _make_fake_package(from_code: str, to_code: str, download_path: str = "/tmp/
     return pkg
 
 
+def _batch_aware_translate(text: str, src: str, tgt: str) -> str:
+    """
+    Default mock side_effect for argostranslate.translate.translate.
+    Handles both plain strings and XML-marker batch strings produced by the
+    batched translation path (e.g. "<1>Hello</1><2>World</2>").
+    For batch input the translation prefix is inserted *inside* each marker so
+    callers can round-trip the markers correctly.
+    """
+    import re as _re
+
+    if _re.search(r"<\d+>", text):
+        return _re.sub(
+            r"<(\d+)>(.*?)</\1>",
+            lambda m: f"<{m.group(1)}>[{tgt}]{m.group(2)}</{m.group(1)}>",
+            text,
+            flags=_re.DOTALL,
+        )
+    return f"[{tgt}]{text}"
+
+
 @contextmanager
 def _inject_argostranslate(installed_languages=None, available_packages=None):
     """
@@ -58,7 +78,7 @@ def _inject_argostranslate(installed_languages=None, available_packages=None):
 
     fake_translate = ModuleType("argostranslate.translate")
     fake_translate.get_installed_languages = MagicMock(return_value=installed_languages)
-    fake_translate.translate = MagicMock(side_effect=lambda text, src, tgt: f"[{tgt}]{text}")
+    fake_translate.translate = MagicMock(side_effect=_batch_aware_translate)
 
     fake_root = ModuleType("argostranslate")
     fake_root.package = fake_pkg
@@ -368,6 +388,224 @@ def test_translate_file_missing_input_raises():
             translate_file("/nonexistent/file.srt", "es", "en")
 
 
+# ── TRANS-BATCH: context-batching Argos path ──────────────────────────────────
+
+
+def test_translate_segments_batch_calls_translate_once_per_hop():
+    """TRANS-BATCH-01: For N segments, argostranslate.translate.translate is called
+    once per hop (not once per segment)."""
+    en_lang = _make_fake_language("en", ["es"])
+    with _inject_argostranslate(installed_languages=[en_lang]) as (_, fake_translate):
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [_make_fake_segment(i, i + 1, f"seg{i}") for i in range(3)]
+        translate_segments(segs, "en", "es")
+
+    # 3 segments → 1 batch call (not 3)
+    assert fake_translate.translate.call_count == 1
+
+
+def test_translate_segments_batch_string_uses_xml_markers():
+    """TRANS-BATCH-01b: The batch string passed to translate() contains <1>…<N> XML markers."""
+    en_lang = _make_fake_language("en", ["es"])
+    captured: list[str] = []
+
+    def capture_batch(text: str, src: str, tgt: str) -> str:
+        captured.append(text)
+        return _batch_aware_translate(text, src, tgt)
+
+    with _inject_argostranslate(installed_languages=[en_lang]) as (_, fake_translate):
+        fake_translate.translate.side_effect = capture_batch
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [_make_fake_segment(0, 1, "Hello"), _make_fake_segment(1, 2, "World"), _make_fake_segment(2, 3, "Foo")]
+        translate_segments(segs, "en", "es")
+
+    assert len(captured) == 1
+    batch = captured[0]
+    assert "<1>" in batch and "</1>" in batch
+    assert "<2>" in batch and "</2>" in batch
+    assert "<3>" in batch and "</3>" in batch
+    # All 3 segment texts are inside their markers
+    assert "Hello" in batch
+    assert "World" in batch
+    assert "Foo" in batch
+
+
+def test_translate_segments_batch_output_correct():
+    """TRANS-BATCH-02: Marker round-trip returns the correct translated text for each segment."""
+    en_lang = _make_fake_language("en", ["es"])
+    with _inject_argostranslate(installed_languages=[en_lang]):
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [
+            _make_fake_segment(0.0, 1.0, "Hello"),
+            _make_fake_segment(1.0, 2.0, "World"),
+        ]
+        result = translate_segments(segs, "en", "es")
+
+    assert result[0].text == "[es]Hello"
+    assert result[1].text == "[es]World"
+    assert result[0].start == 0.0
+    assert result[1].end == 2.0
+
+
+def test_translate_segments_batch_mismatch_raises_runtime_error():
+    """TRANS-BATCH-03: If translated batch returns fewer markers than segments,
+    RuntimeError is raised with specific count message."""
+    en_lang = _make_fake_language("en", ["es"])
+
+    def too_few_markers(text: str, src: str, tgt: str) -> str:
+        """Returns only marker <1> regardless of how many were sent."""
+        return "<1>[es]only one</1>"
+
+    with _inject_argostranslate(installed_languages=[en_lang]) as (_, fake_translate):
+        fake_translate.translate.side_effect = too_few_markers
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [_make_fake_segment(i, i + 1, f"s{i}") for i in range(3)]
+        with pytest.raises(
+            RuntimeError,
+            match=r"Batched translation marker mismatch: expected markers",
+        ):
+            translate_segments(segs, "en", "es")
+
+
+def test_translate_segments_two_hop_batches_independently():
+    """TRANS-BATCH-04: A two-hop pivot route (ja→en→es) batches each hop separately —
+    translate() is called once per hop (2 total calls for 2 hops, N segments)."""
+    ja_lang = _make_fake_language("ja", ["en"])
+    en_lang = _make_fake_language("en", ["es"])
+    hop_calls: list[tuple[str, str]] = []
+
+    def record_hops(text: str, src: str, tgt: str) -> str:
+        hop_calls.append((src, tgt))
+        return _batch_aware_translate(text, src, tgt)
+
+    with _inject_argostranslate(installed_languages=[ja_lang, en_lang]) as (_, fake_translate):
+        fake_translate.translate.side_effect = record_hops
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [_make_fake_segment(0, 1, "こんにちは"), _make_fake_segment(1, 2, "世界")]
+        translate_segments(segs, "ja", "es")
+
+    # 2 hops → 2 batch calls (not 2 * N)
+    assert len(hop_calls) == 2
+    assert hop_calls[0] == ("ja", "en")
+    assert hop_calls[1] == ("en", "es")
+
+
+# ── TRANS-ENGINE: DeepL + LibreTranslate engine dispatch ──────────────────────
+
+
+def test_translate_segments_deepl_missing_key_raises():
+    """TRANS-ENGINE-01: engine='deepl' with empty deepl_api_key → RuntimeError with exact message."""
+    from unittest.mock import patch as _patch
+
+    from gensubtitles.core.settings import AppSettings
+
+    with _patch(
+        "gensubtitles.core.translator.load_settings",
+        return_value=AppSettings(deepl_api_key=""),
+    ):
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [_make_fake_segment(0, 1, "Hello")]
+        with pytest.raises(
+            RuntimeError,
+            match="DeepL API key not configured. Set deepl_api_key in settings.",
+        ):
+            translate_segments(segs, "en", "es", engine="deepl")
+
+
+def test_translate_segments_libretranslate_missing_url_raises():
+    """TRANS-ENGINE-02: engine='libretranslate' with empty libretranslate_url → RuntimeError."""
+    from unittest.mock import patch as _patch
+
+    from gensubtitles.core.settings import AppSettings
+
+    with _patch(
+        "gensubtitles.core.translator.load_settings",
+        return_value=AppSettings(libretranslate_url=""),
+    ):
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [_make_fake_segment(0, 1, "Hello")]
+        with pytest.raises(
+            RuntimeError,
+            match="LibreTranslate URL not configured. Set libretranslate_url in settings.",
+        ):
+            translate_segments(segs, "en", "es", engine="libretranslate")
+
+
+def test_translate_segments_deepl_calls_api():
+    """TRANS-ENGINE-03: engine='deepl', valid key → deepl.Translator(key).translate_text
+    called with all segment texts as a list."""
+    from unittest.mock import MagicMock as _MM
+    from unittest.mock import patch as _patch
+
+    from gensubtitles.core.settings import AppSettings
+
+    fake_result = [_MM(text="Hola"), _MM(text="Mundo")]
+    fake_translator = _MM()
+    fake_translator.translate_text.return_value = fake_result
+    fake_deepl = _MM()
+    fake_deepl.Translator.return_value = fake_translator
+
+    with (
+        _patch("gensubtitles.core.translator.load_settings", return_value=AppSettings(deepl_api_key="test-key")),
+        _patch.dict("sys.modules", {"deepl": fake_deepl}),
+    ):
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [_make_fake_segment(0, 1, "Hello"), _make_fake_segment(1, 2, "World")]
+        result = translate_segments(segs, "en", "es", engine="deepl")
+
+    fake_deepl.Translator.assert_called_once_with("test-key")
+    fake_translator.translate_text.assert_called_once_with(["Hello", "World"], target_lang="ES")
+    assert result[0].text == "Hola"
+    assert result[1].text == "Mundo"
+
+
+def test_translate_segments_libretranslate_calls_api():
+    """TRANS-ENGINE-04: engine='libretranslate', valid url → requests.post called for each segment."""
+    from unittest.mock import MagicMock as _MM
+    from unittest.mock import patch as _patch
+
+    from gensubtitles.core.settings import AppSettings
+
+    fake_resp = _MM()
+    fake_resp.json.return_value = {"translatedText": "Hola"}
+    fake_requests = _MM()
+    fake_requests.post.return_value = fake_resp
+
+    with (
+        _patch(
+            "gensubtitles.core.translator.load_settings",
+            return_value=AppSettings(libretranslate_url="http://localhost:5000"),
+        ),
+        _patch.dict("sys.modules", {"requests": fake_requests}),
+    ):
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [_make_fake_segment(0, 1, "Hello")]
+        result = translate_segments(segs, "en", "es", engine="libretranslate")
+
+    fake_requests.post.assert_called_once()
+    call_kwargs = fake_requests.post.call_args
+    assert "http://localhost:5000/translate" in str(call_kwargs)
+    assert result[0].text == "Hola"
+
+
+def test_translate_segments_unknown_engine_raises_value_error():
+    """TRANS-ENGINE-05: Unknown engine name → ValueError."""
+    from gensubtitles.core.translator import translate_segments
+
+    segs = [_make_fake_segment(0, 1, "Hello")]
+    with pytest.raises(ValueError, match="Unknown engine 'xyz_engine'"):
+        translate_segments(segs, "en", "es", engine="xyz_engine")
+
+
 def test_translate_file_same_lang_raises():
     """translate_file() raises ValueError when source equals target."""
     import tempfile
@@ -552,7 +790,7 @@ def test_find_route_prefers_direct_remote_over_installed_pivot():
 
 
 def test_translate_segments_progress_callback_single_hop():
-    """progress_callback is called with monotonic current values for single-hop route."""
+    """progress_callback is called once per hop for single-hop route."""
     en_lang = _make_fake_language("en", ["es"])
     with _inject_argostranslate(installed_languages=[en_lang]):
         from gensubtitles.core.translator import translate_segments
@@ -565,16 +803,13 @@ def test_translate_segments_progress_callback_single_hop():
         calls: list[tuple[int, int]] = []
         translate_segments(segs, "en", "es", progress_callback=lambda c, t: calls.append((c, t)))
 
-    assert len(calls) == 3
-    # All totals should be equal (1 hop * 3 segments = 3)
-    assert all(t == 3 for _, t in calls)
-    # Current should be monotonically increasing: 1, 2, 3
-    currents = [c for c, _ in calls]
-    assert currents == [1, 2, 3]
+    # 1 hop → 1 callback
+    assert len(calls) == 1
+    assert calls[0] == (1, 1)
 
 
 def test_translate_segments_progress_callback_multi_hop():
-    """progress_callback is called with monotonic current and total == len(route) * len(segments)."""
+    """progress_callback is called once per hop for multi-hop route."""
     fr_lang = _make_fake_language("fr", ["en"])
     en_lang = _make_fake_language("en", ["es"])
     with _inject_argostranslate(installed_languages=[fr_lang, en_lang]):
@@ -589,13 +824,9 @@ def test_translate_segments_progress_callback_multi_hop():
         calls: list[tuple[int, int]] = []
         translate_segments(segs, "fr", "es", progress_callback=lambda c, t: calls.append((c, t)))
 
-    # 2 hops * 2 segments = 4 total callbacks
-    assert len(calls) == 4
-    # All totals should be 4
-    assert all(t == 4 for _, t in calls)
-    # Current should be monotonically increasing: 1, 2, 3, 4
-    currents = [c for c, _ in calls]
-    assert currents == [1, 2, 3, 4]
+    # 2 hops → 2 callbacks
+    assert len(calls) == 2
+    assert calls == [(1, 2), (2, 2)]
 
 
 def test_translate_segments_no_callback_when_none():

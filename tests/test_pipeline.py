@@ -200,7 +200,7 @@ def test_translation_runs_when_target_lang_provided(tmp_path):
     with patch.dict("sys.modules", _sys_modules_patches(mocks)):
         run_pipeline(str(video), str(output), target_lang="es")
 
-    mocks["translate_segments"].assert_called_once_with(segments, "fr", "es")
+    mocks["translate_segments"].assert_called_once_with(segments, "fr", "es", engine="argos")
 
 
 # ── test 5 — FileNotFoundError for missing video ─────────────────────────────

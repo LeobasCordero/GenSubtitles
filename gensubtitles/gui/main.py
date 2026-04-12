@@ -63,6 +63,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._source_lang_var = ctk.StringVar()
         self._target_lang_var = ctk.StringVar(value="No target")
         self._output_format_var = ctk.StringVar(value="SRT")
+        self._engine_var = ctk.StringVar(value="Argos")
 
         # Dynamic language pairs loaded from API
         self._language_pairs: list[dict] = []
@@ -148,9 +149,22 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._option_target_lang.grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
 
-        # Row 4 — Output format dropdown
+        # Row 4 — Engine dropdown (visible only when a target language is selected)
+        self._lbl_engine = ctk.CTkLabel(self._frame, text="Translation engine:")
+        self._lbl_engine.grid(row=4, column=0, sticky="w", padx=(0, 8), pady=4)
+        self._option_engine = ctk.CTkOptionMenu(
+            self._frame,
+            values=["Argos", "DeepL", "LibreTranslate"],
+            variable=self._engine_var,
+        )
+        self._option_engine.grid(row=4, column=1, columnspan=2, sticky="ew", pady=4)
+        # Hidden initially — shown when target language is selected
+        self._lbl_engine.grid_remove()
+        self._option_engine.grid_remove()
+
+        # Row 5 — Output format dropdown
         ctk.CTkLabel(self._frame, text="Output format:").grid(
-            row=4, column=0, sticky="w", padx=(0, 8), pady=4
+            row=5, column=0, sticky="w", padx=(0, 8), pady=4
         )
         self._option_output_format = ctk.CTkOptionMenu(
             self._frame,
@@ -158,36 +172,36 @@ class GenSubtitlesApp(ctk.CTk):
             variable=self._output_format_var,
             command=self._on_output_format_change,
         )
-        self._option_output_format.grid(row=4, column=1, columnspan=2, sticky="ew", pady=4)
+        self._option_output_format.grid(row=5, column=1, columnspan=2, sticky="ew", pady=4)
 
-        # Row 5 — Generate button
+        # Row 6 — Generate button
         self._btn_generate = ctk.CTkButton(
             self._frame, text="Generate Subtitles", command=self._on_generate
         )
-        self._btn_generate.grid(row=5, column=0, columnspan=3, pady=(12, 4), sticky="ew")
+        self._btn_generate.grid(row=6, column=0, columnspan=3, pady=(12, 4), sticky="ew")
 
-        # Row 6 — Clear button
+        # Row 7 — Clear button
         self._btn_clear = ctk.CTkButton(
             self._frame,
             text="Clear",
             command=self._on_clear,
             state="disabled",
         )
-        self._btn_clear.grid(row=6, column=0, columnspan=3, pady=(0, 4), sticky="ew")
+        self._btn_clear.grid(row=7, column=0, columnspan=3, pady=(0, 4), sticky="ew")
 
-        # Row 7 — Elapsed time counter (hidden initially)
+        # Row 8 — Elapsed time counter (hidden initially)
         self._elapsed_label = ctk.CTkLabel(self._frame, text="00:00:00")
-        self._elapsed_label.grid(row=7, column=0, columnspan=3, pady=4)
+        self._elapsed_label.grid(row=8, column=0, columnspan=3, pady=4)
         self._elapsed_label.grid_remove()
 
-        # Row 8 — Progress bar (hidden initially)
+        # Row 9 — Progress bar (hidden initially)
         self._progress_bar = ctk.CTkProgressBar(self._frame, mode="indeterminate")
-        self._progress_bar.grid(row=8, column=0, columnspan=3, pady=4, sticky="ew")
+        self._progress_bar.grid(row=9, column=0, columnspan=3, pady=4, sticky="ew")
         self._progress_bar.grid_remove()
 
-        # Row 9 — Stage label
+        # Row 10 — Stage label
         self._stage_label = ctk.CTkLabel(self._frame, text="")
-        self._stage_label.grid(row=9, column=0, columnspan=3, pady=4)
+        self._stage_label.grid(row=10, column=0, columnspan=3, pady=4)
 
         # Reactive enable/disable for Clear button
         for var in (self._input_var, self._output_var, self._target_lang_var):
@@ -458,6 +472,14 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _on_target_lang_change(self, selection: str) -> None:
         """Trigger background pair download when a target language is picked."""
+        # Show/hide engine row based on whether a target is selected
+        if selection in ("No target", ""):
+            self._lbl_engine.grid_remove()
+            self._option_engine.grid_remove()
+        else:
+            self._lbl_engine.grid()
+            self._option_engine.grid()
+
         if selection in ("No target", ""):
             return
         src_label = self._source_lang_var.get()
@@ -676,6 +698,8 @@ class GenSubtitlesApp(ctk.CTk):
         src_lang = None if src_selected in ("Auto-detect", "") else _label_to_code(src_selected)
         tgt_selected = self._target_lang_var.get()
         tgt_lang: str | None = None if tgt_selected in ("No target", "") else _label_to_code(tgt_selected)
+        engine_label = self._engine_var.get()  # "Argos", "DeepL", or "LibreTranslate"
+        engine_code = engine_label.lower().replace(" ", "")  # "argos", "deepl", "libretranslate"
 
         self._btn_generate.configure(state="disabled")
         self._btn_clear.configure(state="disabled")
@@ -683,6 +707,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._entry_output.configure(state="disabled")
         self._option_source_lang.configure(state="disabled")
         self._option_target_lang.configure(state="disabled")
+        self._option_engine.configure(state="disabled")
         self._option_output_format.configure(state="disabled")
         self._btn_browse_input.configure(state="disabled")
         self._btn_browse_output.configure(state="disabled")
@@ -703,7 +728,7 @@ class GenSubtitlesApp(ctk.CTk):
 
         thread = threading.Thread(
             target=self._run_api_call,
-            args=(input_path, output_path, src_lang, tgt_lang),
+            args=(input_path, output_path, src_lang, tgt_lang, engine_code),
             daemon=True,
         )
         thread.start()
@@ -714,6 +739,7 @@ class GenSubtitlesApp(ctk.CTk):
         output_path: str,
         src_lang: str | None,
         tgt_lang: str | None,
+        engine: str = "argos",
     ) -> None:
         import requests as req  # noqa: PLC0415
 
@@ -723,6 +749,7 @@ class GenSubtitlesApp(ctk.CTk):
                 params["source_lang"] = src_lang
             if tgt_lang:
                 params["target_lang"] = tgt_lang
+            params["engine"] = engine  # always include
 
             with open(input_path, "rb") as fh:
                 video_name = Path(input_path).name
@@ -790,6 +817,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._entry_output.configure(state="normal")
         self._option_source_lang.configure(state="normal")
         self._option_target_lang.configure(state="normal")
+        self._option_engine.configure(state="normal")
         self._option_output_format.configure(state="normal")
         self._btn_browse_input.configure(state="normal")
         self._btn_browse_output.configure(state="normal")

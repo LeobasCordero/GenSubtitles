@@ -520,10 +520,13 @@ Plans:
 
 **Goal:** Improve subtitle translation quality in two dimensions: (1) pass all segments as a single block to Argos Translate so it has sentence context, instead of translating each line independently; (2) add optional support for a higher-quality engine (DeepL Free API) as a configurable alternative to Argos.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [x] 999.12-01-PLAN.md — Core translator: Argos batching + DeepL/LibreTranslate engine functions + AppSettings credentials
+- [x] 999.12-02-PLAN.md — CLI --engine flag + pipeline.py forwarding + API engine query param
+- [x] 999.12-03-PLAN.md — GUI engine CTkOptionMenu (show/hide with target lang + disable/enable cycle + wire to API)
+- [x] 999.12-04-PLAN.md — Tests: batching correctness + engine dispatch + error cases
 
 **Context captured:**
 - Current: each segment `.text` is translated independently — no context between lines, leading to inconsistent pronouns, names, and idioms
