@@ -36,6 +36,9 @@ class AppSettings:
     ui_language: str = "en"           # "en" | "es"
     default_output_dir: str = ""      # absolute path or "" (use same dir as input)
     default_source_lang: str = ""     # ISO 639-1 code or "" (Whisper auto-detect)
+    deepl_api_key: str = ""           # DeepL Free API key
+    libretranslate_url: str = ""      # e.g. "http://localhost:5000"
+    libretranslate_api_key: str = ""  # empty = open instance
 
 
 DEFAULT_SETTINGS = AppSettings()

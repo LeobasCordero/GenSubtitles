@@ -14,8 +14,11 @@ Provides:
 from __future__ import annotations
 
 import logging
+import re as _re
 from collections import namedtuple
 from typing import Any
+
+from gensubtitles.core.settings import load_settings
 
 logger = logging.getLogger(__name__)
 
@@ -200,42 +203,136 @@ def is_pair_available(from_code: str, to_code: str) -> bool:
 def translate_segments(
     segments: list[Any], source_lang: str, target_lang: str,
     progress_callback: "Any | None" = None,
+    engine: str = "argos",
 ) -> list:
     """
-    Translate segment texts from source_lang to target_lang using Argos Translate.
+    Translate segment texts from source_lang to target_lang.
+
+    engine: 'argos' (default), 'deepl', or 'libretranslate'.
 
     If source_lang == target_lang, a shallow copy of the original segment list is returned
     without translating any text; the segment references themselves are unchanged (TRANS-02).
-    Otherwise, ensures the language package is installed (TRANS-03/TRANS-05), then
-    translates each segment's .text while preserving .start and .end (TRANS-01).
 
-    progress_callback: optional callable(current: int, total: int) called after each segment.
+    progress_callback: optional callable(current: int, total: int) called after each hop
+    (Argos engine only).
 
     Returns a list of TranslatedSegment namedtuples (or a shallow copy of the input list when no-op).
     """
     if source_lang == target_lang:
         return list(segments)  # D-07: return original references unchanged
 
+    # --- Non-Argos engines: direct API call, no pivot chain ---
+    if engine == "deepl":
+        texts = [seg.text for seg in segments]
+        translated_texts = _translate_deepl(texts, target_lang)
+        return [
+            TranslatedSegment(start=seg.start, end=seg.end, text=t)
+            for seg, t in zip(segments, translated_texts)
+        ]
+
+    if engine == "libretranslate":
+        texts = [seg.text for seg in segments]
+        translated_texts = _translate_libretranslate(texts, source_lang, target_lang)
+        return [
+            TranslatedSegment(start=seg.start, end=seg.end, text=t)
+            for seg, t in zip(segments, translated_texts)
+        ]
+
+    if engine != "argos":
+        raise ValueError(
+            f"Unknown engine '{engine}'. Choose argos, deepl, or libretranslate."
+        )
+
+    # --- Argos engine: context-batching via XML numbered markers ---
     route = ensure_route_installed(source_lang, target_lang)
 
     import argostranslate.translate
 
     current = list(segments)
-    total = len(current)
     for hop_idx, (hop_from, hop_to) in enumerate(route):
-        next_segs = []
-        for seg_idx, seg in enumerate(current):
-            translated_text = argostranslate.translate.translate(
-                seg.text, hop_from, hop_to
+        # Build the batch string using numbered XML markers (D-01)
+        batch = "".join(
+            f"<{i + 1}>{seg.text}</{i + 1}>" for i, seg in enumerate(current)
+        )
+
+        # Translate the entire batch as a single string
+        translated_batch = argostranslate.translate.translate(batch, hop_from, hop_to)
+
+        # Parse markers back out
+        matches = _re.findall(r"<(\d+)>(.*?)</\1>", translated_batch, _re.DOTALL)
+        texts_by_idx: dict[int, str] = {int(m[0]): m[1] for m in matches}
+
+        # D-02: raise immediately on count mismatch
+        if len(texts_by_idx) != len(current):
+            raise RuntimeError(
+                f"Batched translation marker mismatch: "
+                f"expected {len(current)} segments, got {len(texts_by_idx)}"
             )
-            next_segs.append(TranslatedSegment(start=seg.start, end=seg.end, text=translated_text))
-            if progress_callback is not None:
-                # For multi-hop: report overall position across all hops
-                overall = hop_idx * total + (seg_idx + 1)
-                overall_total = len(route) * total
-                progress_callback(overall, overall_total)
-        current = next_segs
+
+        current = [
+            TranslatedSegment(start=seg.start, end=seg.end, text=texts_by_idx[i + 1])
+            for i, seg in enumerate(current)
+        ]
+
+        if progress_callback is not None:
+            progress_callback(hop_idx + 1, len(route))
+
     return current
+
+
+def _translate_deepl(texts: list[str], target_lang: str) -> list[str]:
+    """Translate a list of texts using DeepL Free API."""
+    settings = load_settings()
+    api_key = settings.deepl_api_key
+    if not api_key:
+        raise RuntimeError(
+            "DeepL API key not configured. Set deepl_api_key in settings."
+        )
+
+    import deepl  # noqa: PLC0415
+    try:
+        translator = deepl.Translator(api_key)
+        results = translator.translate_text(texts, target_lang=target_lang.upper())
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        raise RuntimeError(f"DeepL translation failed: {exc}") from exc
+    return [r.text for r in results]
+
+
+def _translate_libretranslate(
+    texts: list[str], source_lang: str, target_lang: str
+) -> list[str]:
+    """Translate a list of texts using LibreTranslate REST API."""
+    import requests  # noqa: PLC0415
+
+    settings = load_settings()
+    url = settings.libretranslate_url
+    api_key = settings.libretranslate_api_key  # empty string = open instance
+    if not url:
+        raise RuntimeError(
+            "LibreTranslate URL not configured. Set libretranslate_url in settings."
+        )
+    endpoint = f"{url.rstrip('/')}/translate"
+    translated = []
+    for text in texts:
+        payload: dict = {
+            "q": text,
+            "source": source_lang,
+            "target": target_lang,
+            "format": "text",
+        }
+        if api_key:
+            payload["api_key"] = api_key
+        try:
+            resp = requests.post(endpoint, json=payload, timeout=30)
+            resp.raise_for_status()
+            translated.append(resp.json()["translatedText"])
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            raise RuntimeError(f"LibreTranslate translation failed: {exc}") from exc
+    return translated
 
 
 def translate_file(
