@@ -3,9 +3,9 @@ gensubtitles.api.main
 ~~~~~~~~~~~~~~~~~~~~~
 FastAPI application entry point.
 
-Startup: loads WhisperTranscriber (model weights) once via asynccontextmanager
-lifespan and stores it on app.state.transcriber — accessed through
-get_transcriber() dependency in dependencies.py.
+Startup: loads WhisperTranscriber (model weights) in a background thread so
+the server starts accepting connections immediately.  Poll GET /status to track
+loading progress; GET /languages is also available immediately.
 
 Serve with:
     uvicorn gensubtitles.api.main:app --host 0.0.0.0 --port 8000
@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -25,23 +26,116 @@ from gensubtitles.api.routers.subtitles import router as subtitles_router
 
 logger = logging.getLogger(__name__)
 
+# ── startup state (updated by background loader thread) ───────────────────────
+_startup_state: dict = {
+    "stage": "starting",       # starting | downloading | loading | ready | error
+    "message": "Starting server\u2026",
+    "progress": -1,            # -1 = indeterminate, 0-100 = determinate percentage
+}
+_startup_lock = threading.Lock()
+_model_ready = threading.Event()
+
+
+def _set_startup(stage: str, message: str, progress: int = -1) -> None:
+    with _startup_lock:
+        _startup_state["stage"] = stage
+        _startup_state["message"] = message
+        _startup_state["progress"] = progress
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load WhisperTranscriber once at startup; release on shutdown."""
+    """Start model loading in a background thread; yield immediately so routes are reachable."""
     model_size = os.environ.get("WHISPER_MODEL_SIZE", "medium")
     device = os.environ.get("WHISPER_DEVICE", "auto")
-    logger.info(
-        "GenSubtitles API startup — loading WhisperTranscriber "
-        "(model_size=%s device=%s)",
-        model_size,
-        device,
-    )
-    app.state.transcriber = WhisperTranscriber(model_size=model_size, device=device)
-    logger.info("WhisperTranscriber ready — accepting requests")
-    yield
-    logger.info("GenSubtitles API shutdown — releasing transcriber")
+
+    def _load() -> None:
+        import huggingface_hub
+        import huggingface_hub.file_download as _hfd
+
+        repo_id = f"Systran/faster-whisper-{model_size}"
+
+        # ── Phase 1: download (if not already cached) ─────────────────────
+        already_cached = False
+        try:
+            huggingface_hub.snapshot_download(repo_id, local_files_only=True)
+            already_cached = True
+        except Exception:  # noqa: BLE001
+            pass
+
+        if not already_cached:
+            # Try to get total byte count for percentage display
+            total_bytes = 0
+            try:
+                api = huggingface_hub.HfApi()
+                tree = list(api.list_repo_tree(repo_id, repo_type="model", recursive=True))
+                total_bytes = sum(getattr(f, "size", 0) or 0 for f in tree)
+            except Exception:  # noqa: BLE001
+                pass
+
+            _downloaded: list[int] = [0]
+            _dl_lock = threading.Lock()
+            _orig_tqdm = _hfd.tqdm
+
+            class _ByteTqdm(_orig_tqdm):  # type: ignore[misc]
+                def update(self, n: int = 1) -> None:
+                    super().update(n)
+                    n = n or 0
+                    if n > 0:
+                        with _dl_lock:
+                            _downloaded[0] += n
+                            mb = _downloaded[0] / 1_048_576
+                            if total_bytes > 0:
+                                pct = min(int(_downloaded[0] / total_bytes * 100), 99)
+                                total_mb = total_bytes / 1_048_576
+                                _set_startup(
+                                    "downloading",
+                                    f"\u23ec Downloading '{model_size}' model (first time only)\u2026 {pct}% ({mb:.0f}\u202fMB / {total_mb:.0f}\u202fMB)",
+                                    pct,
+                                )
+                            else:
+                                # Total unknown — keep indeterminate, show bytes downloaded
+                                _set_startup(
+                                    "downloading",
+                                    f"\u23ec Downloading '{model_size}' model (first time only)\u2026 {mb:.0f}\u202fMB downloaded",
+                                    -1,
+                                )
+
+            # Start indeterminate until first byte arrives (avoids stuck-at-0% look)
+            initial_progress = 0 if total_bytes > 0 else -1
+            _set_startup(
+                "downloading",
+                f"\u23ec Downloading '{model_size}' model (first time only)\u2026",
+                initial_progress,
+            )
+            _hfd.tqdm = _ByteTqdm
+            try:
+                huggingface_hub.snapshot_download(repo_id)
+            except Exception as exc:  # noqa: BLE001
+                _set_startup("error", f"Model download failed: {exc}", -1)
+                logger.error("Model download failed: %s", exc)
+                return
+            finally:
+                _hfd.tqdm = _orig_tqdm
+
+        # ── Phase 2: load model into memory (indeterminate) ────────────────
+        cache_note = "cached — " if already_cached else ""
+        _set_startup("loading", f"Loading {cache_note}'{model_size}' model into memory\u2026", -1)
+        logger.info("Loading WhisperTranscriber (model_size=%s device=%s)", model_size, device)
+        try:
+            app.state.transcriber = WhisperTranscriber(model_size=model_size, device=device)
+            _set_startup("ready", "Ready", 100)
+            _model_ready.set()
+            logger.info("WhisperTranscriber ready")
+        except Exception as exc:  # noqa: BLE001
+            _set_startup("error", f"Model failed to load: {exc}", -1)
+            logger.error("WhisperTranscriber failed: %s", exc)
+
     app.state.transcriber = None
+    threading.Thread(target=_load, daemon=True).start()
+    yield
+    app.state.transcriber = None
+    _model_ready.clear()
 
 
 app = FastAPI(
@@ -94,3 +188,12 @@ async def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResp
 
 # ── routers ───────────────────────────────────────────────────────────────────
 app.include_router(subtitles_router)
+
+
+# ── status endpoint ───────────────────────────────────────────────────────────
+
+@app.get("/status")
+def get_status() -> dict:
+    """Return current server startup state. Available immediately on first connection."""
+    with _startup_lock:
+        return dict(_startup_state)
