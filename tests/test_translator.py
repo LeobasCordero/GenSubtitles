@@ -545,8 +545,7 @@ def test_translate_segments_progress_callback_multi_hop():
     assert all(t == 4 for _, t in calls)
     # Current should be monotonically increasing: 1, 2, 3, 4
     currents = [c for c, _ in calls]
-    assert currents == sorted(currents)
-    assert currents[-1] == 4
+    assert currents == [1, 2, 3, 4]
 
 
 def test_translate_segments_no_callback_when_none():

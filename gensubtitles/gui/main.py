@@ -77,6 +77,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._closing = False
         self._prefetch_in_progress: set[tuple[str, str]] = set()
         self._prefetch_lock = threading.Lock()
+        self._poll_in_flight = False
         self._current_settings = None
 
         self._build_ui()
@@ -599,8 +600,9 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _poll_progress(self) -> None:
         """Poll GET /progress every second via a background thread to avoid blocking Tk."""
-        if self._closing:
+        if self._closing or self._poll_in_flight:
             return
+        self._poll_in_flight = True
 
         def _fetch() -> None:
             try:
@@ -612,6 +614,7 @@ class GenSubtitlesApp(ctk.CTk):
             except Exception:  # noqa: BLE001
                 pass  # server may not be ready yet
             finally:
+                self._poll_in_flight = False
                 if not self._closing:
                     self.after(1000, self._poll_progress)
 
