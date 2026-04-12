@@ -33,7 +33,6 @@ _startup_state: dict = {
     "progress": -1,            # -1 = indeterminate, 0-100 = determinate percentage
 }
 _startup_lock = threading.Lock()
-_model_ready = threading.Event()
 
 
 def _set_startup(stage: str, message: str, progress: int = -1) -> None:
@@ -125,7 +124,6 @@ async def lifespan(app: FastAPI):
         try:
             app.state.transcriber = WhisperTranscriber(model_size=model_size, device=device)
             _set_startup("ready", "Ready", 100)
-            _model_ready.set()
             logger.info("WhisperTranscriber ready")
         except Exception as exc:  # noqa: BLE001
             _set_startup("error", f"Model failed to load: {exc}", -1)
@@ -135,7 +133,6 @@ async def lifespan(app: FastAPI):
     threading.Thread(target=_load, daemon=True).start()
     yield
     app.state.transcriber = None
-    _model_ready.clear()
 
 
 app = FastAPI(

@@ -257,10 +257,22 @@ class TestLifespan:
 
     def test_lifespan_sets_transcriber_on_app_state(self):
         """API-04: lifespan loads WhisperTranscriber exactly once and stores it on app.state."""
+        import time
+
         mock_transcriber_instance = MagicMock()
 
-        with patch("gensubtitles.api.main.WhisperTranscriber", return_value=mock_transcriber_instance) as mock_cls:
+        with (
+            patch("gensubtitles.api.main.WhisperTranscriber", return_value=mock_transcriber_instance) as mock_cls,
+            patch("huggingface_hub.snapshot_download"),
+        ):
             with TestClient(app) as lifespan_client:
+                # Model loading happens in a background thread; poll /status until ready
+                deadline = time.monotonic() + 10
+                while time.monotonic() < deadline:
+                    resp = lifespan_client.get("/status")
+                    if resp.json().get("stage") == "ready":
+                        break
+                    time.sleep(0.1)
                 # After startup, transcriber is on app.state
                 assert app.state.transcriber is mock_transcriber_instance
             # After shutdown, transcriber is released

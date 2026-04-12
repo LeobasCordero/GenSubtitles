@@ -24,8 +24,8 @@ os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
 logger = logging.getLogger(__name__)
 
-# Appearance defaults — Dark is the default; System follows the OS.
-ctk.set_appearance_mode("Dark")
+# Appearance defaults — use System until user settings are loaded.
+ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
 # ---------------------------------------------------------------------------
@@ -250,10 +250,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._server_ready = False
         self._os_listener_active = False  # guard for the darkdetect listener thread
 
+        self._apply_startup_settings()
         self._build_ui()
+        self._apply_startup_theme()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self._start_server()
-        self._apply_startup_settings()
 
     # ------------------------------------------------------------------
     # UI construction
@@ -325,15 +326,16 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._option_target_lang.grid(row=3, column=1, columnspan=2, sticky="ew", pady=(0, 8))
 
-        # Row 4 — Engine (Argos only — DeepL/LibreTranslate not available)
-        # No dropdown needed: only Argos is supported.
-        self._lbl_engine = ctk.CTkLabel(self._frame, text="")
+        # Row 4 — Engine dropdown (visible only when a target language is selected)
+        self._lbl_engine = ctk.CTkLabel(self._frame, text="Translation engine:")
+        self._lbl_engine.grid(row=4, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
         self._option_engine = ctk.CTkOptionMenu(
             self._frame,
-            values=["Argos"],
+            values=["Argos", "DeepL", "LibreTranslate"],
             variable=self._engine_var,
         )
-        # Never shown — kept so existing references don't break
+        self._option_engine.grid(row=4, column=1, columnspan=2, sticky="ew", pady=(0, 8))
+        # Hidden initially — shown when a target language is selected
         self._lbl_engine.grid_remove()
         self._option_engine.grid_remove()
 
@@ -686,8 +688,14 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _on_target_lang_change(self, selection: str) -> None:
         """Trigger background pair download when a target language is picked."""
+        # Show/hide engine row based on whether a target is selected
         if selection in ("No target", ""):
+            self._lbl_engine.grid_remove()
+            self._option_engine.grid_remove()
             return
+        else:
+            self._lbl_engine.grid()
+            self._option_engine.grid()
         src_label = self._source_lang_var.get()
         if src_label == "Auto-detect":
             return
@@ -918,7 +926,8 @@ class GenSubtitlesApp(ctk.CTk):
         src_lang = None if src_selected in ("Auto-detect", "") else _label_to_code(src_selected)
         tgt_selected = self._target_lang_var.get()
         tgt_lang: str | None = None if tgt_selected in ("No target", "") else _label_to_code(tgt_selected)
-        engine_code = "argos"
+        engine_label = self._engine_var.get()  # "Argos", "DeepL", or "LibreTranslate"
+        engine_code = engine_label.lower().replace(" ", "")  # "argos", "deepl", "libretranslate"
 
         self._btn_generate.configure(state="disabled")
         self._btn_clear.configure(state="disabled")
@@ -1230,19 +1239,29 @@ class GenSubtitlesApp(ctk.CTk):
     # ------------------------------------------------------------------
 
     def _apply_startup_settings(self) -> None:
-        """Load persisted settings and apply appearance mode on startup."""
+        """Load persisted settings and apply appearance mode before building UI.
+
+        Only sets the CTk appearance mode and stores ``_current_settings``.
+        Widget-level theme refresh (``_apply_theme``, ``sync_with_os``) must be
+        called separately *after* ``_build_ui`` via ``_apply_startup_theme``.
+        """
         try:
             from gensubtitles.core.settings import AppSettings, load_settings  # noqa: PLC0415
 
             self._current_settings = load_settings()
             ctk.set_appearance_mode(self._current_settings.appearance_mode)
-            self._apply_theme()
         except Exception as exc:  # noqa: BLE001
             logger.warning("Could not load settings: %s", exc)
             from gensubtitles.core.settings import AppSettings  # noqa: PLC0415
 
             self._current_settings = AppSettings()
 
+    def _apply_startup_theme(self) -> None:
+        """Apply widget-level colours and start OS theme listener.
+
+        Must be called *after* ``_build_ui`` so that widget references exist.
+        """
+        self._apply_theme()
         # Detect current OS theme immediately and start live-sync listener.
         # sync_with_os() is a no-op if appearance_mode != "System".
         self.sync_with_os()
@@ -1586,6 +1605,8 @@ TROUBLESHOOTING
     def _start_server(self) -> None:
         import uvicorn  # noqa: PLC0415
 
+        _SERVER_BIND_TIMEOUT = 30  # seconds to wait for Uvicorn to bind
+
         def _run() -> None:
             try:
                 config = uvicorn.Config(
@@ -1603,7 +1624,21 @@ TROUBLESHOOTING
             import requests as req  # noqa: PLC0415
 
             # Phase 1: wait until the HTTP server binds and /status responds
+            deadline = time.monotonic() + _SERVER_BIND_TIMEOUT
             while not self._closing:
+                if not thread.is_alive():
+                    if not self._closing:
+                        self.after(0, lambda: self._on_server_failed(
+                            "Server process exited unexpectedly. Check port 8000.",
+                        ))
+                    return
+                if time.monotonic() > deadline:
+                    if not self._closing:
+                        self.after(0, lambda: self._on_server_failed(
+                            "Server did not start within "
+                            f"{_SERVER_BIND_TIMEOUT}s. Check port 8000.",
+                        ))
+                    return
                 time.sleep(1)
                 try:
                     req.get(f"{_BASE_URL}/status", timeout=1)
@@ -1613,6 +1648,12 @@ TROUBLESHOOTING
 
             # Phase 2: poll /status until model is ready, updating the GUI label
             while not self._closing:
+                if not thread.is_alive():
+                    if not self._closing:
+                        self.after(0, lambda: self._on_server_failed(
+                            "Server process exited unexpectedly during model loading.",
+                        ))
+                    return
                 time.sleep(1)
                 try:
                     resp = req.get(f"{_BASE_URL}/status", timeout=2)
@@ -1629,7 +1670,7 @@ TROUBLESHOOTING
                         return
                     if stage == "error":
                         if not self._closing:
-                            self.after(0, self._on_server_failed)
+                            self.after(0, lambda m=message: self._on_server_failed(m))
                         return
                 except Exception:  # noqa: BLE001
                     continue
@@ -1673,13 +1714,14 @@ TROUBLESHOOTING
         # Run in background — list_installed_pairs() can be slow on first Argos load
         threading.Thread(target=self._populate_language_dropdowns, daemon=True).start()
 
-    def _on_server_failed(self) -> None:
+    def _on_server_failed(self, detail: str = "") -> None:
         """Called on main thread if the server never became reachable."""
         self._progress_bar.stop()
         self._progress_bar.configure(mode="determinate", progress_color=_p("progress_err"))
         self._progress_bar.set(1.0)
+        text = f"❌ {detail}" if detail else "❌ Server failed to start. Restart the app."
         self._stage_label.configure(
-            text="❌ Server failed to start. Restart the app.",
+            text=text,
             text_color=_p("progress_err"),
         )
 
