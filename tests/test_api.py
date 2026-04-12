@@ -362,3 +362,21 @@ class TestGetProgress:
         resp_after = client.get("/progress")
         assert resp_after.json()["stage"] == "done"
         assert resp_after.json()["label"] == "✓ Done"
+
+    def test_progress_shows_error_on_pipeline_failure(self, client):
+        """GET /progress reflects 'error' stage when the pipeline fails."""
+        self._reset_progress()
+
+        def raising_extract(video_path, wav_path):
+            raise RuntimeError("FFmpeg cannot decode this stream")
+
+        with patch("gensubtitles.core.audio.extract_audio", side_effect=raising_extract):
+            response = client.post(
+                "/subtitles",
+                files={"file": ("bad.mp4", b"not a video", "video/mp4")},
+            )
+        assert response.status_code in (400, 500)
+
+        resp_after = client.get("/progress")
+        assert resp_after.json()["stage"] == "error"
+        assert "failed" in resp_after.json()["label"].lower()

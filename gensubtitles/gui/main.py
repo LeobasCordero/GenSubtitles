@@ -78,6 +78,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._prefetch_in_progress: set[tuple[str, str]] = set()
         self._prefetch_lock = threading.Lock()
         self._poll_in_flight = False
+        self._job_active = False
         self._current_settings = None
 
         self._build_ui()
@@ -600,7 +601,7 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _poll_progress(self) -> None:
         """Poll GET /progress every second via a background thread to avoid blocking Tk."""
-        if self._closing or self._poll_in_flight:
+        if self._closing or self._poll_in_flight or not self._job_active:
             return
         self._poll_in_flight = True
 
@@ -615,13 +616,15 @@ class GenSubtitlesApp(ctk.CTk):
                 pass  # server may not be ready yet
             finally:
                 self._poll_in_flight = False
-                if not self._closing:
+                if not self._closing and self._job_active:
                     self.after(1000, self._poll_progress)
 
         threading.Thread(target=_fetch, daemon=True).start()
 
     def _apply_progress(self, data: dict) -> None:
         """Apply progress data to UI widgets (must run on Tk main thread)."""
+        if not self._job_active:
+            return  # ignore stale progress updates after job finished
         label = data.get("label", "")
         current = data.get("current", 0)
         total = data.get("total", 0)
@@ -686,6 +689,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._progress_bar.grid()
         self._progress_bar.configure(mode="indeterminate")
         self._progress_bar.start()
+        self._job_active = True
         self._poll_progress()
 
         # Reset and start elapsed timer
@@ -760,6 +764,9 @@ class GenSubtitlesApp(ctk.CTk):
                 self.after(0, self._finish_generate, str(exc), None)
 
     def _finish_generate(self, error: str | None, output_path: str | None) -> None:
+        # Stop progress polling first to prevent stale UI updates
+        self._job_active = False
+
         if self._stage_timer is not None:
             self.after_cancel(self._stage_timer)
             self._stage_timer = None

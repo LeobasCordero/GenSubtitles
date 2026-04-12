@@ -172,12 +172,15 @@ def test_ensure_pair_installed_downloads_missing_pair():
 
 
 def test_ensure_pair_installed_calls_update_index_before_download():
-    """TRANS-03: update_package_index() is called before attempting download."""
+    """TRANS-03: update_package_index() is called when package not in cache."""
     pkg = _make_fake_package("en", "fr")
     with _inject_argostranslate(
         installed_languages=[],
         available_packages=[pkg],
     ) as (fake_pkg, _):
+        import gensubtitles.core.translator as _mod
+        _mod._pkg_index_cache = None  # ensure cache is empty so refresh is needed
+
         call_order = []
         fake_pkg.update_package_index.side_effect = lambda: call_order.append("update")
         pkg.download.side_effect = lambda: call_order.append("download") or "/tmp/fake.argosmodel"
@@ -256,6 +259,32 @@ def test_ensure_pair_installed_no_download_call_when_cached():
         ensure_pair_installed("en", "fr")
 
     pkg.download.assert_not_called()
+
+
+def test_ensure_pair_installed_uses_cached_index_first():
+    """ensure_pair_installed() tries cached index before force-refreshing."""
+    pkg = _make_fake_package("en", "de")
+    with _inject_argostranslate(
+        installed_languages=[],
+        available_packages=[pkg],
+    ) as (fake_pkg, _):
+        import gensubtitles.core.translator as _mod
+        # Pre-seed the cache so first call uses it
+        _mod._pkg_index_cache = [pkg]
+
+        from gensubtitles.core.translator import ensure_pair_installed
+
+        try:
+            with patch("tqdm.auto.tqdm") as mock_tqdm:
+                mock_tqdm.return_value.__enter__ = MagicMock(return_value=MagicMock())
+                mock_tqdm.return_value.__exit__ = MagicMock(return_value=False)
+                ensure_pair_installed("en", "de")
+        finally:
+            _mod._pkg_index_cache = None  # reset to avoid leaking into other tests
+
+    # Package found in cache — should NOT have called update_package_index
+    fake_pkg.update_package_index.assert_not_called()
+    pkg.download.assert_called_once()
 
 
 # ── Network failure / offline mode (D-04, D-05, D-06, D-11) ─────────────────
@@ -496,6 +525,27 @@ def test_find_route_prefers_installed_over_network():
     # Should not have fetched remote index since pair is installed
     fake_pkg.update_package_index.assert_not_called()
     fake_pkg.get_available_packages.assert_not_called()
+
+
+def test_find_route_prefers_direct_remote_over_installed_pivot():
+    """find_route() prefers a direct remote pair over an installed English pivot."""
+    # fr→en and en→es are installed (pivot route available)
+    # fr→es is only available remotely (direct route)
+    fr_lang = _make_fake_language("fr", ["en"])
+    en_lang = _make_fake_language("en", ["es"])
+    pkg_fr_es = _make_fake_package("fr", "es")
+    with _inject_argostranslate(
+        installed_languages=[fr_lang, en_lang],
+        available_packages=[pkg_fr_es],
+    ):
+        import gensubtitles.core.translator as _mod
+        _mod._pkg_index_cache = None
+        from gensubtitles.core.translator import find_route
+
+        route = find_route("fr", "es")
+
+    # Should pick the direct remote route, not the installed pivot
+    assert route == [("fr", "es")]
 
 
 # ── progress_callback tests ──────────────────────────────────────────────────

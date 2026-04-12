@@ -70,6 +70,12 @@ def find_route(from_code: str, to_code: str) -> list[tuple[str, str]]:
     - Direct pair available → [(from, to)]
     - No direct pair, but both from→en and en→to exist → [(from, 'en'), ('en', to)]
     - Otherwise raises RuntimeError.
+
+    Preference order:
+    1. Direct installed pair (no network)
+    2. Direct remotely-available pair (preferred over pivot for quality)
+    3. Installed English pivot (no network, but 2-hop)
+    4. Remote English pivot
     """
     available: set[tuple[str, str]] | None = None
 
@@ -82,20 +88,20 @@ def find_route(from_code: str, to_code: str) -> list[tuple[str, str]]:
     def _reachable(f: str, t: str) -> bool:
         return _is_installed(f, t) or _is_available(f, t)
 
-    # Check installed packages first (avoids network for common cases)
+    # 1. Check installed direct pair first (avoids network for common cases)
     if _is_installed(from_code, to_code):
         return [(from_code, to_code)]
 
-    # Try English as pivot using installed packages first
+    # 2. Prefer a direct route whenever one is available, including remotely
+    if _reachable(from_code, to_code):
+        return [(from_code, to_code)]
+
+    # 3. If no direct route exists, prefer an already-installed English pivot
     if from_code != "en" and to_code != "en":
         if _is_installed(from_code, "en") and _is_installed("en", to_code):
             return [(from_code, "en"), ("en", to_code)]
 
-    # Fall back to checking remote index
-    if _reachable(from_code, to_code):
-        return [(from_code, to_code)]
-
-    # Try English as pivot language with remote packages
+    # 4. Fall back to an English pivot with remote packages
     if from_code != "en" and to_code != "en":
         if _reachable(from_code, "en") and _reachable("en", to_code):
             return [(from_code, "en"), ("en", to_code)]
@@ -128,17 +134,27 @@ def ensure_pair_installed(from_code: str, to_code: str) -> None:
     if _is_installed(from_code, to_code):
         return  # already cached — D-05
 
-    # Refresh index if needed and find the package
-    available = _get_available_packages(force_refresh=True)
-
-    # Re-check after index refresh
-    if _is_installed(from_code, to_code):
-        return
+    # Try the cached index first (avoids network on repeated calls)
+    available = _get_available_packages()
 
     pkg = next(
         (p for p in available if p.from_code == from_code and p.to_code == to_code),
         None,
     )
+
+    # If not found in cache, force a single refresh and retry
+    if pkg is None:
+        available = _get_available_packages(force_refresh=True)
+
+        # Re-check installed state after refresh (another thread may have installed it)
+        if _is_installed(from_code, to_code):
+            return
+
+        pkg = next(
+            (p for p in available if p.from_code == from_code and p.to_code == to_code),
+            None,
+        )
+
     if pkg is None:
         raise RuntimeError(
             f"Language pair '{from_code}→{to_code}' could not be downloaded: "
