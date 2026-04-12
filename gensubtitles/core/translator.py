@@ -313,8 +313,8 @@ def _translate_libretranslate(
         import requests  # noqa: PLC0415
     except ImportError:
         raise RuntimeError(
-            "The 'requests' package is required for LibreTranslate. "
-            "Install it with: pip install requests"
+            "The 'requests' package is required for LibreTranslate but is not installed. "
+            "Reinstall with: pip install gensubtitles"
         )
 
     settings = load_settings()
