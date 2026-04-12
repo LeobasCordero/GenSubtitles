@@ -464,25 +464,39 @@ class GenSubtitlesApp(ctk.CTk):
         self._prefetch_pair_bg(src_code, tgt_code)
 
     def _prefetch_pair_bg(self, src_code: str, tgt_code: str) -> None:
-        """Download an Argos Translate pair in the background and update the stage label."""
+        """Download Argos Translate packages for src→tgt in the background (supports two-hop routing)."""
         if src_code == tgt_code:
             return
 
         def _worker() -> None:
-            from gensubtitles.core.translator import _is_installed, ensure_pair_installed  # noqa: PLC0415
-            if _is_installed(src_code, tgt_code):
+            from gensubtitles.core.translator import (  # noqa: PLC0415
+                _is_installed,
+                ensure_route_installed,
+                find_route,
+            )
+            try:
+                route = find_route(src_code, tgt_code)
+            except RuntimeError as exc:
+                logger.warning("No route for %s→%s: %s", src_code, tgt_code, exc)
+                msg = f"⚠ No translation route available for {src_code}→{tgt_code}"
+                self.after(0, lambda m=msg: self._stage_label.configure(text=m))
                 return
-            self.after(0, lambda: self._stage_label.configure(
-                text=f"⏬ Downloading {src_code}→{tgt_code} model…"
+
+            if all(_is_installed(f, t) for f, t in route):
+                return  # already installed, nothing to do
+
+            via = " → ".join(f"{f}→{t}" for f, t in route)
+            self.after(0, lambda v=via: self._stage_label.configure(
+                text=f"⏬ Downloading {v} model…"
             ))
             try:
-                ensure_pair_installed(src_code, tgt_code)
-                self.after(0, lambda: self._stage_label.configure(
-                    text=f"✓ {src_code}→{tgt_code} model ready"
+                ensure_route_installed(src_code, tgt_code)
+                self.after(0, lambda v=via: self._stage_label.configure(
+                    text=f"✓ {v} model ready"
                 ))
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Background prefetch failed for %s→%s: %s", src_code, tgt_code, exc)
-                msg = f"⚠ Could not prefetch {src_code}→{tgt_code}: {exc}"
+                msg = f"⚠ Could not download model for {src_code}→{tgt_code}: {exc}"
                 self.after(0, lambda m=msg: self._stage_label.configure(text=m))
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -545,8 +559,7 @@ class GenSubtitlesApp(ctk.CTk):
         current = self._tl_target_var.get()
         if current not in targets:
             self._tl_target_var.set(targets[0])
-        # Prefetch the new source+target pair
-        self._prefetch_pair_bg(_label_to_code(selection), _label_to_code(self._tl_target_var.get()))
+        # NOTE: no prefetch here — this fires on init. Prefetch only on explicit target selection.
 
     def _update_clear_state(self) -> None:
         """Enable Clear button if any user-settable input field is non-empty/non-default; disable otherwise."""
@@ -568,15 +581,38 @@ class GenSubtitlesApp(ctk.CTk):
         self._output_format_var.set("SRT")
 
     # ------------------------------------------------------------------
-    # Stage label cycling
+    # Progress polling (replaces static stage cycling)
     # ------------------------------------------------------------------
 
-    def _advance_stage(self, idx: int) -> None:
+    def _poll_progress(self) -> None:
+        """Poll GET /progress every second and update the stage label + progress bar."""
         if self._closing:
             return
-        if idx < len(_STAGE_LABELS):
-            self._stage_label.configure(text=_STAGE_LABELS[idx])
-            self._stage_timer = self.after(2500, self._advance_stage, idx + 1)
+        try:
+            import requests as req  # noqa: PLC0415
+            resp = req.get(f"{_BASE_URL}/progress", timeout=1)
+            if resp.status_code == 200:
+                data = resp.json()
+                label = data.get("label", "")
+                current = data.get("current", 0)
+                total = data.get("total", 0)
+                stage = data.get("stage", "")
+                if label:
+                    self._stage_label.configure(text=label)
+                # Switch progress bar to determinate mode during translation
+                if stage == "translating" and total > 0:
+                    pct = current / total
+                    if self._progress_bar.cget("mode") != "determinate":
+                        self._progress_bar.stop()
+                        self._progress_bar.configure(mode="determinate")
+                    self._progress_bar.set(pct)
+                elif self._progress_bar.cget("mode") != "indeterminate":
+                    self._progress_bar.configure(mode="indeterminate")
+                    self._progress_bar.start()
+        except Exception:  # noqa: BLE001
+            pass  # server may not be ready yet
+
+        self._stage_timer = self.after(1000, self._poll_progress)
 
     def _tick_elapsed(self) -> None:
         if self._closing:
@@ -623,8 +659,9 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_browse_input.configure(state="disabled")
         self._btn_browse_output.configure(state="disabled")
         self._progress_bar.grid()
+        self._progress_bar.configure(mode="indeterminate")
         self._progress_bar.start()
-        self._advance_stage(0)
+        self._poll_progress()
 
         # Reset and start elapsed timer
         if self._elapsed_timer is not None:
@@ -714,6 +751,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._elapsed_timer = None
 
         self._progress_bar.stop()
+        self._progress_bar.configure(mode="indeterminate")
         self._progress_bar.grid_remove()
         self._btn_generate.configure(state="normal")
         self._entry_input.configure(state="normal")

@@ -31,6 +31,22 @@ router = APIRouter(tags=["subtitles"])
 # early validation before the lazy import (which triggers the FFmpeg check).
 _SUPPORTED_VIDEO_EXTENSIONS = frozenset({".mp4", ".mkv", ".avi", ".mov", ".webm"})
 
+# Module-level progress state (one job at a time — GUI is single-user)
+_progress: dict = {"stage": "idle", "current": 0, "total": 0, "label": "Idle"}
+
+
+def _set_progress(stage: str, label: str, current: int = 0, total: int = 0) -> None:
+    _progress["stage"] = stage
+    _progress["label"] = label
+    _progress["current"] = current
+    _progress["total"] = total
+
+
+@router.get("/progress")
+def get_progress() -> dict:
+    """Return the current pipeline progress for the active job."""
+    return dict(_progress)
+
 
 @router.post("/subtitles")
 def post_subtitles(
@@ -81,20 +97,39 @@ def post_subtitles(
     # Lazy imports avoid import-time FFmpeg check when tests mock these functions.
     from gensubtitles.core.audio import audio_temp_context, extract_audio  # noqa: PLC0415
     from gensubtitles.core.srt_writer import write_srt  # noqa: PLC0415
+
+    _set_progress("extracting", "[1/4] Extracting audio…")
     with audio_temp_context() as wav_path:
         extract_audio(video_path, wav_path)
+        _set_progress("transcribing", "[2/4] Transcribing…")
         transcription = transcriber.transcribe(wav_path, language=source_lang)
 
     segments = transcription.segments
     detected_lang = transcription.language
+    total_segs = len(segments)
 
     # ── 4. Optional translation ────────────────────────────────────────────────
     if target_lang is not None and target_lang != detected_lang:
         from gensubtitles.core.translator import translate_segments  # noqa: PLC0415
-        segments = translate_segments(segments, detected_lang, target_lang)
+
+        _set_progress("translating", f"[3/4] Translating 0/{total_segs}…", 0, total_segs)
+
+        def _on_seg_progress(current: int, total: int) -> None:
+            _set_progress(
+                "translating",
+                f"[3/4] Translating {current}/{total}…",
+                current,
+                total,
+            )
+
+        segments = translate_segments(segments, detected_lang, target_lang, progress_callback=_on_seg_progress)
+    else:
+        _set_progress("translating", "[3/4] Translation skipped", 0, 0)
 
     # ── 5. Write SRT ───────────────────────────────────────────────────────────
+    _set_progress("writing", "[4/4] Writing SRT…")
     write_srt(segments, srt_path)
+    _set_progress("done", "✓ Done", 0, 0)
 
     # ── 6. Return as FileResponse ──────────────────────────────────────────────
     # BackgroundTasks (registered above) will delete both temp files after the
