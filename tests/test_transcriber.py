@@ -24,8 +24,13 @@ from gensubtitles.exceptions import TranscriptionError
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _make_fake_segment(start: float, end: float, text: str):
-    """Return a simple object with start/end/text attributes (mimics faster-whisper Segment)."""
-    return SimpleNamespace(start=start, end=end, text=text)
+    """Return a simple object with start/end/text/words attributes (mimics faster-whisper Segment).
+
+    Includes a single-word list so the end-time patching loop retains the segment
+    and does not alter the end time (word.end == segment.end).
+    """
+    word = SimpleNamespace(start=start, end=end)
+    return SimpleNamespace(start=start, end=end, text=text, words=[word])
 
 
 def _make_transcription_info(language: str = "en", duration: float = 120.0):
@@ -335,3 +340,106 @@ def test_transcription_error_chains_original_exception():
     with pytest.raises(TranscriptionError) as exc_info:
         transcriber.transcribe("fake.wav")
     assert exc_info.value.__cause__ is original_exc
+
+
+# ── helpers for word-timestamp tests ─────────────────────────────────────────
+
+def _make_fake_segment_with_words(start: float, end: float, text: str, words=None):
+    """Return a SimpleNamespace mimicking a faster-whisper Segment with .words attribute."""
+    return SimpleNamespace(start=start, end=end, text=text, words=words)
+
+
+# ── VAD parameter tuning (D-01) ───────────────────────────────────────────────
+
+
+def test_vad_parameters_are_passed_to_transcribe():
+    """D-01: vad_parameters dict with tuned silence values is forwarded to model.transcribe()."""
+    mock_model = _make_model_mock()
+    fw = _make_fw_module(model_mock=mock_model)
+    with patch.dict("sys.modules", {"faster_whisper": fw}):
+        transcriber = WhisperTranscriber("tiny", device="cpu")
+    transcriber.model = mock_model
+    transcriber.transcribe("fake.wav")
+    _args, kwargs = mock_model.transcribe.call_args
+    vad_params = kwargs.get("vad_parameters")
+    assert vad_params == {
+        "min_silence_duration_ms": 400,
+        "speech_pad_ms": 200,
+        "min_speech_duration_ms": 250,
+    }
+
+
+# ── word-level timestamps (D-02) ─────────────────────────────────────────────
+
+
+def test_word_timestamps_always_passed():
+    """D-02: word_timestamps=True is always forwarded to model.transcribe()."""
+    mock_model = _make_model_mock()
+    fw = _make_fw_module(model_mock=mock_model)
+    with patch.dict("sys.modules", {"faster_whisper": fw}):
+        transcriber = WhisperTranscriber("tiny", device="cpu")
+    transcriber.model = mock_model
+    transcriber.transcribe("fake.wav")
+    _args, kwargs = mock_model.transcribe.call_args
+    assert kwargs.get("word_timestamps") is True
+
+
+# ── end-time tightening (D-03) ───────────────────────────────────────────────
+
+
+def test_segment_end_tightened_to_last_word_end():
+    """D-03: segment.end is replaced with words[-1].end when .words is non-empty."""
+    word = SimpleNamespace(start=1.0, end=2.3)
+    seg = _make_fake_segment_with_words(0.0, 3.0, "spoken", words=[word])
+    mock_model = _make_model_mock(segments=[seg])
+    fw = _make_fw_module(model_mock=mock_model)
+    with patch.dict("sys.modules", {"faster_whisper": fw}):
+        transcriber = WhisperTranscriber("tiny", device="cpu")
+    transcriber.model = mock_model
+    result = transcriber.transcribe("fake.wav")
+    assert len(result.segments) == 1
+    assert result.segments[0].end == 2.3
+
+
+# ── wordless segment dropping (D-04) ────────────────────────────────────────
+
+
+def test_segment_with_empty_words_dropped():
+    """D-04: segment with .words=[] is excluded from result.segments."""
+    seg = _make_fake_segment_with_words(0.0, 2.0, "", words=[])
+    mock_model = _make_model_mock(segments=[seg])
+    fw = _make_fw_module(model_mock=mock_model)
+    with patch.dict("sys.modules", {"faster_whisper": fw}):
+        transcriber = WhisperTranscriber("tiny", device="cpu")
+    transcriber.model = mock_model
+    result = transcriber.transcribe("fake.wav")
+    assert result.segments == []
+
+
+def test_segment_with_none_words_dropped():
+    """D-04: segment with .words=None is excluded from result.segments."""
+    seg = _make_fake_segment_with_words(0.0, 2.0, "", words=None)
+    mock_model = _make_model_mock(segments=[seg])
+    fw = _make_fw_module(model_mock=mock_model)
+    with patch.dict("sys.modules", {"faster_whisper": fw}):
+        transcriber = WhisperTranscriber("tiny", device="cpu")
+    transcriber.model = mock_model
+    result = transcriber.transcribe("fake.wav")
+    assert result.segments == []
+
+
+# ── default model_size = "medium" (D-06) ─────────────────────────────────────
+
+
+def test_transcribe_audio_default_model_size_is_medium():
+    """D-06: transcribe_audio() default model_size parameter is 'medium'."""
+    import inspect
+    sig = inspect.signature(transcribe_audio)
+    assert sig.parameters["model_size"].default == "medium"
+
+
+def test_whisper_transcriber_default_model_size_is_medium():
+    """D-06: WhisperTranscriber.__init__ default model_size parameter is 'medium'."""
+    import inspect
+    sig = inspect.signature(WhisperTranscriber.__init__)
+    assert sig.parameters["model_size"].default == "medium"
