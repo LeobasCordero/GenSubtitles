@@ -164,7 +164,7 @@ class WhisperTranscriber:
                 try:
                     seg = seg._replace(end=words[-1].end)  # namedtuple path (D-03)
                 except AttributeError:
-                    import copy as _copy  # pragma: no cover
+                    import copy as _copy
                     seg = _copy.copy(seg)
                     seg.end = words[-1].end  # SimpleNamespace fallback (D-03)
                 patched.append(seg)
@@ -221,7 +221,7 @@ def transcribe_audio(
 
     Args:
         audio_path:  Path to audio file.
-        model_size:  One of VALID_MODEL_SIZES (default "small").
+        model_size:  One of VALID_MODEL_SIZES (default "medium").
         device:      "auto", "cpu", or "cuda".
         language:    ISO 639-1 code or None for auto-detect.
 
