@@ -189,7 +189,8 @@ def _detect_os_theme() -> str:
     return "Dark"
 
 
-_BASE_URL = "http://127.0.0.1:8000"
+_SERVER_PORT = 8000
+_BASE_URL = f"http://127.0.0.1:{_SERVER_PORT}"
 
 _CODE_TO_LABEL: dict[str, str] = {
     "en": "English", "es": "Spanish", "fr": "French",
@@ -1612,7 +1613,7 @@ TROUBLESHOOTING
                 config = uvicorn.Config(
                     "gensubtitles.api.main:app",
                     host="127.0.0.1",
-                    port=8000,
+                    port=_SERVER_PORT,
                     log_level="error",
                 )
                 self._server = uvicorn.Server(config)
@@ -1629,14 +1630,14 @@ TROUBLESHOOTING
                 if not thread.is_alive():
                     if not self._closing:
                         self.after(0, lambda: self._on_server_failed(
-                            "Server process exited unexpectedly. Check port 8000.",
+                            f"Server process exited unexpectedly. Check port {_SERVER_PORT}.",
                         ))
                     return
                 if time.monotonic() > deadline:
                     if not self._closing:
                         self.after(0, lambda: self._on_server_failed(
                             "Server did not start within "
-                            f"{_SERVER_BIND_TIMEOUT}s. Check port 8000.",
+                            f"{_SERVER_BIND_TIMEOUT}s. Check port {_SERVER_PORT}.",
                         ))
                     return
                 time.sleep(1)

@@ -268,11 +268,14 @@ class TestLifespan:
             with TestClient(app) as lifespan_client:
                 # Model loading happens in a background thread; poll /status until ready
                 deadline = time.monotonic() + 10
+                ready = False
                 while time.monotonic() < deadline:
                     resp = lifespan_client.get("/status")
                     if resp.json().get("stage") == "ready":
+                        ready = True
                         break
                     time.sleep(0.1)
+                assert ready, "Server did not reach 'ready' state within timeout"
                 # After startup, transcriber is on app.state
                 assert app.state.transcriber is mock_transcriber_instance
             # After shutdown, transcriber is released
