@@ -375,6 +375,20 @@ def test_list_installed_pairs_returns_dicts():
     assert {"from": "en", "to": "fr"} in pairs
 
 
+def test_list_installed_pairs_deduplicates():
+    """list_installed_pairs() returns each from→to pair exactly once even when
+    Argos yields duplicate language objects (same code) after reinstall/refresh."""
+    # Two language objects with identical codes simulate Argos duplicate registration
+    en_lang_a = _make_fake_language("en", ["es"])
+    en_lang_b = _make_fake_language("en", ["es"])
+    with _inject_argostranslate(installed_languages=[en_lang_a, en_lang_b]):
+        from gensubtitles.core.translator import list_installed_pairs
+
+        pairs = list_installed_pairs()
+    en_es_pairs = [p for p in pairs if p["from"] == "en" and p["to"] == "es"]
+    assert len(en_es_pairs) == 1, f"Expected 1 en→es pair, got {len(en_es_pairs)}"
+
+
 # ── translate_file() tests ────────────────────────────────────────────────────
 
 

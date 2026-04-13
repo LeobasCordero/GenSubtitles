@@ -58,10 +58,14 @@ def list_installed_pairs() -> list[dict]:
     """Return all installed language pairs as [{"from": code, "to": code}] dicts."""
     import argostranslate.translate
 
-    pairs = []
+    seen: set[tuple[str, str]] = set()
+    pairs: list[dict] = []
     for lang in argostranslate.translate.get_installed_languages():
         for t in lang.translations_to:
-            pairs.append({"from": lang.code, "to": t.to_lang.code})
+            key = (lang.code, t.to_lang.code)
+            if key not in seen:
+                seen.add(key)
+                pairs.append({"from": lang.code, "to": t.to_lang.code})
     return pairs
 
 
