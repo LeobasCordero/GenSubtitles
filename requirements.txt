@@ -19,3 +19,4 @@ python-multipart>=0.0.20
 typer[all]>=0.15.0
 deepl>=1.18
 requests>=2.31.0
+darkdetect>=0.8.0
