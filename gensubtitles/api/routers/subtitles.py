@@ -3,25 +3,33 @@ gensubtitles.api.routers.subtitles
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Router for subtitle-generation endpoints.
 
-POST /subtitles
-    Accepts a video file upload, copies it to a named temp file (required by
-    FFmpeg which needs a real disk path), runs the transcription/translation/SRT
-    pipeline using the app-level preloaded WhisperTranscriber, and returns
-    the resulting SRT as a FileResponse.
+POST /subtitles/async
+    Accepts a video file upload, copies it to a named temp file, starts the
+    pipeline in a background thread, and immediately returns a job_id.
 
-    Route is a sync ``def`` — FastAPI automatically dispatches sync routes to a
-    thread pool executor so the async event loop is never blocked.
+GET /subtitles/{job_id}/stream
+    Server-Sent Events stream of progress events until done/error/cancelled.
+
+GET /subtitles/{job_id}/result
+    Fetch the completed SRT file after the pipeline finishes.
+
+DELETE /subtitles/{job_id}
+    Signal cancellation; pipeline stops between stages.
 """
 from __future__ import annotations
 
+import asyncio
+import json
 import shutil
 import tempfile
 import threading
+import uuid
 from pathlib import Path
+from queue import Queue
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from gensubtitles.api.dependencies import get_transcriber
 from gensubtitles.core.transcriber import WhisperTranscriber
@@ -32,46 +40,123 @@ router = APIRouter(tags=["subtitles"])
 # early validation before the lazy import (which triggers the FFmpeg check).
 _SUPPORTED_VIDEO_EXTENSIONS = frozenset({".mp4", ".mkv", ".avi", ".mov", ".webm"})
 
-# Module-level progress state (one job at a time — GUI is single-user)
+# Module-level progress state (kept for backward compat with any callers)
 _progress_lock = threading.Lock()
 _progress: dict = {"stage": "idle", "current": 0, "total": 0, "label": "Idle"}
 
+# Per-job state for the async SSE pattern
+_jobs: dict[str, dict] = {}
+_jobs_lock = threading.Lock()
 
-def _set_progress(stage: str, label: str, current: int = 0, total: int = 0) -> None:
+
+def _set_progress(
+    stage: str,
+    label: str,
+    current: int = 0,
+    total: int = 0,
+    job: dict | None = None,
+) -> None:
     with _progress_lock:
         _progress["stage"] = stage
         _progress["label"] = label
         _progress["current"] = current
         _progress["total"] = total
+    if job is not None:
+        job["queue"].put({"stage": stage, "label": label, "current": current, "total": total})
 
 
-@router.get("/progress")
-def get_progress() -> dict:
-    """Return the current pipeline progress for the active job."""
-    with _progress_lock:
-        return dict(_progress)
+def _cancel_job(job_id: str, video_path: Path, srt_path: Path) -> None:
+    job = _jobs.get(job_id)
+    if job:
+        video_path.unlink(missing_ok=True)
+        srt_path.unlink(missing_ok=True)
+        job["queue"].put({"stage": "cancelled", "label": "Cancelled"})
 
 
-@router.post("/subtitles")
-def post_subtitles(
+def _run_pipeline_job(
+    job_id: str,
+    video_path: Path,
+    srt_path: Path,
+    target_lang: str | None,
+    source_lang: str | None,
+    engine: str,
+    transcriber: WhisperTranscriber,
+) -> None:
+    """Sync function executed in a background thread for a single job."""
+    job = _jobs[job_id]
+    try:
+        from gensubtitles.core.audio import audio_temp_context, extract_audio  # noqa: PLC0415
+        from gensubtitles.core.srt_writer import write_srt  # noqa: PLC0415
+
+        _set_progress("extracting", "[1/4] Extracting audio…", job=job)
+        with audio_temp_context() as wav_path:
+            extract_audio(video_path, wav_path)
+            if job["cancel"].is_set():
+                _cancel_job(job_id, video_path, srt_path)
+                return
+
+            _set_progress("transcribing", "[2/4] Transcribing…", job=job)
+            transcription = transcriber.transcribe(wav_path, language=source_lang)
+
+        if job["cancel"].is_set():
+            _cancel_job(job_id, video_path, srt_path)
+            return
+
+        segments = transcription.segments
+        detected_lang = transcription.language
+
+        if target_lang is not None and target_lang != detected_lang:
+            from gensubtitles.core.translator import translate_segments  # noqa: PLC0415
+
+            _set_progress("translating", "[3/4] Translating…", job=job)
+
+            def _on_seg_progress(current: int, total: int) -> None:
+                _set_progress(
+                    "translating",
+                    f"[3/4] Translating {current}/{total}…",
+                    current,
+                    total,
+                    job=job,
+                )
+
+            segments = translate_segments(
+                segments,
+                detected_lang,
+                target_lang,
+                progress_callback=_on_seg_progress,
+                engine=engine,
+            )
+            if job["cancel"].is_set():
+                _cancel_job(job_id, video_path, srt_path)
+                return
+        else:
+            _set_progress("translating", "[3/4] Translation skipped", 0, 0, job=job)
+
+        _set_progress("writing", "[4/4] Writing SRT…", job=job)
+        write_srt(segments, srt_path)
+        job["result"] = srt_path
+        _set_progress("done", "✓ Done", 0, 0, job=job)
+
+    except Exception as exc:  # noqa: BLE001
+        label = (type(exc).__name__ + ": " + str(exc))[:200]
+        job["queue"].put({"stage": "error", "label": label})
+    finally:
+        video_path.unlink(missing_ok=True)
+
+
+@router.post("/subtitles/async")
+def post_subtitles_async(
     file: UploadFile,
-    background_tasks: BackgroundTasks,
-    target_lang: Optional[str] = Query(default=None, description="ISO 639-1 target language for translation (e.g. 'es'). Omit to skip translation."),
-    source_lang: Optional[str] = Query(default=None, description="Force source language detection (e.g. 'en'). Omit for auto-detect."),
+    target_lang: Optional[str] = Query(default=None, description="ISO 639-1 target language (e.g. 'es'). Omit to skip translation."),
+    source_lang: Optional[str] = Query(default=None, description="Force source language (e.g. 'en'). Omit for auto-detect."),
     engine: str = Query(
         default="argos",
         description="Translation engine: argos (offline default), deepl, or libretranslate.",
         pattern="^(argos|deepl|libretranslate)$",
     ),
     transcriber: WhisperTranscriber = Depends(get_transcriber),
-) -> FileResponse:
-    """
-    Upload a video file and receive an SRT subtitle file in response.
-
-    Accepts any video format supported by FFmpeg (mp4, mkv, avi, mov, webm).
-    Transcription runs in FastAPI's thread pool — does not block the async event loop.
-    """
-    # ── 0. Validate file extension before touching disk ────────────────────────
+) -> dict:
+    """Start subtitle generation asynchronously. Returns a job_id immediately."""
     video_suffix = Path(file.filename or "").suffix.lower()
     if video_suffix not in _SUPPORTED_VIDEO_EXTENSIONS:
         raise HTTPException(
@@ -82,8 +167,6 @@ def post_subtitles(
             ),
         )
 
-    # ── 1. Copy UploadFile → NamedTemporaryFile on disk ───────────────────────
-    # FFmpeg requires a real file path; UploadFile is an in-memory spoolfile.
     tmp_video = tempfile.NamedTemporaryFile(delete=False, suffix=video_suffix)
     try:
         shutil.copyfileobj(file.file, tmp_video)
@@ -93,64 +176,78 @@ def post_subtitles(
         file.file.close()
 
     video_path = Path(tmp_video.name)
-    background_tasks.add_task(video_path.unlink, missing_ok=True)
 
-    # ── 2. Temp file for SRT output ────────────────────────────────────────────
     tmp_srt = tempfile.NamedTemporaryFile(delete=False, suffix=".srt")
     tmp_srt.close()
     srt_path = Path(tmp_srt.name)
-    background_tasks.add_task(srt_path.unlink, missing_ok=True)
 
-    # ── 3. Run pipeline using preloaded transcriber ────────────────────────────
-    # audio_temp_context() manages the intermediate WAV file lifecycle.
-    # Lazy imports avoid import-time FFmpeg check when tests mock these functions.
-    from gensubtitles.core.audio import audio_temp_context, extract_audio  # noqa: PLC0415
-    from gensubtitles.core.srt_writer import write_srt  # noqa: PLC0415
+    job_id = str(uuid.uuid4())
+    job: dict = {"queue": Queue(), "cancel": threading.Event(), "result": None, "error": None}
+    with _jobs_lock:
+        _jobs[job_id] = job
 
-    try:
-        _set_progress("extracting", "[1/4] Extracting audio…")
-        with audio_temp_context() as wav_path:
-            extract_audio(video_path, wav_path)
-            _set_progress("transcribing", "[2/4] Transcribing…")
-            transcription = transcriber.transcribe(wav_path, language=source_lang)
+    threading.Thread(
+        target=_run_pipeline_job,
+        args=(job_id, video_path, srt_path, target_lang, source_lang, engine, transcriber),
+        daemon=True,
+    ).start()
 
-        segments = transcription.segments
-        detected_lang = transcription.language
+    return {"job_id": job_id}
 
-        # ── 4. Optional translation ────────────────────────────────────────────
-        if target_lang is not None and target_lang != detected_lang:
-            from gensubtitles.core.translator import translate_segments  # noqa: PLC0415
 
-            _set_progress("translating", "[3/4] Translating…")
+@router.get("/subtitles/{job_id}/stream")
+async def stream_job_progress(job_id: str) -> StreamingResponse:
+    """Server-Sent Events stream of progress events for a job."""
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    q: Queue = job["queue"]
+    loop = asyncio.get_running_loop()
 
-            def _on_seg_progress(current: int, total: int) -> None:
-                _set_progress(
-                    "translating",
-                    f"[3/4] Translating {current}/{total}…",
-                    current,
-                    total,
-                )
+    async def _event_generator():
+        while True:
+            event = await loop.run_in_executor(None, q.get)
+            yield f"data: {json.dumps(event)}\n\n"
+            if event.get("stage") in ("done", "error", "cancelled"):
+                break
 
-            segments = translate_segments(segments, detected_lang, target_lang, progress_callback=_on_seg_progress, engine=engine)
-        else:
-            _set_progress("translating", "[3/4] Translation skipped", 0, 0)
+    return StreamingResponse(_event_generator(), media_type="text/event-stream")
 
-        # ── 5. Write SRT ──────────────────────────────────────────────────────
-        _set_progress("writing", "[4/4] Writing SRT…")
-        write_srt(segments, srt_path)
-        _set_progress("done", "✓ Done", 0, 0)
-    except Exception:
-        _set_progress("error", "✗ Pipeline failed")
-        raise
 
-    # ── 6. Return as FileResponse ──────────────────────────────────────────────
-    # BackgroundTasks (registered above) will delete both temp files after the
-    # response body is fully sent to the client.
+@router.get("/subtitles/{job_id}/result")
+def get_job_result(job_id: str, background_tasks: BackgroundTasks) -> FileResponse:
+    """Fetch the completed SRT file for a finished job."""
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    result_path: Path | None = job.get("result")
+    if result_path is None:
+        raise HTTPException(status_code=409, detail="Job not complete")
+
+    def _cleanup() -> None:
+        result_path.unlink(missing_ok=True)
+        with _jobs_lock:
+            _jobs.pop(job_id, None)
+
+    background_tasks.add_task(_cleanup)
     return FileResponse(
-        path=str(srt_path),
+        path=str(result_path),
         media_type="text/plain; charset=utf-8",
         filename="subtitles.srt",
     )
+
+
+@router.delete("/subtitles/{job_id}")
+def cancel_job(job_id: str) -> dict:
+    """Signal cancellation for a running job."""
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job["cancel"].set()
+    return {"status": "cancelling"}
 
 
 @router.get("/languages")
