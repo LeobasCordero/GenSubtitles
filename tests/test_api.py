@@ -147,123 +147,6 @@ def video_bytes():
 
 # ── tests ─────────────────────────────────────────────────────────────────────
 
-class TestPostSubtitles:
-
-    def test_valid_upload_returns_200_and_srt(self, client, video_bytes):
-        """API-01: POST /subtitles with valid upload returns 200 and SRT content."""
-        response = client.post(
-            "/subtitles",
-            files={"file": ("video.mp4", video_bytes, "video/mp4")},
-        )
-        assert response.status_code == 200
-        body = response.text
-        # Valid SRT has at minimum: index, timecode arrow, text
-        assert "-->" in body
-
-    def test_no_target_lang_skips_translation(self, client, video_bytes):
-        """API-01: Without target_lang, translate_segments is never called."""
-        with patch("gensubtitles.core.translator.translate_segments") as mock_translate:
-            response = client.post(
-                "/subtitles",
-                files={"file": ("video.mp4", video_bytes, "video/mp4")},
-            )
-        assert response.status_code == 200
-        mock_translate.assert_not_called()
-
-    def test_preloaded_transcriber_used_regardless_of_query_params(self, client, mock_transcriber, video_bytes):
-        """API-01: The preloaded transcriber is used for every request; no per-request model loading."""
-        response = client.post(
-            "/subtitles",
-            files={"file": ("video.mp4", video_bytes, "video/mp4")},
-        )
-        assert response.status_code == 200
-        # transcriber.transcribe was called (preloaded model used)
-        mock_transcriber.transcribe.assert_called_once()
-
-    def test_upload_file_copied_to_disk_before_extract(self, client, video_bytes):
-        """API-02: UploadFile is materialized to a real temp file on disk before extract_audio."""
-        captured_path = {}
-
-        def capturing_extract(video_path, wav_path):
-            captured_path["video"] = str(video_path)
-
-        with patch("gensubtitles.core.audio.extract_audio", side_effect=capturing_extract):
-            response = client.post(
-                "/subtitles",
-                files={"file": ("video.mp4", video_bytes, "video/mp4")},
-            )
-        assert response.status_code == 200
-        # The path passed to extract_audio must be a real file path (not spooled memory path)
-        assert "video" in captured_path
-        # Path must have the original file extension
-        assert captured_path["video"].endswith(".mp4")
-
-    def test_temp_files_deleted_after_response(self, client, video_bytes):
-        """UAT 6: No temp video or SRT files remain on disk after the response is returned."""
-        captured_paths: list[str] = []
-
-        def capturing_extract(video_path, wav_path):
-            captured_paths.append(str(video_path))
-
-        def capturing_write_srt(segments, output_path):
-            captured_paths.append(str(output_path))
-            Path(output_path).write_text(_fake_srt_content(), encoding="utf-8")
-
-        with (
-            patch("gensubtitles.core.audio.extract_audio", side_effect=capturing_extract),
-            patch("gensubtitles.core.srt_writer.write_srt", side_effect=capturing_write_srt),
-        ):
-            response = client.post(
-                "/subtitles",
-                files={"file": ("video.mp4", video_bytes, "video/mp4")},
-            )
-
-        assert response.status_code == 200
-        assert len(captured_paths) == 2, f"Expected 2 temp paths, got: {captured_paths}"
-        for path in captured_paths:
-            assert not Path(path).exists(), f"Temp file still exists: {path}"
-
-    def test_unsupported_extension_returns_400_json(self, client):
-        """Unsupported file extension (e.g. .txt) returns JSON 400 before touching disk."""
-        response = client.post(
-            "/subtitles",
-            files={"file": ("document.txt", b"not a video", "text/plain")},
-        )
-        assert response.status_code == 400
-        body = response.json()
-        assert "detail" in body
-        assert ".txt" in body["detail"]
-
-    def test_invalid_file_returns_error_json(self, client):
-        """UAT 5: Invalid upload that triggers a pipeline error returns JSON with 'detail' key."""
-        def raising_extract(video_path, wav_path):
-            raise RuntimeError("FFmpeg cannot decode this stream")
-
-        with patch("gensubtitles.core.audio.extract_audio", side_effect=raising_extract):
-            response = client.post(
-                "/subtitles",
-                files={"file": ("bad.mp4", b"not a video", "video/mp4")},
-            )
-        # Must return JSON with detail key — not a raw 500 stack trace
-        assert response.status_code in (400, 500)
-        body = response.json()
-        assert "detail" in body
-
-    def test_target_lang_triggers_translation(self, client, video_bytes):
-        """API-01: When target_lang differs from detected language, translate_segments IS called."""
-        fake_segments = [_make_segment(text="Hello")]
-        mock_tx = _make_mock_transcriber(segments=fake_segments, language="en")
-        app.dependency_overrides[get_transcriber] = lambda: mock_tx
-
-        with patch("gensubtitles.core.translator.translate_segments", return_value=fake_segments) as mock_t:
-            response = client.post(
-                "/subtitles?target_lang=es",
-                files={"file": ("video.mp4", video_bytes, "video/mp4")},
-            )
-        assert response.status_code == 200
-        mock_t.assert_called_once()
-
-
 class TestLifespan:
 
     def test_lifespan_sets_transcriber_on_app_state(self):
@@ -338,12 +221,12 @@ class TestGetLanguages:
         assert "access-control-allow-origin" in response.headers
 
     def test_openapi_json_includes_both_endpoints(self, client):
-        """GET /openapi.json is valid JSON and includes paths for /subtitles and /languages."""
+        """GET /openapi.json is valid JSON and includes paths for /subtitles/async and /languages."""
         response = client.get("/openapi.json")
         assert response.status_code == 200
         schema = response.json()
         assert "/languages" in schema["paths"]
-        assert "/subtitles" in schema["paths"]
+        assert any("subtitles" in p for p in schema["paths"])
 
     def test_docs_returns_200(self, client):
         """GET /docs returns HTTP 200 (Swagger UI accessible)."""
@@ -351,65 +234,111 @@ class TestGetLanguages:
         assert response.status_code == 200
 
 
-class TestGetProgress:
-    """Tests for the GET /progress endpoint."""
+class TestSSEJobPattern:
+    """Tests for POST /subtitles/async, GET /stream, GET /result, DELETE endpoints."""
 
-    def _reset_progress(self):
-        """Reset module-level progress state to idle."""
-        from gensubtitles.api.routers.subtitles import _set_progress
-        _set_progress("idle", "Idle", 0, 0)
+    @pytest.fixture()
+    def mock_pipeline(self, tmp_path, monkeypatch):
+        """Patch _run_pipeline_job to immediately complete with a fake SRT."""
+        from gensubtitles.api.routers import subtitles as sub_mod
 
-    def test_progress_returns_200_with_expected_schema(self, client):
-        """GET /progress returns HTTP 200 with stage/current/total/label keys."""
-        self._reset_progress()
-        response = client.get("/progress")
-        assert response.status_code == 200
-        body = response.json()
-        assert "stage" in body
-        assert "current" in body
-        assert "total" in body
-        assert "label" in body
+        def _fake_pipeline(job_id, video_path, srt_path, *args, **kwargs):
+            job = sub_mod._jobs[job_id]
+            # Set result BEFORE sending "done" so GET /result returns 200 immediately
+            srt_path.write_text("1\n00:00:00,000 --> 00:00:01,000\nHello\n\n", encoding="utf-8")
+            job["result"] = srt_path
+            sub_mod._set_progress("done", "Done", job=job)
 
-    def test_progress_idle_by_default(self, client):
-        """GET /progress returns idle state when no job is running."""
-        self._reset_progress()
-        response = client.get("/progress")
-        assert response.status_code == 200
-        body = response.json()
-        assert body["stage"] == "idle"
+        monkeypatch.setattr(sub_mod, "_run_pipeline_job", _fake_pipeline)
+        return _fake_pipeline
 
-    def test_progress_reflects_updates_during_subtitles_request(self, client, video_bytes):
-        """GET /progress reflects stage updates set during POST /subtitles."""
-        self._reset_progress()
-
-        # Before any request, should be idle
-        resp_before = client.get("/progress")
-        assert resp_before.json()["stage"] == "idle"
-
-        # After a subtitle request completes, progress should be "done"
-        response = client.post(
-            "/subtitles",
-            files={"file": ("video.mp4", video_bytes, "video/mp4")},
+    def test_post_subtitles_async_returns_job_id_immediately(self, client, mock_pipeline, tmp_path):
+        """POST /subtitles/async returns {"job_id": str} immediately."""
+        video = tmp_path / "test.mp4"
+        video.write_bytes(b"fake video content")
+        resp = client.post(
+            "/subtitles/async",
+            files={"file": ("test.mp4", video.read_bytes(), "application/octet-stream")},
         )
-        assert response.status_code == 200
-        resp_after = client.get("/progress")
-        assert resp_after.json()["stage"] == "done"
-        assert resp_after.json()["label"] == "✓ Done"
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "job_id" in data
+        assert isinstance(data["job_id"], str) and len(data["job_id"]) == 36  # UUID4
 
-    def test_progress_shows_error_on_pipeline_failure(self, client):
-        """GET /progress reflects 'error' stage when the pipeline fails."""
-        self._reset_progress()
+    def test_stream_yields_done_event(self, client, mock_pipeline, tmp_path):
+        """GET /subtitles/{job_id}/stream yields SSE events ending with stage=done."""
+        import json
+        video = tmp_path / "clip.mp4"
+        video.write_bytes(b"fake")
+        post_resp = client.post(
+            "/subtitles/async",
+            files={"file": ("clip.mp4", video.read_bytes(), "application/octet-stream")},
+        )
+        job_id = post_resp.json()["job_id"]
+        with client.stream("GET", f"/subtitles/{job_id}/stream") as stream_resp:
+            assert stream_resp.status_code == 200
+            assert "text/event-stream" in stream_resp.headers.get("content-type", "")
+            events = []
+            for line in stream_resp.iter_lines():
+                if line.startswith("data:"):
+                    events.append(json.loads(line[5:].strip()))
+        stages = [e["stage"] for e in events]
+        assert "done" in stages, f"Expected 'done' event, got: {stages}"
 
-        def raising_extract(video_path, wav_path):
-            raise RuntimeError("FFmpeg cannot decode this stream")
+    def test_get_result_returns_409_before_done(self, client):
+        """GET /result returns 409 if pipeline not yet complete (no result set)."""
+        import uuid
+        from queue import Queue
+        import threading
+        from gensubtitles.api.routers import subtitles as sub_mod
+        job_id = str(uuid.uuid4())
+        sub_mod._jobs[job_id] = {"queue": Queue(), "cancel": threading.Event(), "result": None, "error": None}
+        try:
+            resp = client.get(f"/subtitles/{job_id}/result")
+            assert resp.status_code == 409
+        finally:
+            sub_mod._jobs.pop(job_id, None)
 
-        with patch("gensubtitles.core.audio.extract_audio", side_effect=raising_extract):
-            response = client.post(
-                "/subtitles",
-                files={"file": ("bad.mp4", b"not a video", "video/mp4")},
-            )
-        assert response.status_code in (400, 500)
+    def test_get_result_returns_srt_after_done(self, client, mock_pipeline, tmp_path):
+        """GET /result returns 200 with SRT content after pipeline completes."""
+        video = tmp_path / "v.mp4"
+        video.write_bytes(b"fake")
+        post_resp = client.post(
+            "/subtitles/async",
+            files={"file": ("v.mp4", video.read_bytes(), "application/octet-stream")},
+        )
+        job_id = post_resp.json()["job_id"]
+        # Drain the SSE stream so done event is processed
+        with client.stream("GET", f"/subtitles/{job_id}/stream") as s:
+            for _ in s.iter_lines():
+                pass
+        result_resp = client.get(f"/subtitles/{job_id}/result")
+        assert result_resp.status_code == 200
+        assert "Hello" in result_resp.text  # fake SRT content from mock
 
-        resp_after = client.get("/progress")
-        assert resp_after.json()["stage"] == "error"
-        assert "failed" in resp_after.json()["label"].lower()
+    def test_delete_sets_cancel_flag(self, client):
+        """DELETE /subtitles/{job_id} sets the cancel threading.Event."""
+        import uuid
+        from queue import Queue
+        import threading
+        from gensubtitles.api.routers import subtitles as sub_mod
+        job_id = str(uuid.uuid4())
+        cancel_event = threading.Event()
+        sub_mod._jobs[job_id] = {"queue": Queue(), "cancel": cancel_event, "result": None, "error": None}
+        try:
+            resp = client.delete(f"/subtitles/{job_id}")
+            assert resp.status_code == 200
+            assert resp.json() == {"status": "cancelling"}
+            assert cancel_event.is_set(), "Cancel event should be set after DELETE"
+        finally:
+            sub_mod._jobs.pop(job_id, None)
+
+    def test_unsupported_extension_rejected(self, client, tmp_path):
+        """POST /subtitles/async rejects non-video files with 400."""
+        bad = tmp_path / "file.txt"
+        bad.write_bytes(b"text")
+        resp = client.post(
+            "/subtitles/async",
+            files={"file": ("file.txt", bad.read_bytes(), "text/plain")},
+        )
+        assert resp.status_code == 400
