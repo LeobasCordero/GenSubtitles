@@ -93,7 +93,33 @@ def write_srt(segments: Iterable[Any], output_path: str | Path) -> None:
     output_path.write_text(srt_content, encoding="utf-8")
 
 
-def write_ssa(segments: Iterable[Any], output_path: str | Path) -> None:
+def _hex_to_pysubs2_color(hex_color: str):
+    """Convert '#RRGGBB' hex string to a pysubs2.Color (alpha=0, fully opaque)."""
+    import pysubs2
+
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return pysubs2.Color(r, g, b, 0)
+
+
+def _apply_ssa_style(subs: Any, style: dict) -> None:
+    """Apply style dict keys to the pysubs2 SSAFile Default style."""
+    s = subs.styles["Default"]
+    if "fontname" in style:
+        s.fontname = style["fontname"]
+    if "fontsize" in style:
+        s.fontsize = int(style["fontsize"])
+    if "primarycolor" in style:
+        s.primarycolor = _hex_to_pysubs2_color(style["primarycolor"])
+    if "outlinecolor" in style:
+        s.outlinecolor = _hex_to_pysubs2_color(style["outlinecolor"])
+
+
+def write_ssa(
+    segments: Iterable[Any],
+    output_path: str | Path,
+    style: dict | None = None,
+) -> None:
     """
     Write SSA-formatted subtitles to a file using pysubs2.
 
@@ -101,6 +127,8 @@ def write_ssa(segments: Iterable[Any], output_path: str | Path) -> None:
         segments:    Iterable of duck-typed segment objects (.start, .end, .text).
         output_path: Destination file path (str or Path). Parent dirs are created
                      automatically if they do not exist.
+        style:       Optional dict with SSA style overrides: fontname, fontsize,
+                     primarycolor, outlinecolor (hex strings for colors).
     """
     import pysubs2
 
@@ -116,10 +144,17 @@ def write_ssa(segments: Iterable[Any], output_path: str | Path) -> None:
         )
         subs.append(event)
 
+    if style:
+        _apply_ssa_style(subs, style)
+
     subs.save(str(output_path))
 
 
-def convert_srt_to_ssa(srt_path: str | Path, ssa_path: str | Path) -> None:
+def convert_srt_to_ssa(
+    srt_path: str | Path,
+    ssa_path: str | Path,
+    style: dict | None = None,
+) -> None:
     """
     Convert an existing .srt file to .ssa using pysubs2.
 
@@ -127,6 +162,7 @@ def convert_srt_to_ssa(srt_path: str | Path, ssa_path: str | Path) -> None:
         srt_path: Source SRT file path.
         ssa_path: Destination SSA file path. Parent dirs are created
                   automatically if they do not exist.
+        style:    Optional dict with SSA style overrides (same keys as write_ssa).
     """
     import pysubs2
 
@@ -134,6 +170,10 @@ def convert_srt_to_ssa(srt_path: str | Path, ssa_path: str | Path) -> None:
     ssa_path = Path(ssa_path)
     ssa_path.parent.mkdir(parents=True, exist_ok=True)
     subs = pysubs2.SSAFile.load(str(srt_path))
+
+    if style:
+        _apply_ssa_style(subs, style)
+
     subs.save(str(ssa_path))
 
 

@@ -239,3 +239,63 @@ def test_srt_to_ssa_to_srt_preserves_text(tmp_path):
     parsed = list(srt.parse(content))
     assert len(parsed) == 1
     assert "Round trip test" in parsed[0].content
+
+
+# ── Style parameter tests (STYLE-01 through STYLE-05) ────────────────────────
+
+
+def test_write_ssa_default_style(tmp_path):
+    """write_ssa() with no style arg produces a valid SSA file."""
+    import pysubs2
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    out = tmp_path / "test.ssa"
+    write_ssa([seg], out)
+    subs = pysubs2.SSAFile.load(str(out))
+    assert "Default" in subs.styles
+
+
+def test_write_ssa_custom_fontname(tmp_path):
+    """write_ssa() with style fontname applies it to SSA Default style."""
+    import pysubs2
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    out = tmp_path / "test.ssa"
+    style = {"fontname": "Verdana", "fontsize": 20, "primarycolor": "#FFFFFF", "outlinecolor": "#000000"}
+    write_ssa([seg], out, style=style)
+    subs = pysubs2.SSAFile.load(str(out))
+    assert subs.styles["Default"].fontname == "Verdana"
+
+
+def test_write_ssa_custom_fontsize(tmp_path):
+    """write_ssa() with style fontsize applies it to SSA Default style."""
+    import pysubs2
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    out = tmp_path / "test.ssa"
+    style = {"fontname": "Arial", "fontsize": 36, "primarycolor": "#FFFFFF", "outlinecolor": "#000000"}
+    write_ssa([seg], out, style=style)
+    subs = pysubs2.SSAFile.load(str(out))
+    assert subs.styles["Default"].fontsize == 36
+
+
+def test_write_ssa_custom_colors(tmp_path):
+    """write_ssa() with style colors applies primarycolor and outlinecolor (ASS format preserves both)."""
+    import pysubs2
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    out = tmp_path / "test.ass"
+    style = {"fontname": "Arial", "fontsize": 20, "primarycolor": "#FF0000", "outlinecolor": "#0000FF"}
+    write_ssa([seg], out, style=style)
+    subs = pysubs2.SSAFile.load(str(out))
+    assert subs.styles["Default"].primarycolor.r == 255
+    assert subs.styles["Default"].outlinecolor.b == 255
+
+
+def test_convert_srt_to_ssa_with_style(tmp_path):
+    """convert_srt_to_ssa() with style applies fontname to SSA Default style."""
+    import pysubs2
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    srt_file = tmp_path / "input.srt"
+    write_srt([seg], srt_file)
+    ssa_file = tmp_path / "output.ssa"
+    style = {"fontname": "Tahoma", "fontsize": 20, "primarycolor": "#FFFFFF", "outlinecolor": "#000000"}
+    convert_srt_to_ssa(srt_file, ssa_file, style=style)
+    subs = pysubs2.SSAFile.load(str(ssa_file))
+    assert subs.styles["Default"].fontname == "Tahoma"
