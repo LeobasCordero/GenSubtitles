@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1.0
-- **Active Phase:** None (fix/argos-batch-marker-fallback branch open — translator fallback fix pending merge)
-- **Last action:** Phase 999.12 complete — context-batching Argos engine, DeepL + LibreTranslate backends, GUI engine dropdown, full test suite (2026-04-12). refactor/ui merged (PR #22) outside GSD — OS theme detection, dual-mode color palettes, typography, server startup improvements.
+- **Active Phase:** 999.16 — GUI UI Language Setting
+- **Last action:** Phase 999.16 executing — localized string registry, tab/menu/messagebox relabeling, dynamic cascade index resolution.
 
 ## Milestone Progress
 

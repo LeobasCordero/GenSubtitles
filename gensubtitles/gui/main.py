@@ -218,6 +218,9 @@ _STAGE_LABELS = [
 # ---------------------------------------------------------------------------
 _STRINGS: dict[str, dict[str, str]] = {
     "en": {
+        # Tab names
+        "generate_tab":         "Generate Subtitles",
+        "translate_tab":        "Translate Subtitles",
         # Generate tab
         "input_video_lbl":      "Input video *:",
         "output_file_lbl":      "Output file *:",
@@ -251,6 +254,22 @@ _STRINGS: dict[str, dict[str, str]] = {
         # Dynamic status
         "starting_server":      "\u23f3 Starting server\u2026",
         "open_folder_btn":      "Open Folder",
+        "status_done":          "\u2713 Done",
+        "status_translating":   "Translating\u2026",
+        "status_converting":    "Converting\u2026",
+        # Messagebox strings
+        "msg_missing_input_title":      "Missing input",
+        "msg_missing_input_video":      "Please select an input video file.",
+        "msg_missing_input_subtitle":   "Please select a subtitle file.",
+        "msg_missing_output_title":     "Missing output",
+        "msg_missing_output_subtitle":  "Please choose an output subtitle path.",
+        "msg_missing_output_path":      "Please choose an output path.",
+        "msg_generation_failed_title":  "Generation failed",
+        "msg_translation_failed_title": "Translation failed",
+        "msg_settings_error_title":     "Settings error",
+        "msg_settings_error_body":      "Could not save settings: {error}",
+        "msg_done_title":               "Done",
+        "msg_saved_body":               "Saved: {path}",
         # Dialog strings
         "dlg_tutorial_title":   "GenSubtitles \u2014 Tutorial",
         "dlg_tutorial_close":   "Close",
@@ -312,31 +331,34 @@ _STRINGS: dict[str, dict[str, str]] = {
         ),
     },
     "es": {
+        # Tab names
+        "generate_tab":         "Generar Subtítulos",
+        "translate_tab":        "Traducir Subtítulos",
         # Generate tab
         "input_video_lbl":      "Video de entrada *:",
         "output_file_lbl":      "Archivo de salida *:",
         "source_lang_lbl":      "Idioma de origen:",
         "target_lang_lbl":      "Idioma de destino:",
-        "engine_lbl":           "Motor de traducci\u00f3n:",
+        "engine_lbl":           "Motor de traducción:",
         "output_format_lbl":    "Formato de salida:",
-        "generate_btn":         "Generar Subt\u00edtulos",
+        "generate_btn":         "Generar Subtítulos",
         "clear_btn":            "Limpiar",
         "browse_btn":           "Explorar\u2026",
         "save_as_btn":          "Guardar como\u2026",
         # Translate tab
-        "input_sub_lbl":        "Subt\u00edtulo de entrada *:",
+        "input_sub_lbl":        "Subtítulo de entrada *:",
         "output_path_lbl":      "Ruta de salida *:",
         "translate_btn":        "Traducir / Convertir",
-        "convert_only_chk":     "Solo convertir (sin traducci\u00f3n \u2014 solo cambiar formato)",
+        "convert_only_chk":     "Solo convertir (sin traducción \u2014 solo cambiar formato)",
         # Settings panel
-        "settings_header":      "Configuraci\u00f3n",
+        "settings_header":      "Configuración",
         "appearance_lbl":       "Modo de apariencia:",
         "ui_lang_lbl":          "Idioma de la interfaz:",
         "default_outdir_lbl":   "Directorio de salida predeterminado:",
         "save_btn":             "Guardar",
         "back_btn":             "Volver",
         # Menu bar
-        "menu_settings":        "Configuraci\u00f3n",
+        "menu_settings":        "Configuración",
         "menu_preferences":     "Preferencias\u2026",
         "menu_help":            "Ayuda",
         "menu_tutorial":        "Tutorial",
@@ -345,6 +367,22 @@ _STRINGS: dict[str, dict[str, str]] = {
         # Dynamic status
         "starting_server":      "\u23f3 Iniciando servidor\u2026",
         "open_folder_btn":      "Abrir carpeta",
+        "status_done":          "\u2713 Listo",
+        "status_translating":   "Traduciendo\u2026",
+        "status_converting":    "Convirtiendo\u2026",
+        # Messagebox strings
+        "msg_missing_input_title":      "Entrada faltante",
+        "msg_missing_input_video":      "Por favor selecciona un archivo de video de entrada.",
+        "msg_missing_input_subtitle":   "Por favor selecciona un archivo de subtítulos.",
+        "msg_missing_output_title":     "Salida faltante",
+        "msg_missing_output_subtitle":  "Por favor elige una ruta de salida para los subtítulos.",
+        "msg_missing_output_path":      "Por favor elige una ruta de salida.",
+        "msg_generation_failed_title":  "Generación fallida",
+        "msg_translation_failed_title": "Traducción fallida",
+        "msg_settings_error_title":     "Error de configuración",
+        "msg_settings_error_body":      "No se pudo guardar la configuración: {error}",
+        "msg_done_title":               "Listo",
+        "msg_saved_body":               "Guardado: {path}",
         # Dialog strings
         "dlg_tutorial_title":   "GenSubtitles \u2014 Gu\u00eda",
         "dlg_tutorial_close":   "Cerrar",
@@ -586,7 +624,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._progress_bar.grid_remove()
 
         # Row 10 — Stage label (also used for server status)
-        self._stage_label = ctk.CTkLabel(self._frame, text=_STRINGS["en"]["starting_server"], text_color=_p("text_secondary"))
+        _startup_lang = getattr(self._current_settings, "ui_language", "en") if self._current_settings else "en"
+        stage_text = _STRINGS.get(_startup_lang, _STRINGS["en"]).get(
+            "starting_server", _STRINGS["en"]["starting_server"]
+        )
+        self._stage_label = ctk.CTkLabel(self._frame, text=stage_text, text_color=_p("text_secondary"))
         self._stage_label.grid(row=10, column=0, columnspan=3, pady=4)
 
         # Reactive enable/disable for Clear button
@@ -1126,12 +1168,12 @@ class GenSubtitlesApp(ctk.CTk):
         if not input_path:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Missing input", "Please select an input video file.")
+            messagebox.showerror(self._s("msg_missing_input_title"), self._s("msg_missing_input_video"))
             return
         if not output_path:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Missing output", "Please choose an output subtitle path.")
+            messagebox.showerror(self._s("msg_missing_output_title"), self._s("msg_missing_output_subtitle"))
             return
 
         # Capture StringVar values on the main thread (Tkinter is not thread-safe)
@@ -1277,9 +1319,9 @@ class GenSubtitlesApp(ctk.CTk):
             from tkinter import messagebox  # noqa: PLC0415
 
             self._stage_label.configure(text="")
-            messagebox.showerror("Generation failed", error)
+            messagebox.showerror(self._s("msg_generation_failed_title"), error)
         else:
-            self._stage_label.configure(text="✓ Done")
+            self._stage_label.configure(text=self._s("status_done"))
             if output_path is None:
                 raise AssertionError("output_path must not be None on success")
             self._show_success(output_path)
@@ -1572,7 +1614,7 @@ class GenSubtitlesApp(ctk.CTk):
         except Exception as exc:  # noqa: BLE001
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Settings error", f"Could not save settings: {exc}")
+            messagebox.showerror(self._s("msg_settings_error_title"), self._s("msg_settings_error_body").format(error=exc))
         finally:
             self._hide_settings()
 
@@ -1587,12 +1629,69 @@ class GenSubtitlesApp(ctk.CTk):
         locale = _STRINGS.get(lang, _STRINGS["en"])
         return locale.get(key, _STRINGS["en"].get(key, key))
 
+    def _relabel_tabview_headers(self) -> None:
+        """Update existing CTkTabview header labels for the active UI language.
+
+        CustomTkinter does not expose a public tab rename API, so this method
+        performs a guarded in-place relabel of known tab names by updating the
+        internal tab-name structures and segmented-button values.
+        """
+        tab_name_map = {
+            "Generate Subtitles": self._s("generate_tab"),
+            "Translate Subtitles": self._s("translate_tab"),
+            # Include localized names as sources so re-applying works
+            _STRINGS["es"]["generate_tab"]: self._s("generate_tab"),
+            _STRINGS["es"]["translate_tab"]: self._s("translate_tab"),
+        }
+
+        for widget in self.__dict__.values():
+            if not isinstance(widget, ctk.CTkTabview):
+                continue
+
+            try:
+                name_list = getattr(widget, "_name_list", None)
+                tab_dict = getattr(widget, "_tab_dict", None)
+                segmented_button = getattr(widget, "_segmented_button", None)
+                current_name = widget.get()
+
+                if not isinstance(name_list, list) or not isinstance(tab_dict, dict):
+                    continue
+
+                renamed = False
+                new_name_list = []
+                new_tab_dict = {}
+
+                for old_name in name_list:
+                    new_name = tab_name_map.get(old_name, old_name)
+                    if new_name != old_name:
+                        renamed = True
+                    new_name_list.append(new_name)
+                    new_tab_dict[new_name] = tab_dict.get(old_name)
+
+                if not renamed:
+                    continue
+
+                widget._name_list = new_name_list
+                widget._tab_dict = new_tab_dict
+
+                if segmented_button is not None and hasattr(segmented_button, "configure"):
+                    segmented_button.configure(values=new_name_list)
+
+                if current_name in tab_name_map:
+                    widget.set(tab_name_map[current_name])
+                else:
+                    widget.set(current_name)
+            except Exception as exc:  # pragma: no cover - best effort for CTk internals
+                logger.debug("Unable to relabel CTkTabview headers: %s", exc)
+
     def _apply_ui_language(self) -> None:
         """Re-label all static widget text using the current ui_language setting.
 
         Called on startup (after _build_ui) and immediately after _save_settings.
-        Tab names cannot be renamed via the public CTkTabview API and are left as-is.
         """
+        # Tab headers
+        self._relabel_tabview_headers()
+
         # Generate Subtitles tab
         self._lbl_input_video.configure(text=self._s("input_video_lbl"))
         self._lbl_output_file.configure(text=self._s("output_file_lbl"))
@@ -1604,6 +1703,15 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_clear.configure(text=self._s("clear_btn"))
         self._btn_browse_input.configure(text=self._s("browse_btn"))
         self._btn_browse_output.configure(text=self._s("save_as_btn"))
+
+        # Stage label — update if currently showing a known status string
+        _known_statuses = {_STRINGS[l].get(k) for l in _STRINGS for k in ("starting_server", "status_done")}
+        current_stage_text = self._stage_label.cget("text")
+        if current_stage_text in _known_statuses:
+            for key in ("starting_server", "status_done"):
+                if current_stage_text in {_STRINGS[l].get(key) for l in _STRINGS}:
+                    self._stage_label.configure(text=self._s(key))
+                    break
 
         # Translate Subtitles tab
         self._lbl_tl_input_sub.configure(text=self._s("input_sub_lbl"))
@@ -1627,10 +1735,18 @@ class GenSubtitlesApp(ctk.CTk):
         if hasattr(self, "_btn_open_folder"):
             self._btn_open_folder.configure(text=self._s("open_folder_btn"))
 
-        # Menu bar (tk.Menu uses entryconfigure, not CTk .configure)
-        # menubar has tearoff=1 (default), so cascade entries start at index 1
-        self._menubar.entryconfigure(1, label=self._s("menu_settings"))
-        self._menubar.entryconfigure(2, label=self._s("menu_help"))
+        # Menu bar — resolve cascade indices dynamically
+        menubar_end = self._menubar.index("end")
+        menubar_cascades = []
+        if menubar_end is not None:
+            for idx in range(menubar_end + 1):
+                if self._menubar.type(idx) == "cascade":
+                    menubar_cascades.append(idx)
+
+        if len(menubar_cascades) >= 1:
+            self._menubar.entryconfigure(menubar_cascades[0], label=self._s("menu_settings"))
+        if len(menubar_cascades) >= 2:
+            self._menubar.entryconfigure(menubar_cascades[1], label=self._s("menu_help"))
         self._settings_menu.entryconfigure(0, label=self._s("menu_preferences"))
         self._help_menu.entryconfigure(0, label=self._s("menu_tutorial"))
         self._help_menu.entryconfigure(1, label=self._s("menu_languages"))
@@ -1753,12 +1869,12 @@ class GenSubtitlesApp(ctk.CTk):
         if not input_path:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Missing input", "Please select a subtitle file.")
+            messagebox.showerror(self._s("msg_missing_input_title"), self._s("msg_missing_input_subtitle"))
             return
         if not output_path:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Missing output", "Please choose an output path.")
+            messagebox.showerror(self._s("msg_missing_output_title"), self._s("msg_missing_output_path"))
             return
 
         convert_only = self._tl_convert_only_var.get()
@@ -1777,7 +1893,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_progress_bar.configure(progress_color=_p("progress_proc"))
         self._tl_progress_bar.start()
         self._tl_stage_label.configure(
-            text="Translating…" if not convert_only else "Converting…"
+            text=self._s("status_translating") if not convert_only else self._s("status_converting")
         )
         self._tl_elapsed_label.configure(text="00:00:00")
         self._tl_elapsed_start = time.monotonic()
@@ -1866,11 +1982,11 @@ class GenSubtitlesApp(ctk.CTk):
         if error:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Translation failed", error)
+            messagebox.showerror(self._s("msg_translation_failed_title"), error)
         else:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showinfo("Done", f"Saved: {output_path}")
+            messagebox.showinfo(self._s("msg_done_title"), self._s("msg_saved_body").format(path=output_path))
 
     # ------------------------------------------------------------------
     # Server lifecycle
