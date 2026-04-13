@@ -591,10 +591,11 @@ Plans:
 
 **Goal:** Update README.md (and README.es.md) to reflect all features added after v1.0: GUI interface, translation engines (DeepL, LibreTranslate), SSA output format, translate-only mode, settings persistence, subtitle style options, and the Help/Settings menus. Also document known limitations (DeepL/LibreTranslate not yet active in GUI).
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [x] 999.18-01-PLAN.md — Rewrite README.md with new audience-split structure
+- [x] 999.18-02-PLAN.md — Update README.es.md to mirror README.md structure
 
 **Context captured:**
 - Current README covers CLI + basic API only — GUI section is minimal
