@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 999.16
-last_updated: "2026-04-13T16:01:34.115Z"
+status: Phase 999.17 Complete
+last_updated: "2026-04-13T17:00:00.000Z"
 progress:
   total_phases: 30
-  completed_phases: 20
-  total_plans: 44
-  completed_plans: 43
+  completed_phases: 21
+  total_plans: 45
+  completed_plans: 45
 ---
 
 # GenSubtitles — Project State
@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1.0
-- **Active Phase:** 999.16 — GUI UI Language Setting
-- **Last action:** Phase 999.16 executing — localized string registry, tab/menu/messagebox relabeling, dynamic cascade index resolution.
+- **Active Phase:** 999.17 — GUI Installed Language Pairs Duplicates
+- **Last action:** Phase 999.17 complete — deduplicated list_installed_pairs() with seen-set guard; regression test added.
 
 ## Milestone Progress
 

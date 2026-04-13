@@ -578,7 +578,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 999.17-01-PLAN.md — Deduplicate list_installed_pairs() + regression test
+- [x] 999.17-01-PLAN.md — Deduplicate list_installed_pairs() + regression test
 
 **Context captured:**
 - Root likely in `list_installed_pairs()` in `translator.py` — Argos Translate may register the same package multiple times after reinstall or index refresh
