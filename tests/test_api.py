@@ -342,3 +342,57 @@ class TestSSEJobPattern:
             files={"file": ("file.txt", bad.read_bytes(), "text/plain")},
         )
         assert resp.status_code == 400
+
+    def test_run_pipeline_job_srt_persists_until_result_fetched(self, client, tmp_path, monkeypatch):
+        """_run_pipeline_job must NOT delete srt_path on success; /result cleanup does it."""
+        import types
+        import threading
+        import uuid
+        from queue import Queue
+        from gensubtitles.api.routers import subtitles as sub_mod
+
+        srt_content = "1\n00:00:00,000 --> 00:00:01,000\nHello\n\n"
+
+        # Patch gensubtitles.core.audio to avoid FFmpeg import-time check
+        fake_audio = types.SimpleNamespace(
+            extract_audio=lambda *a: None,
+            audio_temp_context=lambda: contextmanager(lambda: (yield tmp_path / "audio.wav"))(),
+        )
+        monkeypatch.setitem(sys.modules, "gensubtitles.core.audio", fake_audio)
+
+        # Patch gensubtitles.core.srt_writer to write known SRT content
+        def _fake_write_srt(segments, path):
+            path.write_text(srt_content, encoding="utf-8")
+
+        fake_srt_writer = types.SimpleNamespace(write_srt=_fake_write_srt)
+        monkeypatch.setitem(sys.modules, "gensubtitles.core.srt_writer", fake_srt_writer)
+
+        video_path = tmp_path / "v.mp4"
+        video_path.write_bytes(b"fake")
+        srt_path = tmp_path / "out.srt"
+        srt_path.write_text("", encoding="utf-8")
+
+        class FakeResult:
+            segments = []
+            language = "en"
+
+        class FakeTranscriber:
+            def transcribe(self, *a, **kw):
+                return FakeResult()
+
+        job_id = str(uuid.uuid4())
+        job: dict = {"queue": Queue(), "cancel": threading.Event(), "result": None, "error": None}
+        sub_mod._jobs[job_id] = job
+
+        sub_mod._run_pipeline_job(job_id, video_path, srt_path, None, None, "argos", FakeTranscriber())
+
+        # srt_path must still exist so /result can serve it
+        assert srt_path.exists(), "srt_path must not be deleted by _run_pipeline_job on success"
+
+        # job must still be in _jobs so /result endpoint can look it up
+        assert job_id in sub_mod._jobs, "job must remain in _jobs after success"
+
+        # GET /result should serve the SRT and then clean up
+        resp = client.get(f"/subtitles/{job_id}/result")
+        assert resp.status_code == 200
+        assert "Hello" in resp.text

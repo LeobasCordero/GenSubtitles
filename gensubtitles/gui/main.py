@@ -1285,10 +1285,14 @@ class GenSubtitlesApp(ctk.CTk):
                         self.after(0, lambda d=data: self._apply_progress(d))
                     if stage == "done":
                         break
-                    if stage in ("error", "cancelled"):
+                    if stage == "error":
                         friendly = data.get("label", "Generation failed")
                         if not self._closing:
                             self.after(0, self._finish_generate, friendly, None)
+                        return
+                    if stage == "cancelled":
+                        if not self._closing:
+                            self.after(0, self._finish_generate, None, None, True)
                         return
 
             # Step 3: GET /subtitles/{job_id}/result — fetch SRT bytes
@@ -1327,7 +1331,7 @@ class GenSubtitlesApp(ctk.CTk):
             if not self._closing:
                 self.after(0, self._finish_generate, msg, None)
 
-    def _finish_generate(self, error: str | None, output_path: str | None) -> None:
+    def _finish_generate(self, error: str | None, output_path: str | None, cancelled: bool = False) -> None:
         # Stop progress first to prevent stale UI updates
         self._job_active = False
         self._current_job_id = None
@@ -1356,6 +1360,10 @@ class GenSubtitlesApp(ctk.CTk):
             self._progress_bar.set(1.0)
             self._progress_bar.grid()
             self.after(2000, self._hide_generate_progress)
+        elif cancelled:
+            self._progress_bar.stop()
+            self._progress_bar.configure(mode="determinate", progress_color=_p("progress_idle"))
+            self._progress_bar.grid_remove()
         else:
             self._progress_bar.stop()
             self._progress_bar.configure(mode="determinate", progress_color=_p("progress_done"))
@@ -1378,6 +1386,8 @@ class GenSubtitlesApp(ctk.CTk):
 
             self._stage_label.configure(text="")
             messagebox.showerror(self._s("msg_generation_failed_title"), error)
+        elif cancelled:
+            self._stage_label.configure(text="Generation cancelled.")
         else:
             self._stage_label.configure(text=self._s("status_done"))
             if output_path is None:

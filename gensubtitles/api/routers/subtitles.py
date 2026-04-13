@@ -141,12 +141,12 @@ def _run_pipeline_job(
 
     except Exception as exc:  # noqa: BLE001
         label = (type(exc).__name__ + ": " + str(exc))[:200]
+        srt_path.unlink(missing_ok=True)
         job["queue"].put({"stage": "error", "label": label})
         with _jobs_lock:
             _jobs.pop(job_id, None)
     finally:
         video_path.unlink(missing_ok=True)
-        srt_path.unlink(missing_ok=True)
 
 
 @router.post("/subtitles/async")
