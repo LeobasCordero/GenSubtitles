@@ -555,6 +555,88 @@ Plans:
 
 ---
 
+### Phase 999.16: GUI — UI Language Setting Not Working (BACKLOG)
+
+**Goal:** The UI Language option in Settings changes the stored preference but does not relabel the interface — all labels remain in the original language after selecting a different one. Fix the runtime language-switch mechanism so that selecting a UI language immediately (or after a prompted restart) updates all visible labels, menu entries, buttons, and dialog text throughout the app.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Setting is persisted via `AppSettings` but the GUI widgets are not re-rendered or re-translated after the change
+- Options: (A) full re-render on language change (rebuild all CTk widgets); (B) prompt user to restart the app and apply on next launch; (C) use a centralized string registry (`i18n` dict) and bind labels to reactive string vars so they update automatically
+- Affected scope: all `CTkLabel`, `CTkButton`, menu entries, dialog titles, and error messages
+
+---
+
+### Phase 999.17: GUI — Installed Language Pairs Showing Duplicates (BACKLOG)
+
+**Goal:** The "Installed Language Pairs" dialog in the Help menu shows duplicate entries for the same language pair. Deduplicate the list before rendering so each `from→to` pair appears exactly once.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Root likely in `list_installed_pairs()` in `translator.py` — Argos Translate may register the same package multiple times after reinstall or index refresh
+- Fix: deduplicate with `{(p["from"], p["to"]) for p in pairs}` before passing to the UI
+- Also apply deduplication in `GET /languages` API response for consistency
+
+---
+
+### Phase 999.18: Docs — README Update (BACKLOG)
+
+**Goal:** Update README.md (and README.es.md) to reflect all features added after v1.0: GUI interface, translation engines (DeepL, LibreTranslate), SSA output format, translate-only mode, settings persistence, subtitle style options, and the Help/Settings menus. Also document known limitations (DeepL/LibreTranslate not yet active in GUI).
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Current README covers CLI + basic API only — GUI section is minimal
+- Sections to add/update: GUI usage walkthrough, translation engine comparison table, SSA output format, configuration file location and schema, troubleshooting for new error types (timeout, marker mismatch fallback)
+- Both English and Spanish README must be kept in sync
+
+---
+
+### Phase 999.19: Config — Configurable JSON Config File Location (BACKLOG)
+
+**Goal:** Allow users to specify a custom path for the configuration JSON file instead of the hardcoded default (platformdirs AppData location). Useful for portable installs, shared network configs, or version-controlled project-level settings. Should be configurable via CLI flag (`--config`), environment variable (`GENSUBTITLES_CONFIG`), or both.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Current config path is resolved by `platformdirs.user_config_dir()` in `settings.py` — make this overridable
+- Priority order: CLI flag > env var > default platformdirs path
+- GUI should display the active config path in Settings so users know where changes are stored
+- Portable mode: if a `gensubtitles.json` exists next to `main.py`, auto-use it (zero-config for portable packaging)
+
+---
+
+### Phase 999.20: Docs — CLI Tutorial (BACKLOG)
+
+**Goal:** Add a dedicated CLI tutorial — either as a new section in README.md or as a standalone `docs/cli-tutorial.md` — that walks through the full CLI workflow step by step: installation, basic transcription, transcription + translation, format options (SRT/SSA), the `serve` subcommand, and the `translate` subcommand for existing subtitle files. Targeted at technical users who don't need the GUI.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Current README has short CLI examples but no end-to-end tutorial narrative
+- Should cover: `python main.py generate`, `python main.py translate`, `python main.py serve`, `--engine` flag, `--format` flag, `--model` sizes and their trade-offs
+- Include expected output snippets and timings for each model size
+- Cross-link from Help menu "Tutorial" dialog (which currently shows GUI-oriented steps)
+
+---
+
 ### Phase 999.15: GUI — UI Bug Fixes & Polish (BACKLOG)
 
 **Goal:** Fix a batch of small but visible UI bugs in the GUI: (1) "Open folder" button persists after clicking "Generate subtitles" a second time — must be hidden at the start of each new generation run; (2) DeepL and LibreTranslate engine options are visible in the dropdown even though they are disabled — should be hidden or clearly marked as unavailable; (3) target language set in the config file is not reflected in the UI on startup — the dropdown must initialize from `AppSettings`; (4) the "About GenSubtitles" dialog in the Help menu does not follow the app's UI rules for spacing, fonts, and colors; (5) in light theme, disabled buttons are nearly invisible — update their disabled color to a more visible, accessible value.
