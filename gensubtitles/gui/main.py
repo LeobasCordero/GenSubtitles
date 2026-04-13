@@ -1362,7 +1362,6 @@ class GenSubtitlesApp(ctk.CTk):
             self.after(2000, self._hide_generate_progress)
         elif cancelled:
             self._progress_bar.stop()
-            self._progress_bar.configure(mode="determinate", progress_color=_p("progress_idle"))
             self._progress_bar.grid_remove()
         else:
             self._progress_bar.stop()

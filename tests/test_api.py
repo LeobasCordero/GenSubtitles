@@ -354,9 +354,15 @@ class TestSSEJobPattern:
         srt_content = "1\n00:00:00,000 --> 00:00:01,000\nHello\n\n"
 
         # Patch gensubtitles.core.audio to avoid FFmpeg import-time check
+        def _fake_audio_temp_context():
+            @contextmanager
+            def _cm():
+                yield tmp_path / "audio.wav"
+            return _cm()
+
         fake_audio = types.SimpleNamespace(
             extract_audio=lambda *a: None,
-            audio_temp_context=lambda: contextmanager(lambda: (yield tmp_path / "audio.wav"))(),
+            audio_temp_context=_fake_audio_temp_context,
         )
         monkeypatch.setitem(sys.modules, "gensubtitles.core.audio", fake_audio)
 
@@ -396,3 +402,5 @@ class TestSSEJobPattern:
         resp = client.get(f"/subtitles/{job_id}/result")
         assert resp.status_code == 200
         assert "Hello" in resp.text
+        # BackgroundTask cleanup should have deleted srt_path
+        assert not srt_path.exists(), "srt_path should be deleted after /result serves it"
