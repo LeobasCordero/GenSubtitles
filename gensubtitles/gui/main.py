@@ -254,6 +254,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._apply_startup_settings()
         self._build_ui()
         self._apply_startup_theme()
+        self._apply_startup_target_lang()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self._start_server()
 
@@ -330,9 +331,15 @@ class GenSubtitlesApp(ctk.CTk):
         # Row 4 — Engine dropdown (visible only when a target language is selected)
         self._lbl_engine = ctk.CTkLabel(self._frame, text="Translation engine:")
         self._lbl_engine.grid(row=4, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
+        # Engine values: Argos always present; DeepL/LibreTranslate only if credentials exist
+        _engine_values = ["Argos"]
+        if self._current_settings and self._current_settings.deepl_api_key:
+            _engine_values.append("DeepL")
+        if self._current_settings and self._current_settings.libretranslate_url:
+            _engine_values.append("LibreTranslate")
         self._option_engine = ctk.CTkOptionMenu(
             self._frame,
-            values=["Argos", "DeepL", "LibreTranslate"],
+            values=_engine_values,
             variable=self._engine_var,
         )
         self._option_engine.grid(row=4, column=1, columnspan=2, sticky="ew", pady=(0, 8))
@@ -357,6 +364,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._frame, text="Generate Subtitles", command=self._on_generate, height=44,
             fg_color=_p("accent"), hover_color=_p("accent_hov"),
             state="disabled",
+            text_color_disabled=("#757575", "#9E9E9E"),
         )
         self._btn_generate.grid(row=6, column=0, columnspan=3, pady=(24, 0), sticky="ew")
 
@@ -369,6 +377,7 @@ class GenSubtitlesApp(ctk.CTk):
             height=44,
             fg_color=_p("secondary"),
             hover_color=_p("secondary_hov"),
+            text_color_disabled=("#757575", "#9E9E9E"),
         )
         self._btn_clear.grid(row=7, column=0, columnspan=3, pady=(16, 8), sticky="ew")
 
@@ -697,6 +706,18 @@ class GenSubtitlesApp(ctk.CTk):
         else:
             self._lbl_engine.grid()
             self._option_engine.grid()
+        # Auto-save target_lang to settings (BUG-3, D-09)
+        try:
+            from gensubtitles.core.settings import save_settings  # noqa: PLC0415
+            if self._current_settings is not None:
+                tgt_code = _label_to_code(selection) if selection not in ("No target", "") else ""
+                import dataclasses  # noqa: PLC0415
+                self._current_settings = dataclasses.replace(
+                    self._current_settings, target_lang=tgt_code
+                )
+                save_settings(self._current_settings)
+        except Exception:  # noqa: BLE001
+            pass
         src_label = self._source_lang_var.get()
         if src_label == "Auto-detect":
             return
@@ -908,6 +929,9 @@ class GenSubtitlesApp(ctk.CTk):
     # ------------------------------------------------------------------
 
     def _on_generate(self) -> None:
+        # Hide "Open Folder" button from a previous run (BUG-1, D-01)
+        if hasattr(self, "_btn_open_folder"):
+            self._btn_open_folder.grid_remove()
         input_path = self._input_var.get().strip()
         output_path = self._output_var.get().strip()
 
@@ -1268,6 +1292,25 @@ class GenSubtitlesApp(ctk.CTk):
         self.sync_with_os()
         self._start_os_theme_listener()
 
+    def _apply_startup_target_lang(self) -> None:
+        """Initialize target language dropdown from saved settings (BUG-3).
+
+        Must be called after _build_ui so _option_target_lang and _target_lang_var exist.
+        """
+        if not self._current_settings:
+            return
+        saved_code = self._current_settings.target_lang
+        if not saved_code:
+            return
+        label = _CODE_TO_LABEL.get(saved_code)
+        if label is None:
+            return
+        # Set the StringVar — triggers no command callback
+        self._target_lang_var.set(label)
+        # Manually trigger show/hide of engine row (no prefetch needed at startup)
+        self._lbl_engine.grid()
+        self._option_engine.grid()
+
     def _show_settings(self) -> None:
         """Show settings panel, hide main tabview. Populate from current settings."""
         if self._current_settings:
@@ -1298,9 +1341,38 @@ class GenSubtitlesApp(ctk.CTk):
                     if self._current_settings
                     else ""
                 ),
+                target_lang=(
+                    self._current_settings.target_lang
+                    if self._current_settings
+                    else ""
+                ),
+                deepl_api_key=(
+                    self._current_settings.deepl_api_key
+                    if self._current_settings
+                    else ""
+                ),
+                libretranslate_url=(
+                    self._current_settings.libretranslate_url
+                    if self._current_settings
+                    else ""
+                ),
+                libretranslate_api_key=(
+                    self._current_settings.libretranslate_api_key
+                    if self._current_settings
+                    else ""
+                ),
             )
             save_settings(new_settings)
             self._current_settings = new_settings
+            # Refresh engine dropdown to reflect any credential changes (BUG-2, D-04)
+            _engine_values = ["Argos"]
+            if new_settings.deepl_api_key:
+                _engine_values.append("DeepL")
+            if new_settings.libretranslate_url:
+                _engine_values.append("LibreTranslate")
+            self._option_engine.configure(values=_engine_values)
+            if self._engine_var.get() not in _engine_values:
+                self._engine_var.set("Argos")  # D-05: reset if selection was removed
             ctk.set_appearance_mode(new_settings.appearance_mode)
             self._apply_theme()
             # If the user just switched to "System", sync immediately and
@@ -1438,7 +1510,7 @@ TROUBLESHOOTING
 
         version = getattr(gensubtitles, "__version__", "0.1.0")
 
-        win = ctk.CTkToplevel(self)
+        win = ctk.CTkToplevel(self, fg_color=_p("bg"))
         win.title("About GenSubtitles")
         win.resizable(False, False)
         win.grab_set()
@@ -1464,9 +1536,17 @@ TROUBLESHOOTING
 
             webbrowser.open("https://github.com/leocg/GenSubtitles")
 
-        ctk.CTkButton(win, text="GitHub Project", command=_open_github).pack(pady=(8, 4))
         ctk.CTkButton(
-            win, text="Close", command=win.destroy, fg_color="gray"
+            win,
+            text="GitHub Project",
+            command=_open_github,
+            fg_color=_p("accent"),
+            hover_color=_p("accent_hov"),
+        ).pack(pady=(8, 4))
+        ctk.CTkButton(
+            win, text="Close", command=win.destroy,
+            fg_color=_p("secondary"),
+            hover_color=_p("secondary_hov"),
         ).pack(pady=(4, 24))
 
     # ------------------------------------------------------------------
