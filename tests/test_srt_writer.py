@@ -4,6 +4,7 @@ Uses SimpleNamespace to duck-type segment objects (mirrors faster-whisper/Argos 
 """
 from __future__ import annotations
 
+import pytest
 import srt
 from datetime import timedelta
 from pathlib import Path
@@ -333,20 +334,17 @@ def test_hex_to_pysubs2_color_strips_whitespace():
 
 def test_hex_to_pysubs2_color_invalid_empty_raises():
     """_hex_to_pysubs2_color() raises ValueError for empty string."""
-    import pytest
     with pytest.raises(ValueError, match="Invalid hex color"):
         _hex_to_pysubs2_color("")
 
 
 def test_hex_to_pysubs2_color_invalid_short_raises():
     """_hex_to_pysubs2_color() raises ValueError for shorthand hex (#RGB)."""
-    import pytest
     with pytest.raises(ValueError, match="Invalid hex color"):
         _hex_to_pysubs2_color("#FFF")
 
 
 def test_hex_to_pysubs2_color_invalid_non_hex_raises():
     """_hex_to_pysubs2_color() raises ValueError for non-hex characters."""
-    import pytest
     with pytest.raises(ValueError, match="Invalid hex color"):
         _hex_to_pysubs2_color("#GGGGGG")
