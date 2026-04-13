@@ -555,6 +555,24 @@ Plans:
 
 ---
 
+### Phase 999.15: GUI — UI Bug Fixes & Polish (BACKLOG)
+
+**Goal:** Fix a batch of small but visible UI bugs in the GUI: (1) "Open folder" button persists after clicking "Generate subtitles" a second time — must be hidden at the start of each new generation run; (2) DeepL and LibreTranslate engine options are visible in the dropdown even though they are disabled — should be hidden or clearly marked as unavailable; (3) target language set in the config file is not reflected in the UI on startup — the dropdown must initialize from `AppSettings`; (4) the "About GenSubtitles" dialog in the Help menu does not follow the app's UI rules for spacing, fonts, and colors; (5) in light theme, disabled buttons are nearly invisible — update their disabled color to a more visible, accessible value.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- BUG-1: `_open_folder` button shown after first generation is not hidden when "Generate subtitles" is clicked again — hide it at the top of `_on_generate`
+- BUG-2: DeepL and LibreTranslate are shown in engine CTkOptionMenu but are non-functional; either remove from the list or add "(unavailable)" label and disable selection
+- BUG-3: `AppSettings.target_lang` is loaded from config but not used to pre-select the target language dropdown in `__init__` of the GUI
+- BUG-4: About dialog text uses default tkinter fonts/colors, not the app's CustomTkinter theme — apply consistent `CTkLabel` styling, padding, and font
+- BUG-5: Light theme disabled button foreground color blends into the background — set an explicit `fg_color` / `text_color_disabled` that passes WCAG AA contrast in light mode
+
+---
+
 ### Phase 999.14: GUI — HTTP Timeout During Subtitle Generation (BACKLOG)
 
 **Goal:** Handle the case where the GUI's HTTP call to the local API server times out during a long subtitle generation run. Currently the error surfaces as a raw `HTTPConnectionPool read timed out` dialog with no user guidance. Fix should either increase/remove the read timeout for long jobs, add a progress-aware keep-alive mechanism, or stream progress from the API so the connection stays active — and show a meaningful error with retry option if the timeout is genuinely exceeded.
