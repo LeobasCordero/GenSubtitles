@@ -15,6 +15,7 @@ from gensubtitles.core.srt_writer import (
     segments_to_srt,
     write_srt,
     write_ssa,
+    _hex_to_pysubs2_color,
 )
 
 
@@ -299,3 +300,53 @@ def test_convert_srt_to_ssa_with_style(tmp_path):
     convert_srt_to_ssa(srt_file, ssa_file, style=style)
     subs = pysubs2.SSAFile.load(str(ssa_file))
     assert subs.styles["Default"].fontname == "Tahoma"
+
+
+# ── _hex_to_pysubs2_color validation tests ────────────────────────────────────
+
+
+def test_hex_to_pysubs2_color_with_hash():
+    """_hex_to_pysubs2_color() accepts '#RRGGBB' strings."""
+    color = _hex_to_pysubs2_color("#FF8800")
+    assert color.r == 0xFF
+    assert color.g == 0x88
+    assert color.b == 0x00
+
+
+def test_hex_to_pysubs2_color_without_hash():
+    """_hex_to_pysubs2_color() accepts 'RRGGBB' strings without '#'."""
+    color = _hex_to_pysubs2_color("00FF00")
+    assert color.g == 0xFF
+
+
+def test_hex_to_pysubs2_color_uppercase_and_lowercase():
+    """_hex_to_pysubs2_color() is case-insensitive."""
+    assert _hex_to_pysubs2_color("#aabbcc").r == 0xAA
+    assert _hex_to_pysubs2_color("#AABBCC").r == 0xAA
+
+
+def test_hex_to_pysubs2_color_strips_whitespace():
+    """_hex_to_pysubs2_color() strips surrounding whitespace."""
+    color = _hex_to_pysubs2_color("  #FF0000  ")
+    assert color.r == 0xFF
+
+
+def test_hex_to_pysubs2_color_invalid_empty_raises():
+    """_hex_to_pysubs2_color() raises ValueError for empty string."""
+    import pytest
+    with pytest.raises(ValueError, match="Invalid hex color"):
+        _hex_to_pysubs2_color("")
+
+
+def test_hex_to_pysubs2_color_invalid_short_raises():
+    """_hex_to_pysubs2_color() raises ValueError for shorthand hex (#RGB)."""
+    import pytest
+    with pytest.raises(ValueError, match="Invalid hex color"):
+        _hex_to_pysubs2_color("#FFF")
+
+
+def test_hex_to_pysubs2_color_invalid_non_hex_raises():
+    """_hex_to_pysubs2_color() raises ValueError for non-hex characters."""
+    import pytest
+    with pytest.raises(ValueError, match="Invalid hex color"):
+        _hex_to_pysubs2_color("#GGGGGG")

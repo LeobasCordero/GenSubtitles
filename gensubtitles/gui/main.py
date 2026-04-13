@@ -1534,6 +1534,12 @@ class GenSubtitlesApp(ctk.CTk):
             self._settings_outdir_entry.configure(
                 fg_color=_p("input_bg"), text_color=_p("text_primary")
             )
+        if hasattr(self, "_settings_font_size_entry"):
+            self._settings_font_size_entry.configure(
+                fg_color=_p("input_bg"), text_color=_p("text_primary")
+            )
+        if hasattr(self, "_lbl_subtitle_style"):
+            self._lbl_subtitle_style.configure(text_color=_p("text_secondary"))
 
         if hasattr(self, "_settings_header_lbl"):
             self._settings_header_lbl.configure(
@@ -1738,6 +1744,18 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _save_settings(self) -> None:
         """Persist settings and apply immediately."""
+        from tkinter import messagebox  # noqa: PLC0415
+
+        # Validate font size before attempting to build AppSettings so we can
+        # show a targeted error without closing the settings panel.
+        font_size_raw = self._settings_font_size_var.get().strip() or "20"
+        if not font_size_raw.isdigit() or int(font_size_raw) <= 0:
+            messagebox.showerror(
+                self._s("msg_settings_error_title"),
+                "Font size must be a positive integer (e.g. 20).",
+            )
+            return
+
         try:
             from gensubtitles.core.settings import AppSettings, save_settings  # noqa: PLC0415
 
@@ -1772,7 +1790,7 @@ class GenSubtitlesApp(ctk.CTk):
                     else ""
                 ),
                 subtitle_font_family=self._settings_font_var.get(),
-                subtitle_font_size=int(self._settings_font_size_var.get().strip() or "20"),
+                subtitle_font_size=int(font_size_raw),
                 subtitle_text_color=self._settings_text_color_var.get() or "#FFFFFF",
                 subtitle_outline_color=self._settings_outline_color_var.get() or "#000000",
             )
@@ -1796,11 +1814,9 @@ class GenSubtitlesApp(ctk.CTk):
                 self.sync_with_os()
                 self._start_os_theme_listener()
         except Exception as exc:  # noqa: BLE001
-            from tkinter import messagebox  # noqa: PLC0415
-
             messagebox.showerror(self._s("msg_settings_error_title"), self._s("msg_settings_error_body").format(error=exc))
-        finally:
-            self._hide_settings()
+            return
+        self._hide_settings()
 
     def _s(self, key: str) -> str:
         """Return the localized string for the current UI language setting.
@@ -2124,7 +2140,15 @@ class GenSubtitlesApp(ctk.CTk):
                 )
 
                 if src_ext == ".srt" and dst_ext in (".ssa", ".ass"):
-                    convert_srt_to_ssa(input_path, output_path)
+                    style: dict | None = None
+                    if self._current_settings:
+                        style = {
+                            "fontname": self._current_settings.subtitle_font_family,
+                            "fontsize": self._current_settings.subtitle_font_size,
+                            "primarycolor": self._current_settings.subtitle_text_color,
+                            "outlinecolor": self._current_settings.subtitle_outline_color,
+                        }
+                    convert_srt_to_ssa(input_path, output_path, style=style)
                 elif src_ext in (".ssa", ".ass") and dst_ext == ".srt":
                     convert_ssa_to_srt(input_path, output_path)
                 else:

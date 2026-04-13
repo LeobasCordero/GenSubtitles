@@ -94,10 +94,26 @@ def write_srt(segments: Iterable[Any], output_path: str | Path) -> None:
 
 
 def _hex_to_pysubs2_color(hex_color: str):
-    """Convert '#RRGGBB' hex string to a pysubs2.Color (alpha=0, fully opaque)."""
+    """Convert '#RRGGBB' hex string to a pysubs2.Color (alpha=0, fully opaque).
+
+    Args:
+        hex_color: A 6-digit RGB hex string, optionally prefixed with '#'
+                   (e.g. '#FF8800' or 'FF8800').
+
+    Raises:
+        ValueError: If ``hex_color`` is not a valid 6-digit hex color string.
+    """
+    import re
+
     import pysubs2
 
-    h = hex_color.lstrip("#")
+    normalized = (hex_color or "").strip()
+    if not re.fullmatch(r"#?[0-9a-fA-F]{6}", normalized):
+        raise ValueError(
+            f"Invalid hex color {hex_color!r}: expected a 6-digit RGB hex string "
+            "like '#FF8800' or 'FF8800'."
+        )
+    h = normalized.lstrip("#")
     r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
     return pysubs2.Color(r, g, b, 0)
 
