@@ -660,7 +660,7 @@ Plans:
 
 **Goal:** Replace the blocking `POST /subtitles` HTTP call with an SSE-based async job pattern so long transcription+translation runs never hit a read timeout. Add a Cancel button that lets the user abort a running job.
 **Requirements:** TBD
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 999.14-01-PLAN.md — API: SSE job endpoints (POST /async, GET /stream, GET /result, DELETE /{job_id})
