@@ -541,11 +541,11 @@ Plans:
 
 **Goal:** Add a subtitle styling submenu in Settings → Preferences where users can configure visual appearance of generated subtitles: font family, font size, text color, and outline/border color.
 **Requirements:** STYLE-01, STYLE-02, STYLE-03, STYLE-04, STYLE-05, STYLE-06
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 999.13-01-PLAN.md — Backend: AppSettings style fields + write_ssa()/convert_srt_to_ssa() style parameter + TDD tests
-- [ ] 999.13-02-PLAN.md — GUI: Settings panel style section (font dropdown, size entry, color swatches), wire to AppSettings, apply to SSA output + human verify
+- [x] 999.13-02-PLAN.md — GUI: Settings panel style section (font dropdown, size entry, color swatches), wire to AppSettings, apply to SSA output + human verify
 
 **Context captured:**
 - Applies primarily to SSA/ASS output format (which natively supports style metadata in the `[V4+ Styles]` section)
