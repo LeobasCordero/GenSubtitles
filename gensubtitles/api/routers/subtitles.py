@@ -66,11 +66,13 @@ def _set_progress(
 
 
 def _cancel_job(job_id: str, video_path: Path, srt_path: Path) -> None:
-    job = _jobs.get(job_id)
-    if job:
-        video_path.unlink(missing_ok=True)
-        srt_path.unlink(missing_ok=True)
-        job["queue"].put({"stage": "cancelled", "label": "Cancelled"})
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+        if job:
+            video_path.unlink(missing_ok=True)
+            srt_path.unlink(missing_ok=True)
+            job["queue"].put({"stage": "cancelled", "label": "Cancelled"})
+            _jobs.pop(job_id, None)
 
 
 def _run_pipeline_job(
@@ -140,8 +142,11 @@ def _run_pipeline_job(
     except Exception as exc:  # noqa: BLE001
         label = (type(exc).__name__ + ": " + str(exc))[:200]
         job["queue"].put({"stage": "error", "label": label})
+        with _jobs_lock:
+            _jobs.pop(job_id, None)
     finally:
         video_path.unlink(missing_ok=True)
+        srt_path.unlink(missing_ok=True)
 
 
 @router.post("/subtitles/async")

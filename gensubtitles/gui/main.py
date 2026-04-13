@@ -1104,11 +1104,11 @@ class GenSubtitlesApp(ctk.CTk):
     # ------------------------------------------------------------------
 
     def _on_cancel(self) -> None:
-        """Disable cancel button immediately and send DELETE request to API in background."""
-        self._btn_cancel.configure(state="disabled")
+        """Send DELETE request to API in background; disable cancel button only if a job is active."""
         job_id = self._current_job_id
         if not job_id:
             return
+        self._btn_cancel.configure(state="disabled")
 
         def _do_cancel() -> None:
             try:
@@ -1271,7 +1271,7 @@ class GenSubtitlesApp(ctk.CTk):
             with req.get(
                 f"{_BASE_URL}/subtitles/{job_id}/stream",
                 stream=True,
-                timeout=None,  # no timeout — stream stays open until done/error/cancelled
+                timeout=(5, None),  # fail fast if server unreachable; keep stream reads unbounded
             ) as stream_resp:
                 for line in stream_resp.iter_lines(decode_unicode=True):
                     if not line or not line.startswith("data:"):
@@ -1318,8 +1318,15 @@ class GenSubtitlesApp(ctk.CTk):
                 self.after(0, self._finish_generate, None, final_path)
 
         except Exception as exc:  # noqa: BLE001
+            import requests as _req_mod  # noqa: PLC0415
+            if isinstance(exc, (_req_mod.exceptions.ConnectionError, _req_mod.exceptions.Timeout)):
+                msg = "Cannot connect to the API server. Make sure the server is running."
+            elif isinstance(exc, _req_mod.exceptions.RequestException):
+                msg = f"Network error: {type(exc).__name__}"
+            else:
+                msg = "An unexpected error occurred during subtitle generation."
             if not self._closing:
-                self.after(0, self._finish_generate, str(exc), None)
+                self.after(0, self._finish_generate, msg, None)
 
     def _finish_generate(self, error: str | None, output_path: str | None) -> None:
         # Stop progress first to prevent stale UI updates

@@ -226,7 +226,7 @@ class TestGetLanguages:
         assert response.status_code == 200
         schema = response.json()
         assert "/languages" in schema["paths"]
-        assert any("subtitles" in p for p in schema["paths"])
+        assert "/subtitles/async" in schema["paths"]
 
     def test_docs_returns_200(self, client):
         """GET /docs returns HTTP 200 (Swagger UI accessible)."""

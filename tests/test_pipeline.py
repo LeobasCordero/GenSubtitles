@@ -330,7 +330,7 @@ class TestPipelineCancellation:
             job["cancel"].set()
         return job
 
-    def test_cancel_after_extract_stops_pipeline(self, tmp_path, monkeypatch):
+    def test_cancel_after_extract_stops_pipeline(self, tmp_path):
         """If cancel is set after audio extraction, pipeline stops before transcription."""
         import uuid
         import threading
@@ -371,7 +371,7 @@ class TestPipelineCancellation:
 
         sub_mod._jobs.pop(job_id, None)
 
-    def test_cancel_not_set_allows_full_pipeline(self, tmp_path, monkeypatch):
+    def test_cancel_not_set_allows_full_pipeline(self, tmp_path):
         """If cancel is never set, pipeline runs to completion and sets result."""
         import uuid
         import unittest.mock as mock
