@@ -4,6 +4,7 @@ Uses SimpleNamespace to duck-type segment objects (mirrors faster-whisper/Argos 
 """
 from __future__ import annotations
 
+import pytest
 import srt
 from datetime import timedelta
 from pathlib import Path
@@ -15,6 +16,7 @@ from gensubtitles.core.srt_writer import (
     segments_to_srt,
     write_srt,
     write_ssa,
+    _hex_to_pysubs2_color,
 )
 
 
@@ -239,3 +241,110 @@ def test_srt_to_ssa_to_srt_preserves_text(tmp_path):
     parsed = list(srt.parse(content))
     assert len(parsed) == 1
     assert "Round trip test" in parsed[0].content
+
+
+# ── Style parameter tests (STYLE-01 through STYLE-05) ────────────────────────
+
+
+def test_write_ssa_default_style(tmp_path):
+    """write_ssa() with no style arg produces a valid SSA file."""
+    import pysubs2
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    out = tmp_path / "test.ssa"
+    write_ssa([seg], out)
+    subs = pysubs2.SSAFile.load(str(out))
+    assert "Default" in subs.styles
+
+
+def test_write_ssa_custom_fontname(tmp_path):
+    """write_ssa() with style fontname applies it to SSA Default style."""
+    import pysubs2
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    out = tmp_path / "test.ssa"
+    style = {"fontname": "Verdana", "fontsize": 20, "primarycolor": "#FFFFFF", "outlinecolor": "#000000"}
+    write_ssa([seg], out, style=style)
+    subs = pysubs2.SSAFile.load(str(out))
+    assert subs.styles["Default"].fontname == "Verdana"
+
+
+def test_write_ssa_custom_fontsize(tmp_path):
+    """write_ssa() with style fontsize applies it to SSA Default style."""
+    import pysubs2
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    out = tmp_path / "test.ssa"
+    style = {"fontname": "Arial", "fontsize": 36, "primarycolor": "#FFFFFF", "outlinecolor": "#000000"}
+    write_ssa([seg], out, style=style)
+    subs = pysubs2.SSAFile.load(str(out))
+    assert subs.styles["Default"].fontsize == 36
+
+
+def test_write_ssa_custom_colors(tmp_path):
+    """write_ssa() with style colors applies primarycolor and outlinecolor (ASS format preserves both)."""
+    import pysubs2
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    out = tmp_path / "test.ass"
+    style = {"fontname": "Arial", "fontsize": 20, "primarycolor": "#FF0000", "outlinecolor": "#0000FF"}
+    write_ssa([seg], out, style=style)
+    subs = pysubs2.SSAFile.load(str(out))
+    assert subs.styles["Default"].primarycolor.r == 255
+    assert subs.styles["Default"].outlinecolor.b == 255
+
+
+def test_convert_srt_to_ssa_with_style(tmp_path):
+    """convert_srt_to_ssa() with style applies fontname to SSA Default style."""
+    import pysubs2
+    seg = _make_segment(0.0, 3.5, "Hello world")
+    srt_file = tmp_path / "input.srt"
+    write_srt([seg], srt_file)
+    ssa_file = tmp_path / "output.ssa"
+    style = {"fontname": "Tahoma", "fontsize": 20, "primarycolor": "#FFFFFF", "outlinecolor": "#000000"}
+    convert_srt_to_ssa(srt_file, ssa_file, style=style)
+    subs = pysubs2.SSAFile.load(str(ssa_file))
+    assert subs.styles["Default"].fontname == "Tahoma"
+
+
+# ── _hex_to_pysubs2_color validation tests ────────────────────────────────────
+
+
+def test_hex_to_pysubs2_color_with_hash():
+    """_hex_to_pysubs2_color() accepts '#RRGGBB' strings."""
+    color = _hex_to_pysubs2_color("#FF8800")
+    assert color.r == 0xFF
+    assert color.g == 0x88
+    assert color.b == 0x00
+
+
+def test_hex_to_pysubs2_color_without_hash():
+    """_hex_to_pysubs2_color() accepts 'RRGGBB' strings without '#'."""
+    color = _hex_to_pysubs2_color("00FF00")
+    assert color.g == 0xFF
+
+
+def test_hex_to_pysubs2_color_uppercase_and_lowercase():
+    """_hex_to_pysubs2_color() is case-insensitive."""
+    assert _hex_to_pysubs2_color("#aabbcc").r == 0xAA
+    assert _hex_to_pysubs2_color("#AABBCC").r == 0xAA
+
+
+def test_hex_to_pysubs2_color_strips_whitespace():
+    """_hex_to_pysubs2_color() strips surrounding whitespace."""
+    color = _hex_to_pysubs2_color("  #FF0000  ")
+    assert color.r == 0xFF
+
+
+def test_hex_to_pysubs2_color_invalid_empty_raises():
+    """_hex_to_pysubs2_color() raises ValueError for empty string."""
+    with pytest.raises(ValueError, match="Invalid hex color"):
+        _hex_to_pysubs2_color("")
+
+
+def test_hex_to_pysubs2_color_invalid_short_raises():
+    """_hex_to_pysubs2_color() raises ValueError for shorthand hex (#RGB)."""
+    with pytest.raises(ValueError, match="Invalid hex color"):
+        _hex_to_pysubs2_color("#FFF")
+
+
+def test_hex_to_pysubs2_color_invalid_non_hex_raises():
+    """_hex_to_pysubs2_color() raises ValueError for non-hex characters."""
+    with pytest.raises(ValueError, match="Invalid hex color"):
+        _hex_to_pysubs2_color("#GGGGGG")

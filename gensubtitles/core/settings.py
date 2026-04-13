@@ -40,6 +40,10 @@ class AppSettings:
     deepl_api_key: str = ""           # DeepL Free API key
     libretranslate_url: str = ""      # e.g. "http://localhost:5000"
     libretranslate_api_key: str = ""  # empty = open instance
+    subtitle_font_family: str = "Arial"      # SSA Default style fontname
+    subtitle_font_size: int = 20             # SSA Default style fontsize
+    subtitle_text_color: str = "#FFFFFF"     # SSA Default style primarycolor (hex)
+    subtitle_outline_color: str = "#000000"  # SSA Default style outlinecolor (hex)
 
 
 DEFAULT_SETTINGS = AppSettings()

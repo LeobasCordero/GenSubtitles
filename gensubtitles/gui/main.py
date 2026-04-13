@@ -244,6 +244,11 @@ _STRINGS: dict[str, dict[str, str]] = {
         "default_outdir_lbl":   "Default output dir:",
         "save_btn":             "Save",
         "back_btn":             "Back",
+        "subtitle_style_lbl":   "Subtitle Style",
+        "font_family_lbl":      "Font family:",
+        "font_size_lbl":        "Font size:",
+        "text_color_lbl":       "Text color:",
+        "outline_color_lbl":    "Outline color:",
         # Menu bar
         "menu_settings":        "Settings",
         "menu_preferences":     "Preferences\u2026",
@@ -357,6 +362,11 @@ _STRINGS: dict[str, dict[str, str]] = {
         "default_outdir_lbl":   "Directorio de salida predeterminado:",
         "save_btn":             "Guardar",
         "back_btn":             "Volver",
+        "subtitle_style_lbl":   "Estilo de subtítulo",
+        "font_family_lbl":      "Familia de fuente:",
+        "font_size_lbl":        "Tamaño de fuente:",
+        "text_color_lbl":       "Color del texto:",
+        "outline_color_lbl":    "Color del borde:",
         # Menu bar
         "menu_settings":        "Configuración",
         "menu_preferences":     "Preferencias\u2026",
@@ -727,9 +737,64 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._settings_outdir_entry.grid(row=3, column=1, sticky="ew", padx=(0, 12), pady=6)
 
+        # Subtitle Style section
+        self._lbl_subtitle_style = ctk.CTkLabel(
+            sf, text="Subtitle Style",
+            font=_font("body"),
+            text_color=_p("text_secondary"),
+        )
+        self._lbl_subtitle_style.grid(
+            row=4, column=0, columnspan=2, sticky="w", padx=(12, 8), pady=(16, 2)
+        )
+
+        # Font family
+        self._lbl_font_family = ctk.CTkLabel(sf, text="Font family:")
+        self._lbl_font_family.grid(row=5, column=0, sticky="w", padx=(12, 8), pady=6)
+        self._settings_font_var = ctk.StringVar(value="Arial")
+        self._settings_font_menu = ctk.CTkOptionMenu(
+            sf,
+            values=["Arial", "Helvetica", "Verdana", "Trebuchet MS", "Tahoma"],
+            variable=self._settings_font_var,
+        )
+        self._settings_font_menu.grid(row=5, column=1, sticky="ew", padx=(0, 12), pady=6)
+
+        # Font size
+        self._lbl_font_size = ctk.CTkLabel(sf, text="Font size:")
+        self._lbl_font_size.grid(row=6, column=0, sticky="w", padx=(12, 8), pady=6)
+        self._settings_font_size_var = ctk.StringVar(value="20")
+        self._settings_font_size_entry = ctk.CTkEntry(
+            sf, textvariable=self._settings_font_size_var, width=80,
+            fg_color=_p("input_bg"), text_color=_p("text_primary"),
+        )
+        self._settings_font_size_entry.grid(row=6, column=1, sticky="w", padx=(0, 12), pady=6)
+
+        # Text color
+        self._lbl_text_color = ctk.CTkLabel(sf, text="Text color:")
+        self._lbl_text_color.grid(row=7, column=0, sticky="w", padx=(12, 8), pady=6)
+        self._settings_text_color_var = ctk.StringVar(value="#FFFFFF")
+        self._btn_text_color_swatch = ctk.CTkButton(
+            sf, text="", width=36, height=28,
+            fg_color=self._settings_text_color_var.get(),
+            hover_color=self._settings_text_color_var.get(),
+            command=self._on_pick_text_color,
+        )
+        self._btn_text_color_swatch.grid(row=7, column=1, sticky="w", padx=(0, 12), pady=6)
+
+        # Outline color
+        self._lbl_outline_color = ctk.CTkLabel(sf, text="Outline color:")
+        self._lbl_outline_color.grid(row=8, column=0, sticky="w", padx=(12, 8), pady=6)
+        self._settings_outline_color_var = ctk.StringVar(value="#000000")
+        self._btn_outline_color_swatch = ctk.CTkButton(
+            sf, text="", width=36, height=28,
+            fg_color=self._settings_outline_color_var.get(),
+            hover_color=self._settings_outline_color_var.get(),
+            command=self._on_pick_outline_color,
+        )
+        self._btn_outline_color_swatch.grid(row=8, column=1, sticky="w", padx=(0, 12), pady=6)
+
         # Save / Back buttons
         btn_frame = ctk.CTkFrame(sf, fg_color="transparent")
-        btn_frame.grid(row=4, column=0, columnspan=2, pady=(16, 12), padx=12, sticky="ew")
+        btn_frame.grid(row=9, column=0, columnspan=2, pady=(16, 12), padx=12, sticky="ew")
         btn_frame.columnconfigure(0, weight=1)
         btn_frame.columnconfigure(1, weight=1)
         self._btn_settings_save = ctk.CTkButton(
@@ -1313,7 +1378,15 @@ class GenSubtitlesApp(ctk.CTk):
                 temp_srt = output_file.with_suffix(".srt")
                 ssa_out = output_file.with_suffix(".ssa")
                 temp_srt.write_bytes(result_resp.content)
-                convert_srt_to_ssa(temp_srt, ssa_out)
+                style: dict | None = None
+                if self._current_settings:
+                    style = {
+                        "fontname": self._current_settings.subtitle_font_family,
+                        "fontsize": self._current_settings.subtitle_font_size,
+                        "primarycolor": self._current_settings.subtitle_text_color,
+                        "outlinecolor": self._current_settings.subtitle_outline_color,
+                    }
+                convert_srt_to_ssa(temp_srt, ssa_out, style=style)
                 temp_srt.unlink(missing_ok=True)
                 final_path = str(ssa_out)
             else:
@@ -1461,6 +1534,12 @@ class GenSubtitlesApp(ctk.CTk):
             self._settings_outdir_entry.configure(
                 fg_color=_p("input_bg"), text_color=_p("text_primary")
             )
+        if hasattr(self, "_settings_font_size_entry"):
+            self._settings_font_size_entry.configure(
+                fg_color=_p("input_bg"), text_color=_p("text_primary")
+            )
+        if hasattr(self, "_lbl_subtitle_style"):
+            self._lbl_subtitle_style.configure(text_color=_p("text_secondary"))
 
         if hasattr(self, "_settings_header_lbl"):
             self._settings_header_lbl.configure(
@@ -1608,6 +1687,30 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_engine.grid()
         self._option_engine.grid()
 
+    def _on_pick_text_color(self) -> None:
+        """Open OS color picker for subtitle text color."""
+        import tkinter.colorchooser  # noqa: PLC0415
+        current = self._settings_text_color_var.get() or "#FFFFFF"
+        result = tkinter.colorchooser.askcolor(color=current, title="Choose text color")
+        if result[1] is not None:
+            hex_color = result[1]
+            self._settings_text_color_var.set(hex_color)
+            self._btn_text_color_swatch.configure(
+                fg_color=hex_color, hover_color=hex_color
+            )
+
+    def _on_pick_outline_color(self) -> None:
+        """Open OS color picker for subtitle outline color."""
+        import tkinter.colorchooser  # noqa: PLC0415
+        current = self._settings_outline_color_var.get() or "#000000"
+        result = tkinter.colorchooser.askcolor(color=current, title="Choose outline color")
+        if result[1] is not None:
+            hex_color = result[1]
+            self._settings_outline_color_var.set(hex_color)
+            self._btn_outline_color_swatch.configure(
+                fg_color=hex_color, hover_color=hex_color
+            )
+
     def _show_settings(self) -> None:
         """Show settings panel, hide main tabview. Populate from current settings."""
         if self._current_settings:
@@ -1615,6 +1718,22 @@ class GenSubtitlesApp(ctk.CTk):
             lang_label = "Spanish" if self._current_settings.ui_language == "es" else "English"
             self._settings_lang_var.set(lang_label)
             self._settings_outdir_var.set(self._current_settings.default_output_dir)
+            self._settings_font_var.set(
+                self._current_settings.subtitle_font_family or "Arial"
+            )
+            self._settings_font_size_var.set(
+                str(self._current_settings.subtitle_font_size or 20)
+            )
+            text_col = self._current_settings.subtitle_text_color or "#FFFFFF"
+            self._settings_text_color_var.set(text_col)
+            self._btn_text_color_swatch.configure(
+                fg_color=text_col, hover_color=text_col
+            )
+            outline_col = self._current_settings.subtitle_outline_color or "#000000"
+            self._settings_outline_color_var.set(outline_col)
+            self._btn_outline_color_swatch.configure(
+                fg_color=outline_col, hover_color=outline_col
+            )
         self._tabview.pack_forget()
         self._settings_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
@@ -1625,6 +1744,18 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _save_settings(self) -> None:
         """Persist settings and apply immediately."""
+        from tkinter import messagebox  # noqa: PLC0415
+
+        # Validate font size before attempting to build AppSettings so we can
+        # show a targeted error without closing the settings panel.
+        font_size_raw = self._settings_font_size_var.get().strip() or "20"
+        if not font_size_raw.isdigit() or int(font_size_raw) <= 0:
+            messagebox.showerror(
+                self._s("msg_settings_error_title"),
+                "Font size must be a positive integer (e.g. 20).",
+            )
+            return
+
         try:
             from gensubtitles.core.settings import AppSettings, save_settings  # noqa: PLC0415
 
@@ -1658,6 +1789,10 @@ class GenSubtitlesApp(ctk.CTk):
                     if self._current_settings
                     else ""
                 ),
+                subtitle_font_family=self._settings_font_var.get(),
+                subtitle_font_size=int(font_size_raw),
+                subtitle_text_color=self._settings_text_color_var.get() or "#FFFFFF",
+                subtitle_outline_color=self._settings_outline_color_var.get() or "#000000",
             )
             save_settings(new_settings)
             self._current_settings = new_settings
@@ -1679,11 +1814,9 @@ class GenSubtitlesApp(ctk.CTk):
                 self.sync_with_os()
                 self._start_os_theme_listener()
         except Exception as exc:  # noqa: BLE001
-            from tkinter import messagebox  # noqa: PLC0415
-
             messagebox.showerror(self._s("msg_settings_error_title"), self._s("msg_settings_error_body").format(error=exc))
-        finally:
-            self._hide_settings()
+            return
+        self._hide_settings()
 
     def _s(self, key: str) -> str:
         """Return the localized string for the current UI language setting.
@@ -1798,6 +1931,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_default_outdir.configure(text=self._s("default_outdir_lbl"))
         self._btn_settings_save.configure(text=self._s("save_btn"))
         self._btn_settings_back.configure(text=self._s("back_btn"))
+        self._lbl_subtitle_style.configure(text=self._s("subtitle_style_lbl"))
+        self._lbl_font_family.configure(text=self._s("font_family_lbl"))
+        self._lbl_font_size.configure(text=self._s("font_size_lbl"))
+        self._lbl_text_color.configure(text=self._s("text_color_lbl"))
+        self._lbl_outline_color.configure(text=self._s("outline_color_lbl"))
 
         # Open Folder button (created lazily in _show_success — may not exist yet)
         if hasattr(self, "_btn_open_folder"):
@@ -2002,7 +2140,15 @@ class GenSubtitlesApp(ctk.CTk):
                 )
 
                 if src_ext == ".srt" and dst_ext in (".ssa", ".ass"):
-                    convert_srt_to_ssa(input_path, output_path)
+                    style: dict | None = None
+                    if self._current_settings:
+                        style = {
+                            "fontname": self._current_settings.subtitle_font_family,
+                            "fontsize": self._current_settings.subtitle_font_size,
+                            "primarycolor": self._current_settings.subtitle_text_color,
+                            "outlinecolor": self._current_settings.subtitle_outline_color,
+                        }
+                    convert_srt_to_ssa(input_path, output_path, style=style)
                 elif src_ext in (".ssa", ".ass") and dst_ext == ".srt":
                     convert_ssa_to_srt(input_path, output_path)
                 else:
