@@ -265,19 +265,30 @@ def translate_segments(
         matches = _re.findall(r"<(\d+)>(.*?)</\1>", translated_batch, _re.DOTALL)
         texts_by_idx: dict[int, str] = {int(m[0]): m[1] for m in matches}
 
-        # D-02: raise immediately on count or index mismatch
+        # D-02: on marker mismatch, fall back to per-segment translation
         expected_keys = set(range(1, len(current) + 1))
         actual_keys = set(texts_by_idx)
         if actual_keys != expected_keys:
-            raise RuntimeError(
-                f"Batched translation marker mismatch: "
-                f"expected markers {sorted(expected_keys)}, got {sorted(actual_keys)}"
+            logger.warning(
+                "Batched translation marker mismatch (expected %s, got %s). "
+                "Argos Translate stripped the XML markers — falling back to "
+                "per-segment translation.",
+                sorted(expected_keys),
+                sorted(actual_keys),
             )
-
-        current = [
-            TranslatedSegment(start=seg.start, end=seg.end, text=texts_by_idx[i + 1])
-            for i, seg in enumerate(current)
-        ]
+            current = [
+                TranslatedSegment(
+                    start=seg.start,
+                    end=seg.end,
+                    text=argostranslate.translate.translate(seg.text, hop_from, hop_to),
+                )
+                for seg in current
+            ]
+        else:
+            current = [
+                TranslatedSegment(start=seg.start, end=seg.end, text=texts_by_idx[i + 1])
+                for i, seg in enumerate(current)
+            ]
 
         if progress_callback is not None:
             progress_callback(hop_idx + 1, len(route))
