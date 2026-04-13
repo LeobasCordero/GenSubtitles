@@ -574,11 +574,11 @@ Plans:
 ### Phase 999.17: GUI — Installed Language Pairs Showing Duplicates (BACKLOG)
 
 **Goal:** The "Installed Language Pairs" dialog in the Help menu shows duplicate entries for the same language pair. Deduplicate the list before rendering so each `from→to` pair appears exactly once.
-**Requirements:** TBD
-**Plans:** 0 plans
+**Requirements:** DEDUP-01
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] 999.17-01-PLAN.md — Deduplicate list_installed_pairs() + regression test
 
 **Context captured:**
 - Root likely in `list_installed_pairs()` in `translator.py` — Argos Translate may register the same package multiple times after reinstall or index refresh
