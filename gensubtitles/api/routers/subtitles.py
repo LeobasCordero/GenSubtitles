@@ -66,11 +66,11 @@ def _set_progress(
 
 
 def _cancel_job(job_id: str, video_path: Path, srt_path: Path) -> None:
+    video_path.unlink(missing_ok=True)
+    srt_path.unlink(missing_ok=True)
     with _jobs_lock:
         job = _jobs.get(job_id)
         if job:
-            video_path.unlink(missing_ok=True)
-            srt_path.unlink(missing_ok=True)
             job["queue"].put({"stage": "cancelled", "label": "Cancelled"})
             _jobs.pop(job_id, None)
 

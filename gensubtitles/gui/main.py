@@ -1318,10 +1318,9 @@ class GenSubtitlesApp(ctk.CTk):
                 self.after(0, self._finish_generate, None, final_path)
 
         except Exception as exc:  # noqa: BLE001
-            import requests as _req_mod  # noqa: PLC0415
-            if isinstance(exc, (_req_mod.exceptions.ConnectionError, _req_mod.exceptions.Timeout)):
+            if isinstance(exc, (req.exceptions.ConnectionError, req.exceptions.Timeout)):
                 msg = "Cannot connect to the API server. Make sure the server is running."
-            elif isinstance(exc, _req_mod.exceptions.RequestException):
+            elif isinstance(exc, req.exceptions.RequestException):
                 msg = f"Network error: {type(exc).__name__}"
             else:
                 msg = "An unexpected error occurred during subtitle generation."
