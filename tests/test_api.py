@@ -354,11 +354,9 @@ class TestSSEJobPattern:
         srt_content = "1\n00:00:00,000 --> 00:00:01,000\nHello\n\n"
 
         # Patch gensubtitles.core.audio to avoid FFmpeg import-time check
+        @contextmanager
         def _fake_audio_temp_context():
-            @contextmanager
-            def _cm():
-                yield tmp_path / "audio.wav"
-            return _cm()
+            yield tmp_path / "audio.wav"
 
         fake_audio = types.SimpleNamespace(
             extract_audio=lambda *a: None,
