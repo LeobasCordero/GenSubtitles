@@ -477,8 +477,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._closing = False
         self._prefetch_in_progress: set[tuple[str, str]] = set()
         self._prefetch_lock = threading.Lock()
-        self._poll_in_flight = False
         self._job_active = False
+        self._current_job_id: str | None = None
         self._current_settings = None
         self._server_ready = False
         self._os_listener_active = False  # guard for the darkdetect listener thread
@@ -630,6 +630,19 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._stage_label = ctk.CTkLabel(self._frame, text=stage_text, text_color=_p("text_secondary"))
         self._stage_label.grid(row=10, column=0, columnspan=3, pady=4)
+
+        # Row 11 — Cancel button (hidden initially; shown only during active generation)
+        self._btn_cancel = ctk.CTkButton(
+            self._frame,
+            text="Cancel",
+            command=self._on_cancel,
+            height=36,
+            fg_color=_p("progress_err"),
+            hover_color=_p("secondary_hov"),
+            text_color=("#FFFFFF", "#FFFFFF"),
+        )
+        self._btn_cancel.grid(row=11, column=0, columnspan=3, pady=(4, 0), sticky="ew")
+        self._btn_cancel.grid_remove()  # hidden by default
 
         # Reactive enable/disable for Clear button
         for var in (self._input_var, self._output_var, self._target_lang_var):
@@ -1090,27 +1103,21 @@ class GenSubtitlesApp(ctk.CTk):
     # Progress polling (replaces static stage cycling)
     # ------------------------------------------------------------------
 
-    def _poll_progress(self) -> None:
-        """Poll GET /progress every second via a background thread to avoid blocking Tk."""
-        if self._closing or self._poll_in_flight or not self._job_active:
+    def _on_cancel(self) -> None:
+        """Send DELETE request to API in background; disable cancel button only if a job is active."""
+        job_id = self._current_job_id
+        if not job_id:
             return
-        self._poll_in_flight = True
+        self._btn_cancel.configure(state="disabled")
 
-        def _fetch() -> None:
+        def _do_cancel() -> None:
             try:
                 import requests as req  # noqa: PLC0415
-                resp = req.get(f"{_BASE_URL}/progress", timeout=1)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    self.after(0, lambda d=data: self._apply_progress(d))
+                req.delete(f"{_BASE_URL}/subtitles/{job_id}", timeout=5)
             except Exception:  # noqa: BLE001
-                pass  # server may not be ready yet
-            finally:
-                self._poll_in_flight = False
-                if not self._closing and self._job_active:
-                    self.after(1000, self._poll_progress)
+                pass  # server might be busy; cancellation happens server-side regardless
 
-        threading.Thread(target=_fetch, daemon=True).start()
+        threading.Thread(target=_do_cancel, daemon=True).start()
 
     def _hide_generate_progress(self) -> None:
         """Reset and hide the generate-tab progress bar after state feedback delay."""
@@ -1198,7 +1205,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._progress_bar.configure(mode="indeterminate", progress_color=_p("progress_proc"))
         self._progress_bar.start()
         self._job_active = True
-        self._poll_progress()
+        self._btn_cancel.grid()
+        self._btn_cancel.configure(state="normal")
 
         # Reset and start elapsed timer
         if self._elapsed_timer is not None:
@@ -1210,13 +1218,13 @@ class GenSubtitlesApp(ctk.CTk):
         self._tick_elapsed()
 
         thread = threading.Thread(
-            target=self._run_api_call,
+            target=self._run_sse_flow,
             args=(input_path, output_path, src_lang, tgt_lang, engine_code),
             daemon=True,
         )
         thread.start()
 
-    def _run_api_call(
+    def _run_sse_flow(
         self,
         input_path: str,
         output_path: str,
@@ -1224,6 +1232,8 @@ class GenSubtitlesApp(ctk.CTk):
         tgt_lang: str | None,
         engine: str = "argos",
     ) -> None:
+        """Background thread: POST /subtitles/async → SSE stream → GET /result → save."""
+        import json as _json  # noqa: PLC0415
         import requests as req  # noqa: PLC0415
 
         try:
@@ -1232,35 +1242,18 @@ class GenSubtitlesApp(ctk.CTk):
                 params["source_lang"] = src_lang
             if tgt_lang:
                 params["target_lang"] = tgt_lang
-            params["engine"] = engine  # always include
+            params["engine"] = engine
 
+            # Step 1: POST /subtitles/async — returns job_id immediately
             with open(input_path, "rb") as fh:
                 video_name = Path(input_path).name
                 resp = req.post(
-                    f"{_BASE_URL}/subtitles",
+                    f"{_BASE_URL}/subtitles/async",
                     files={"file": (video_name, fh, "application/octet-stream")},
                     params=params,
-                    timeout=3600,
+                    timeout=30,  # short — should respond immediately
                 )
-
-            if resp.status_code == 200:
-                output_file = Path(output_path)
-                final_path = output_path
-                # Convert to SSA if user selected SSA format
-                if self._output_format_var.get() == "SSA":
-                    from gensubtitles.core.srt_writer import convert_srt_to_ssa  # noqa: PLC0415
-
-                    temp_srt = output_file.with_suffix(".srt")
-                    ssa_out = output_file.with_suffix(".ssa")
-                    temp_srt.write_bytes(resp.content)
-                    convert_srt_to_ssa(temp_srt, ssa_out)
-                    temp_srt.unlink(missing_ok=True)
-                    final_path = str(ssa_out)
-                else:
-                    output_file.write_bytes(resp.content)
-                if not self._closing:
-                    self.after(0, self._finish_generate, None, final_path)
-            else:
+            if resp.status_code != 200:
                 try:
                     detail = resp.json().get("detail", resp.text)
                 except Exception:  # noqa: BLE001
@@ -1269,13 +1262,82 @@ class GenSubtitlesApp(ctk.CTk):
                     detail = "; ".join(str(e) for e in detail)
                 if not self._closing:
                     self.after(0, self._finish_generate, str(detail), None)
-        except Exception as exc:  # noqa: BLE001
-            if not self._closing:
-                self.after(0, self._finish_generate, str(exc), None)
+                return
 
-    def _finish_generate(self, error: str | None, output_path: str | None) -> None:
-        # Stop progress polling first to prevent stale UI updates
+            job_id = resp.json()["job_id"]
+            self._current_job_id = job_id
+
+            # Step 2: GET /subtitles/{job_id}/stream — SSE stream of progress events
+            with req.get(
+                f"{_BASE_URL}/subtitles/{job_id}/stream",
+                stream=True,
+                timeout=(5, None),  # fail fast if server unreachable; keep stream reads unbounded
+            ) as stream_resp:
+                for line in stream_resp.iter_lines(decode_unicode=True):
+                    if not line or not line.startswith("data:"):
+                        continue
+                    try:
+                        data = _json.loads(line[5:].strip())
+                    except Exception:  # noqa: BLE001
+                        continue
+                    stage = data.get("stage", "")
+                    if not self._closing:
+                        self.after(0, lambda d=data: self._apply_progress(d))
+                    if stage == "done":
+                        break
+                    if stage == "error":
+                        friendly = data.get("label", "Generation failed")
+                        if not self._closing:
+                            self.after(0, self._finish_generate, friendly, None)
+                        return
+                    if stage == "cancelled":
+                        if not self._closing:
+                            self.after(0, self._finish_generate, None, None, True)
+                        return
+
+            # Step 3: GET /subtitles/{job_id}/result — fetch SRT bytes
+            result_resp = req.get(
+                f"{_BASE_URL}/subtitles/{job_id}/result",
+                timeout=60,
+            )
+            if result_resp.status_code != 200:
+                if not self._closing:
+                    self.after(0, self._finish_generate, "Failed to retrieve subtitle result", None)
+                return
+
+            # Save to disk
+            output_file = Path(output_path)
+            final_path = output_path
+            if self._output_format_var.get() == "SSA":
+                from gensubtitles.core.srt_writer import convert_srt_to_ssa  # noqa: PLC0415
+                temp_srt = output_file.with_suffix(".srt")
+                ssa_out = output_file.with_suffix(".ssa")
+                temp_srt.write_bytes(result_resp.content)
+                convert_srt_to_ssa(temp_srt, ssa_out)
+                temp_srt.unlink(missing_ok=True)
+                final_path = str(ssa_out)
+            else:
+                output_file.write_bytes(result_resp.content)
+            if not self._closing:
+                self.after(0, self._finish_generate, None, final_path)
+
+        except Exception as exc:  # noqa: BLE001
+            if isinstance(exc, (req.exceptions.ConnectionError, req.exceptions.Timeout)):
+                msg = "Cannot connect to the API server. Make sure the server is running."
+            elif isinstance(exc, req.exceptions.RequestException):
+                msg = f"Network error: {type(exc).__name__}"
+            else:
+                msg = "An unexpected error occurred during subtitle generation."
+            if not self._closing:
+                self.after(0, self._finish_generate, msg, None)
+
+    def _finish_generate(self, error: str | None, output_path: str | None, cancelled: bool = False) -> None:
+        # Stop progress first to prevent stale UI updates
         self._job_active = False
+        self._current_job_id = None
+        if not self._closing:
+            self._btn_cancel.grid_remove()
+            self._btn_cancel.configure(state="normal")
 
         if self._stage_timer is not None:
             self.after_cancel(self._stage_timer)
@@ -1298,6 +1360,9 @@ class GenSubtitlesApp(ctk.CTk):
             self._progress_bar.set(1.0)
             self._progress_bar.grid()
             self.after(2000, self._hide_generate_progress)
+        elif cancelled:
+            self._progress_bar.stop()
+            self._progress_bar.grid_remove()
         else:
             self._progress_bar.stop()
             self._progress_bar.configure(mode="determinate", progress_color=_p("progress_done"))
@@ -1320,6 +1385,8 @@ class GenSubtitlesApp(ctk.CTk):
 
             self._stage_label.configure(text="")
             messagebox.showerror(self._s("msg_generation_failed_title"), error)
+        elif cancelled:
+            self._stage_label.configure(text="Generation cancelled.")
         else:
             self._stage_label.configure(text=self._s("status_done"))
             if output_path is None:

@@ -313,3 +313,99 @@ def test_srt_path_matches_output_path(tmp_path):
         result = run_pipeline(str(video), str(output))
 
     assert result.srt_path == str(output)
+
+
+# ── TestPipelineCancellation — cancellation check-points in _run_pipeline_job ──
+
+
+class TestPipelineCancellation:
+    """Verify that _run_pipeline_job respects the cancel flag between stages."""
+
+    def _make_job(self, cancelled: bool = False) -> dict:
+        """Create a minimal job dict."""
+        from queue import Queue
+        import threading
+        job = {"queue": Queue(), "cancel": threading.Event(), "result": None, "error": None}
+        if cancelled:
+            job["cancel"].set()
+        return job
+
+    def test_cancel_after_extract_stops_pipeline(self, tmp_path):
+        """If cancel is set after audio extraction, pipeline stops before transcription."""
+        import uuid
+        import threading
+        import unittest.mock as mock
+        from gensubtitles.api.routers import subtitles as sub_mod
+
+        video_path = tmp_path / "v.mp4"
+        video_path.write_bytes(b"fake")
+        srt_path = tmp_path / "out.srt"
+
+        job_id = str(uuid.uuid4())
+        job = self._make_job()
+        sub_mod._jobs[job_id] = job
+
+        transcribe_called = threading.Event()
+
+        def _fake_extract(video, wav):
+            wav.write_bytes(b"fake wav")
+            job["cancel"].set()  # set cancel after extraction
+
+        class FakeTranscriber:
+            def transcribe(self, *a, **kw):
+                transcribe_called.set()
+                raise AssertionError("transcribe should not be called after cancel")
+
+        with mock.patch("gensubtitles.core.audio.extract_audio", _fake_extract):
+            with mock.patch("gensubtitles.core.audio.audio_temp_context") as ctx_mock:
+                ctx_mock.return_value.__enter__ = lambda *_: tmp_path / "audio.wav"
+                ctx_mock.return_value.__exit__ = lambda *_: False
+                sub_mod._run_pipeline_job(job_id, video_path, srt_path, None, None, "argos", FakeTranscriber())
+
+        assert not transcribe_called.is_set(), "Transcription should NOT have been called"
+        events = []
+        while not job["queue"].empty():
+            events.append(job["queue"].get_nowait())
+        stages = [e.get("stage") for e in events]
+        assert "cancelled" in stages, f"Expected cancelled event, got: {stages}"
+
+        sub_mod._jobs.pop(job_id, None)
+
+    def test_cancel_not_set_allows_full_pipeline(self, tmp_path):
+        """If cancel is never set, pipeline runs to completion and sets result."""
+        import uuid
+        import unittest.mock as mock
+        from gensubtitles.api.routers import subtitles as sub_mod
+
+        video_path = tmp_path / "v.mp4"
+        video_path.write_bytes(b"fake")
+        srt_path = tmp_path / "out.srt"
+        srt_path.write_text("", encoding="utf-8")
+
+        job_id = str(uuid.uuid4())
+        job = self._make_job(cancelled=False)
+        sub_mod._jobs[job_id] = job
+
+        class FakeResult:
+            segments = []
+            language = "en"
+
+        class FakeTranscriber:
+            def transcribe(self, *a, **kw):
+                return FakeResult()
+
+        with mock.patch("gensubtitles.core.audio.extract_audio", lambda *a: None):
+            with mock.patch("gensubtitles.core.audio.audio_temp_context") as ctx_mock:
+                ctx_mock.return_value.__enter__ = lambda *_: tmp_path / "audio.wav"
+                ctx_mock.return_value.__exit__ = lambda *_: False
+                with mock.patch("gensubtitles.core.srt_writer.write_srt", lambda *a: None):
+                    sub_mod._run_pipeline_job(job_id, video_path, srt_path, None, None, "argos", FakeTranscriber())
+
+        events = []
+        while not job["queue"].empty():
+            events.append(job["queue"].get_nowait())
+        stages = [e.get("stage") for e in events]
+        assert "done" in stages, f"Expected done event, got: {stages}"
+        assert "cancelled" not in stages
+
+        sub_mod._jobs.pop(job_id, None)
