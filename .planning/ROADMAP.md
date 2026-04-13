@@ -559,10 +559,10 @@ Plans:
 
 **Goal:** The UI Language option in Settings changes the stored preference but does not relabel the interface — all labels remain in the original language after selecting a different one. Fix the runtime language-switch mechanism so that selecting a UI language immediately (or after a prompted restart) updates all visible labels, menu entries, buttons, and dialog text throughout the app.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 1/1 plans executed
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [x] 999.16-01-PLAN.md — String registry + stored widget refs + _apply_ui_language(); wired into __init__ + _save_settings; dialogs use _s(); human verify
 
 **Context captured:**
 - Setting is persisted via `AppSettings` but the GUI widgets are not re-rendered or re-translated after the change

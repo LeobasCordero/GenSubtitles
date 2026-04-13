@@ -213,6 +213,238 @@ _STAGE_LABELS = [
     "[4/4] Writing SRT…",
 ]
 
+# ---------------------------------------------------------------------------
+# Localisation string registry
+# ---------------------------------------------------------------------------
+_STRINGS: dict[str, dict[str, str]] = {
+    "en": {
+        # Tab names
+        "generate_tab":         "Generate Subtitles",
+        "translate_tab":        "Translate Subtitles",
+        # Generate tab
+        "input_video_lbl":      "Input video *:",
+        "output_file_lbl":      "Output file *:",
+        "source_lang_lbl":      "Source language:",
+        "target_lang_lbl":      "Target language:",
+        "engine_lbl":           "Translation engine:",
+        "output_format_lbl":    "Output format:",
+        "generate_btn":         "Generate Subtitles",
+        "clear_btn":            "Clear",
+        "browse_btn":           "Browse\u2026",
+        "save_as_btn":          "Save as\u2026",
+        # Translate tab
+        "input_sub_lbl":        "Input subtitle *:",
+        "output_path_lbl":      "Output path *:",
+        "translate_btn":        "Translate / Convert",
+        "convert_only_chk":     "Convert only (no translation \u2014 change format only)",
+        # Settings panel
+        "settings_header":      "Settings",
+        "appearance_lbl":       "Appearance Mode:",
+        "ui_lang_lbl":          "UI Language:",
+        "default_outdir_lbl":   "Default output dir:",
+        "save_btn":             "Save",
+        "back_btn":             "Back",
+        # Menu bar
+        "menu_settings":        "Settings",
+        "menu_preferences":     "Preferences\u2026",
+        "menu_help":            "Help",
+        "menu_tutorial":        "Tutorial",
+        "menu_languages":       "Available Languages",
+        "menu_about":           "About GenSubtitles",
+        # Dynamic status
+        "starting_server":      "\u23f3 Starting server\u2026",
+        "open_folder_btn":      "Open Folder",
+        "status_done":          "\u2713 Done",
+        "status_translating":   "Translating\u2026",
+        "status_converting":    "Converting\u2026",
+        # Messagebox strings
+        "msg_missing_input_title":      "Missing input",
+        "msg_missing_input_video":      "Please select an input video file.",
+        "msg_missing_input_subtitle":   "Please select a subtitle file.",
+        "msg_missing_output_title":     "Missing output",
+        "msg_missing_output_subtitle":  "Please choose an output subtitle path.",
+        "msg_missing_output_path":      "Please choose an output path.",
+        "msg_generation_failed_title":  "Generation failed",
+        "msg_translation_failed_title": "Translation failed",
+        "msg_settings_error_title":     "Settings error",
+        "msg_settings_error_body":      "Could not save settings: {error}",
+        "msg_done_title":               "Done",
+        "msg_saved_body":               "Saved: {path}",
+        # Dialog strings
+        "dlg_tutorial_title":   "GenSubtitles \u2014 Tutorial",
+        "dlg_tutorial_close":   "Close",
+        "dlg_langs_title":      "Installed Language Pairs",
+        "dlg_langs_header":     "Installed Translation Pairs",
+        "dlg_langs_empty":      (
+            "No language pairs installed.\n"
+            "Pairs are downloaded automatically on first translation."
+        ),
+        "dlg_langs_close":      "Close",
+        "dlg_about_title":      "About GenSubtitles",
+        "dlg_about_github":     "GitHub Project",
+        "dlg_about_close":      "Close",
+        "dlg_tutorial_text": (
+            "GenSubtitles \u2014 Usage Guide\n"
+            "==========================\n\n"
+            "OVERVIEW\n"
+            "--------\n"
+            "GenSubtitles converts video files to subtitle files (.srt or .ssa) entirely offline.\n"
+            "No internet connection or API keys are required once language models are installed.\n\n"
+            "GENERATE SUBTITLES TAB\n"
+            "-----------------------\n"
+            '1. Click "Browse\u2026" next to "Input video" and select your video file (.mp4, .mkv, .avi, .mov, .webm).\n'
+            "2. The output subtitle path is auto-filled based on the video filename. Change it if needed.\n"
+            '3. Select a Source Language (or leave as Auto-detect \u2014 Whisper will identify the language automatically).\n'
+            '4. Select a Target Language if you want translation. Leave as "No target" to keep the original language.\n'
+            "5. Choose Output Format: SRT (most compatible) or SSA (richer styling).\n"
+            '6. Click "Generate Subtitles". Progress is shown with the elapsed timer and a progress bar.\n'
+            "7. When finished, the subtitle file is saved to the chosen output path.\n\n"
+            "TRANSLATE SUBTITLES TAB\n"
+            "------------------------\n"
+            "Use this tab if you already have a subtitle file and only need to translate or convert it.\n\n"
+            '1. Click "Browse\u2026" next to "Input subtitle" and select a .srt or .ssa file.\n'
+            "2. The output path is auto-filled as <filename>_translated.<ext>.\n"
+            "3. Select the source language of the subtitle file.\n"
+            "4. Select the target language for translation.\n"
+            '5. (Optional) Check "Convert only" to change file format without translation.\n'
+            '6. Click "Translate / Convert".\n\n'
+            "LANGUAGE MODEL INSTALLATION\n"
+            "-----------------------------\n"
+            "GenSubtitles uses Argos Translate for offline translation.\n"
+            "Language models are downloaded automatically on first use (internet required for download only).\n"
+            "After downloading, all translation works offline.\n\n"
+            "Use Help > Available Languages to see which pairs are currently installed.\n\n"
+            "SETTINGS\n"
+            "---------\n"
+            "Access via the Settings menu > Preferences.\n"
+            "- Appearance Mode: Light, Dark, or follow System setting.\n"
+            "- UI Language: English or Spanish.\n"
+            "- Default output directory: pre-fills output path (leave blank to use same folder as input).\n\n"
+            "TROUBLESHOOTING\n"
+            "----------------\n"
+            "\u2022 \"FFmpeg not found\" \u2014 Install FFmpeg and ensure it is in your system PATH.\n"
+            "\u2022 Translation fails \u2014 The selected language pair may not be installed. Check Help > Available Languages.\n"
+            "\u2022 Subtitles are blank \u2014 The default speech model is `medium` (~1.5 GB first-run download). "
+            "If this is the first run, make sure the model download completed successfully and that you had internet "
+            "access during setup. Also check whether the video has an audio track.\n"
+            "\u2022 API connection refused \u2014 The background server failed to start. Restart the application."
+        ),
+    },
+    "es": {
+        # Tab names
+        "generate_tab":         "Generar Subtítulos",
+        "translate_tab":        "Traducir Subtítulos",
+        # Generate tab
+        "input_video_lbl":      "Video de entrada *:",
+        "output_file_lbl":      "Archivo de salida *:",
+        "source_lang_lbl":      "Idioma de origen:",
+        "target_lang_lbl":      "Idioma de destino:",
+        "engine_lbl":           "Motor de traducción:",
+        "output_format_lbl":    "Formato de salida:",
+        "generate_btn":         "Generar Subtítulos",
+        "clear_btn":            "Limpiar",
+        "browse_btn":           "Explorar\u2026",
+        "save_as_btn":          "Guardar como\u2026",
+        # Translate tab
+        "input_sub_lbl":        "Subtítulo de entrada *:",
+        "output_path_lbl":      "Ruta de salida *:",
+        "translate_btn":        "Traducir / Convertir",
+        "convert_only_chk":     "Solo convertir (sin traducción \u2014 solo cambiar formato)",
+        # Settings panel
+        "settings_header":      "Configuración",
+        "appearance_lbl":       "Modo de apariencia:",
+        "ui_lang_lbl":          "Idioma de la interfaz:",
+        "default_outdir_lbl":   "Directorio de salida predeterminado:",
+        "save_btn":             "Guardar",
+        "back_btn":             "Volver",
+        # Menu bar
+        "menu_settings":        "Configuración",
+        "menu_preferences":     "Preferencias\u2026",
+        "menu_help":            "Ayuda",
+        "menu_tutorial":        "Tutorial",
+        "menu_languages":       "Idiomas disponibles",
+        "menu_about":           "Acerca de GenSubtitles",
+        # Dynamic status
+        "starting_server":      "\u23f3 Iniciando servidor\u2026",
+        "open_folder_btn":      "Abrir carpeta",
+        "status_done":          "\u2713 Listo",
+        "status_translating":   "Traduciendo\u2026",
+        "status_converting":    "Convirtiendo\u2026",
+        # Messagebox strings
+        "msg_missing_input_title":      "Entrada faltante",
+        "msg_missing_input_video":      "Por favor selecciona un archivo de video de entrada.",
+        "msg_missing_input_subtitle":   "Por favor selecciona un archivo de subtítulos.",
+        "msg_missing_output_title":     "Salida faltante",
+        "msg_missing_output_subtitle":  "Por favor elige una ruta de salida para los subtítulos.",
+        "msg_missing_output_path":      "Por favor elige una ruta de salida.",
+        "msg_generation_failed_title":  "Generación fallida",
+        "msg_translation_failed_title": "Traducción fallida",
+        "msg_settings_error_title":     "Error de configuración",
+        "msg_settings_error_body":      "No se pudo guardar la configuración: {error}",
+        "msg_done_title":               "Listo",
+        "msg_saved_body":               "Guardado: {path}",
+        # Dialog strings
+        "dlg_tutorial_title":   "GenSubtitles \u2014 Gu\u00eda",
+        "dlg_tutorial_close":   "Cerrar",
+        "dlg_langs_title":      "Pares de idioma instalados",
+        "dlg_langs_header":     "Pares de traducci\u00f3n instalados",
+        "dlg_langs_empty":      (
+            "No hay pares de idioma instalados.\n"
+            "Se descargan autom\u00e1ticamente en la primera traducci\u00f3n."
+        ),
+        "dlg_langs_close":      "Cerrar",
+        "dlg_about_title":      "Acerca de GenSubtitles",
+        "dlg_about_github":     "Proyecto en GitHub",
+        "dlg_about_close":      "Cerrar",
+        "dlg_tutorial_text": (
+            "GenSubtitles \u2014 Gu\u00eda de uso\n"
+            "==========================\n\n"
+            "RESUMEN\n"
+            "-------\n"
+            "GenSubtitles convierte archivos de video en archivos de subt\u00edtulos (.srt o .ssa) completamente sin conexi\u00f3n.\n"
+            "No se requiere conexi\u00f3n a internet ni claves de API una vez instalados los modelos de idioma.\n\n"
+            "PESTA\u00d1A GENERAR SUBT\u00cdTULOS\n"
+            "---------------------------\n"
+            '1. Haz clic en "Explorar\u2026" junto a "Video de entrada" y selecciona tu archivo de video (.mp4, .mkv, .avi, .mov, .webm).\n'
+            "2. La ruta del subt\u00edtulo de salida se completa autom\u00e1ticamente seg\u00fan el nombre del video. C\u00e1mbiala si es necesario.\n"
+            "3. Selecciona un Idioma de origen (o d\u00e9jalo en Detecci\u00f3n autom\u00e1tica \u2014 Whisper identificar\u00e1 el idioma autom\u00e1ticamente).\n"
+            '4. Selecciona un Idioma de destino si deseas traducci\u00f3n. D\u00e9jalo en "Sin destino" para conservar el idioma original.\n'
+            "5. Elige el Formato de salida: SRT (m\u00e1s compatible) o SSA (con estilos m\u00e1s ricos).\n"
+            '6. Haz clic en "Generar Subt\u00edtulos". El progreso se muestra con el contador de tiempo transcurrido y una barra de progreso.\n'
+            "7. Cuando termina, el archivo de subt\u00edtulos se guarda en la ruta de salida elegida.\n\n"
+            "PESTA\u00d1A TRADUCIR SUBT\u00cdTULOS\n"
+            "----------------------------\n"
+            "Usa esta pesta\u00f1a si ya tienes un archivo de subt\u00edtulos y solo necesitas traducirlo o convertirlo.\n\n"
+            '1. Haz clic en "Explorar\u2026" junto a "Subt\u00edtulo de entrada" y selecciona un archivo .srt o .ssa.\n'
+            "2. La ruta de salida se completa autom\u00e1ticamente como <nombre>_translated.<ext>.\n"
+            "3. Selecciona el idioma de origen del archivo de subt\u00edtulos.\n"
+            "4. Selecciona el idioma de destino para la traducci\u00f3n.\n"
+            '5. (Opcional) Marca "Solo convertir" para cambiar el formato del archivo sin traducci\u00f3n.\n'
+            '6. Haz clic en "Traducir / Convertir".\n\n'
+            "INSTALACI\u00d3N DE MODELOS DE IDIOMA\n"
+            "----------------------------------\n"
+            "GenSubtitles usa Argos Translate para traducci\u00f3n sin conexi\u00f3n.\n"
+            "Los modelos de idioma se descargan autom\u00e1ticamente en el primer uso (se requiere internet solo para la descarga).\n"
+            "Despu\u00e9s de la descarga, toda la traducci\u00f3n funciona sin conexi\u00f3n.\n\n"
+            "Usa Ayuda > Idiomas disponibles para ver qu\u00e9 pares est\u00e1n instalados actualmente.\n\n"
+            "CONFIGURACI\u00d3N\n"
+            "--------------\n"
+            "Accede desde el men\u00fa Configuraci\u00f3n > Preferencias.\n"
+            "- Modo de apariencia: Claro, Oscuro o seguir la configuraci\u00f3n del sistema.\n"
+            "- Idioma de la interfaz: Ingl\u00e9s o Espa\u00f1ol.\n"
+            "- Directorio de salida predeterminado: pre-completa la ruta de salida (dejar en blanco para usar la misma carpeta que la entrada).\n\n"
+            "SOLUCI\u00d3N DE PROBLEMAS\n"
+            "----------------------\n"
+            "\u2022 \"FFmpeg no encontrado\" \u2014 Instala FFmpeg y aseg\u00farate de que est\u00e9 en el PATH del sistema.\n"
+            "\u2022 La traducci\u00f3n falla \u2014 Es posible que el par de idiomas seleccionado no est\u00e9 instalado. Verifica en Ayuda > Idiomas disponibles.\n"
+            "\u2022 Los subt\u00edtulos est\u00e1n en blanco \u2014 El modelo de voz predeterminado es `medium` (~1.5 GB, descarga en el primer uso). "
+            "Si es la primera ejecuci\u00f3n, aseg\u00farate de que la descarga del modelo se complet\u00f3 correctamente y que ten\u00edas acceso "
+            "a internet durante la configuraci\u00f3n. Tambi\u00e9n verifica si el video tiene pista de audio.\n"
+            "\u2022 Conexi\u00f3n a la API rechazada \u2014 El servidor en segundo plano no se pudo iniciar. Reinicia la aplicaci\u00f3n."
+        ),
+    },
+}
+
 
 class GenSubtitlesApp(ctk.CTk):
     """Main application window."""
@@ -255,6 +487,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._build_ui()
         self._apply_startup_theme()
         self._apply_startup_target_lang()
+        self._apply_ui_language()   # apply saved ui_language to all widget labels
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self._start_server()
 
@@ -278,9 +511,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._frame.columnconfigure(1, weight=1)
 
         # Row 0 — Input video
-        ctk.CTkLabel(self._frame, text="Input video *:").grid(
-            row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 8)
-        )
+        self._lbl_input_video = ctk.CTkLabel(self._frame, text="Input video *:")
+        self._lbl_input_video.grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
         self._entry_input = ctk.CTkEntry(
             self._frame, textvariable=self._input_var,
             fg_color=_p("input_bg"), text_color=_p("text_primary"),
@@ -292,9 +524,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_browse_input.grid(row=0, column=2, padx=(8, 0), pady=(0, 8))
 
         # Row 1 — Output file
-        ctk.CTkLabel(self._frame, text="Output file *:").grid(
-            row=1, column=0, sticky="w", padx=(0, 8), pady=(0, 24)
-        )
+        self._lbl_output_file = ctk.CTkLabel(self._frame, text="Output file *:")
+        self._lbl_output_file.grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(0, 24))
         self._entry_output = ctk.CTkEntry(
             self._frame, textvariable=self._output_var,
             fg_color=_p("input_bg"), text_color=_p("text_primary"),
@@ -317,9 +548,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._option_source_lang.grid(row=2, column=1, columnspan=2, sticky="ew", pady=(0, 8))
 
         # Row 3 — Target language dropdown (populated dynamically)
-        ctk.CTkLabel(self._frame, text="Target language:").grid(
-            row=3, column=0, sticky="w", padx=(0, 8), pady=(0, 8)
-        )
+        self._lbl_target_lang = ctk.CTkLabel(self._frame, text="Target language:")
+        self._lbl_target_lang.grid(row=3, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
         self._option_target_lang = ctk.CTkOptionMenu(
             self._frame,
             values=["No target"],
@@ -348,9 +578,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._option_engine.grid_remove()
 
         # Row 5 — Output format dropdown
-        ctk.CTkLabel(self._frame, text="Output format:").grid(
-            row=5, column=0, sticky="w", padx=(0, 8), pady=(0, 8)
-        )
+        self._lbl_output_format = ctk.CTkLabel(self._frame, text="Output format:")
+        self._lbl_output_format.grid(row=5, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
         self._option_output_format = ctk.CTkOptionMenu(
             self._frame,
             values=["SRT", "SSA"],
@@ -395,7 +624,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._progress_bar.grid_remove()
 
         # Row 10 — Stage label (also used for server status)
-        self._stage_label = ctk.CTkLabel(self._frame, text="⏳ Starting server…", text_color=_p("text_secondary"))
+        _startup_lang = getattr(self._current_settings, "ui_language", "en") if self._current_settings else "en"
+        stage_text = _STRINGS.get(_startup_lang, _STRINGS["en"]).get(
+            "starting_server", _STRINGS["en"]["starting_server"]
+        )
+        self._stage_label = ctk.CTkLabel(self._frame, text=stage_text, text_color=_p("text_secondary"))
         self._stage_label.grid(row=10, column=0, columnspan=3, pady=4)
 
         # Reactive enable/disable for Clear button
@@ -432,6 +665,8 @@ class GenSubtitlesApp(ctk.CTk):
         help_menu.add_command(label="Available Languages", command=self._show_language_pairs)
         help_menu.add_separator()
         help_menu.add_command(label="About GenSubtitles", command=self._show_about)
+        self._settings_menu = settings_menu
+        self._help_menu = help_menu
         self._menus = [settings_menu, help_menu]
 
     def _build_settings_panel(self) -> None:
@@ -451,9 +686,8 @@ class GenSubtitlesApp(ctk.CTk):
         )
 
         # Appearance Mode
-        ctk.CTkLabel(sf, text="Appearance Mode:").grid(
-            row=1, column=0, sticky="w", padx=(12, 8), pady=6
-        )
+        self._lbl_appearance_mode = ctk.CTkLabel(sf, text="Appearance Mode:")
+        self._lbl_appearance_mode.grid(row=1, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_appearance_var = ctk.StringVar(value="System")
         ctk.CTkOptionMenu(
             sf, values=["System", "Light", "Dark"],
@@ -461,9 +695,8 @@ class GenSubtitlesApp(ctk.CTk):
         ).grid(row=1, column=1, sticky="ew", padx=(0, 12), pady=6)
 
         # UI Language
-        ctk.CTkLabel(sf, text="UI Language:").grid(
-            row=2, column=0, sticky="w", padx=(12, 8), pady=6
-        )
+        self._lbl_ui_language_setting = ctk.CTkLabel(sf, text="UI Language:")
+        self._lbl_ui_language_setting.grid(row=2, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_lang_var = ctk.StringVar(value="English")
         ctk.CTkOptionMenu(
             sf, values=["English", "Spanish"],
@@ -471,9 +704,8 @@ class GenSubtitlesApp(ctk.CTk):
         ).grid(row=2, column=1, sticky="ew", padx=(0, 12), pady=6)
 
         # Default Output Directory
-        ctk.CTkLabel(sf, text="Default output dir:").grid(
-            row=3, column=0, sticky="w", padx=(12, 8), pady=6
-        )
+        self._lbl_default_outdir = ctk.CTkLabel(sf, text="Default output dir:")
+        self._lbl_default_outdir.grid(row=3, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_outdir_var = ctk.StringVar()
         self._settings_outdir_entry = ctk.CTkEntry(
             sf, textvariable=self._settings_outdir_var,
@@ -505,9 +737,8 @@ class GenSubtitlesApp(ctk.CTk):
         tf.columnconfigure(1, weight=1)
 
         # Row 0 — Input subtitle file
-        ctk.CTkLabel(tf, text="Input subtitle *:").grid(
-            row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 8)
-        )
+        self._lbl_tl_input_sub = ctk.CTkLabel(tf, text="Input subtitle *:")
+        self._lbl_tl_input_sub.grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
         self._tl_input_var = ctk.StringVar()
         self._tl_entry_input = ctk.CTkEntry(
             tf, textvariable=self._tl_input_var,
@@ -520,9 +751,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_btn_browse.grid(row=0, column=2, padx=(8, 0), pady=(0, 8))
 
         # Row 1 — Output path
-        ctk.CTkLabel(tf, text="Output path *:").grid(
-            row=1, column=0, sticky="w", padx=(0, 8), pady=(0, 24)
-        )
+        self._lbl_tl_output_path = ctk.CTkLabel(tf, text="Output path *:")
+        self._lbl_tl_output_path.grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(0, 24))
         self._tl_output_var = ctk.StringVar()
         self._tl_entry_output = ctk.CTkEntry(
             tf, textvariable=self._tl_output_var,
@@ -535,9 +765,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_btn_browse_out.grid(row=1, column=2, padx=(8, 0), pady=(0, 24))
 
         # Row 2 — Source language
-        ctk.CTkLabel(tf, text="Source language:").grid(
-            row=2, column=0, sticky="w", padx=(0, 8), pady=(0, 8)
-        )
+        self._lbl_tl_source_lang = ctk.CTkLabel(tf, text="Source language:")
+        self._lbl_tl_source_lang.grid(row=2, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
         self._tl_source_var = ctk.StringVar(value="English")
         self._tl_option_source = ctk.CTkOptionMenu(
             tf, values=["English"], variable=self._tl_source_var
@@ -545,9 +774,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_option_source.grid(row=2, column=1, columnspan=2, sticky="ew", pady=(0, 8))
 
         # Row 3 — Target language
-        ctk.CTkLabel(tf, text="Target language:").grid(
-            row=3, column=0, sticky="w", padx=(0, 8), pady=(0, 8)
-        )
+        self._lbl_tl_target_lang = ctk.CTkLabel(tf, text="Target language:")
+        self._lbl_tl_target_lang.grid(row=3, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
         self._tl_target_var = ctk.StringVar(value="Spanish")
         self._tl_option_target = ctk.CTkOptionMenu(
             tf, values=["Spanish"], variable=self._tl_target_var,
@@ -940,12 +1168,12 @@ class GenSubtitlesApp(ctk.CTk):
         if not input_path:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Missing input", "Please select an input video file.")
+            messagebox.showerror(self._s("msg_missing_input_title"), self._s("msg_missing_input_video"))
             return
         if not output_path:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Missing output", "Please choose an output subtitle path.")
+            messagebox.showerror(self._s("msg_missing_output_title"), self._s("msg_missing_output_subtitle"))
             return
 
         # Capture StringVar values on the main thread (Tkinter is not thread-safe)
@@ -1091,9 +1319,9 @@ class GenSubtitlesApp(ctk.CTk):
             from tkinter import messagebox  # noqa: PLC0415
 
             self._stage_label.configure(text="")
-            messagebox.showerror("Generation failed", error)
+            messagebox.showerror(self._s("msg_generation_failed_title"), error)
         else:
-            self._stage_label.configure(text="✓ Done")
+            self._stage_label.configure(text=self._s("status_done"))
             if output_path is None:
                 raise AssertionError("output_path must not be None on success")
             self._show_success(output_path)
@@ -1377,6 +1605,7 @@ class GenSubtitlesApp(ctk.CTk):
                 self._engine_var.set("Argos")  # D-05: reset if selection was removed
             ctk.set_appearance_mode(new_settings.appearance_mode)
             self._apply_theme()
+            self._apply_ui_language()
             # If the user just switched to "System", sync immediately and
             # ensure the live listener is running.
             if new_settings.appearance_mode == "System":
@@ -1385,9 +1614,144 @@ class GenSubtitlesApp(ctk.CTk):
         except Exception as exc:  # noqa: BLE001
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Settings error", f"Could not save settings: {exc}")
+            messagebox.showerror(self._s("msg_settings_error_title"), self._s("msg_settings_error_body").format(error=exc))
         finally:
             self._hide_settings()
+
+    def _s(self, key: str) -> str:
+        """Return the localized string for the current UI language setting.
+
+        Falls back to English if the key is missing in the target locale.
+        """
+        lang = "en"
+        if self._current_settings:
+            lang = self._current_settings.ui_language
+        locale = _STRINGS.get(lang, _STRINGS["en"])
+        return locale.get(key, _STRINGS["en"].get(key, key))
+
+    def _relabel_tabview_headers(self) -> None:
+        """Update existing CTkTabview header labels for the active UI language.
+
+        CustomTkinter does not expose a public tab rename API, so this method
+        performs a guarded in-place relabel of known tab names by updating the
+        internal tab-name structures and segmented-button values.
+        """
+        tab_name_map = {
+            "Generate Subtitles": self._s("generate_tab"),
+            "Translate Subtitles": self._s("translate_tab"),
+            # Include localized names as sources so re-applying works
+            _STRINGS["es"]["generate_tab"]: self._s("generate_tab"),
+            _STRINGS["es"]["translate_tab"]: self._s("translate_tab"),
+        }
+
+        for widget in self.__dict__.values():
+            if not isinstance(widget, ctk.CTkTabview):
+                continue
+
+            try:
+                name_list = getattr(widget, "_name_list", None)
+                tab_dict = getattr(widget, "_tab_dict", None)
+                segmented_button = getattr(widget, "_segmented_button", None)
+                current_name = widget.get()
+
+                if not isinstance(name_list, list) or not isinstance(tab_dict, dict):
+                    continue
+
+                renamed = False
+                new_name_list = []
+                new_tab_dict = {}
+
+                for old_name in name_list:
+                    new_name = tab_name_map.get(old_name, old_name)
+                    if new_name != old_name:
+                        renamed = True
+                    new_name_list.append(new_name)
+                    new_tab_dict[new_name] = tab_dict.get(old_name)
+
+                if not renamed:
+                    continue
+
+                # Deliberately updating private CTk internals — no public rename API exists
+                widget._name_list = new_name_list
+                widget._tab_dict = new_tab_dict
+
+                if segmented_button is not None and hasattr(segmented_button, "configure"):
+                    segmented_button.configure(values=new_name_list)
+
+                if current_name in tab_name_map:
+                    widget.set(tab_name_map[current_name])
+                else:
+                    widget.set(current_name)
+            except Exception as exc:  # pragma: no cover - best effort for CTk internals
+                logger.debug("Unable to relabel CTkTabview headers: %s", exc)
+
+    def _apply_ui_language(self) -> None:
+        """Re-label all static widget text using the current ui_language setting.
+
+        Called on startup (after _build_ui) and immediately after _save_settings.
+        """
+        # Tab headers
+        self._relabel_tabview_headers()
+
+        # Generate Subtitles tab
+        self._lbl_input_video.configure(text=self._s("input_video_lbl"))
+        self._lbl_output_file.configure(text=self._s("output_file_lbl"))
+        self._lbl_source_lang.configure(text=self._s("source_lang_lbl"))
+        self._lbl_target_lang.configure(text=self._s("target_lang_lbl"))
+        self._lbl_engine.configure(text=self._s("engine_lbl"))
+        self._lbl_output_format.configure(text=self._s("output_format_lbl"))
+        self._btn_generate.configure(text=self._s("generate_btn"))
+        self._btn_clear.configure(text=self._s("clear_btn"))
+        self._btn_browse_input.configure(text=self._s("browse_btn"))
+        self._btn_browse_output.configure(text=self._s("save_as_btn"))
+
+        # Stage label — update if currently showing a known status string
+        _known_statuses = {_STRINGS[lang].get(key) for lang in _STRINGS for key in ("starting_server", "status_done")}
+        current_stage_text = self._stage_label.cget("text")
+        if current_stage_text in _known_statuses:
+            for key in ("starting_server", "status_done"):
+                if current_stage_text in {_STRINGS[lang].get(key) for lang in _STRINGS}:
+                    self._stage_label.configure(text=self._s(key))
+                    break
+
+        # Translate Subtitles tab
+        self._lbl_tl_input_sub.configure(text=self._s("input_sub_lbl"))
+        self._lbl_tl_output_path.configure(text=self._s("output_path_lbl"))
+        self._lbl_tl_source_lang.configure(text=self._s("source_lang_lbl"))
+        self._lbl_tl_target_lang.configure(text=self._s("target_lang_lbl"))
+        self._tl_btn_browse.configure(text=self._s("browse_btn"))
+        self._tl_btn_browse_out.configure(text=self._s("save_as_btn"))
+        self._tl_btn_translate.configure(text=self._s("translate_btn"))
+        self._tl_chk_convert.configure(text=self._s("convert_only_chk"))
+
+        # Settings panel
+        self._settings_header_lbl.configure(text=self._s("settings_header"))
+        self._lbl_appearance_mode.configure(text=self._s("appearance_lbl"))
+        self._lbl_ui_language_setting.configure(text=self._s("ui_lang_lbl"))
+        self._lbl_default_outdir.configure(text=self._s("default_outdir_lbl"))
+        self._btn_settings_save.configure(text=self._s("save_btn"))
+        self._btn_settings_back.configure(text=self._s("back_btn"))
+
+        # Open Folder button (created lazily in _show_success — may not exist yet)
+        if hasattr(self, "_btn_open_folder"):
+            self._btn_open_folder.configure(text=self._s("open_folder_btn"))
+
+        # Menu bar — resolve cascade indices dynamically
+        menubar_end = self._menubar.index("end")
+        menubar_cascades = []
+        if menubar_end is not None:
+            for idx in range(menubar_end + 1):
+                if self._menubar.type(idx) == "cascade":
+                    menubar_cascades.append(idx)
+
+        if len(menubar_cascades) >= 1:
+            self._menubar.entryconfigure(menubar_cascades[0], label=self._s("menu_settings"))
+        if len(menubar_cascades) >= 2:
+            self._menubar.entryconfigure(menubar_cascades[1], label=self._s("menu_help"))
+        self._settings_menu.entryconfigure(0, label=self._s("menu_preferences"))
+        self._help_menu.entryconfigure(0, label=self._s("menu_tutorial"))
+        self._help_menu.entryconfigure(1, label=self._s("menu_languages"))
+        self._help_menu.entryconfigure(3, label=self._s("menu_about"))
 
     # ------------------------------------------------------------------
     # Help stubs (implemented in Plan 06)
@@ -1396,69 +1760,16 @@ class GenSubtitlesApp(ctk.CTk):
     def _show_tutorial(self) -> None:
         """Open a scrollable tutorial CTkToplevel window."""
         win = ctk.CTkToplevel(self)
-        win.title("GenSubtitles \u2014 Tutorial")
+        win.title(self._s("dlg_tutorial_title"))
         win.minsize(500, 500)
         win.grab_set()
 
         scroll = ctk.CTkScrollableFrame(win)
         scroll.pack(fill="both", expand=True, padx=16, pady=16)
 
-        tutorial_text = """
-GenSubtitles \u2014 Usage Guide
-==========================
-
-OVERVIEW
---------
-GenSubtitles converts video files to subtitle files (.srt or .ssa) entirely offline.
-No internet connection or API keys are required once language models are installed.
-
-GENERATE SUBTITLES TAB
------------------------
-1. Click "Browse\u2026" next to "Input video" and select your video file (.mp4, .mkv, .avi, .mov, .webm).
-2. The output subtitle path is auto-filled based on the video filename. Change it if needed.
-3. Select a Source Language (or leave as Auto-detect \u2014 Whisper will identify the language automatically).
-4. Select a Target Language if you want translation. Leave as "No target" to keep the original language.
-5. Choose Output Format: SRT (most compatible) or SSA (richer styling).
-6. Click "Generate Subtitles". Progress is shown with the elapsed timer and a progress bar.
-7. When finished, the subtitle file is saved to the chosen output path.
-
-TRANSLATE SUBTITLES TAB
-------------------------
-Use this tab if you already have a subtitle file and only need to translate or convert it.
-
-1. Click "Browse\u2026" next to "Input subtitle" and select a .srt or .ssa file.
-2. The output path is auto-filled as <filename>_translated.<ext>.
-3. Select the source language of the subtitle file.
-4. Select the target language for translation.
-5. (Optional) Check "Convert only" to change file format without translation.
-6. Click "Translate / Convert".
-
-LANGUAGE MODEL INSTALLATION
------------------------------
-GenSubtitles uses Argos Translate for offline translation.
-Language models are downloaded automatically on first use (internet required for download only).
-After downloading, all translation works offline.
-
-Use Help > Available Languages to see which pairs are currently installed.
-
-SETTINGS
----------
-Access via the Settings menu > Preferences.
-- Appearance Mode: Light, Dark, or follow System setting.
-- UI Language: English or Spanish.
-- Default output directory: pre-fills output path (leave blank to use same folder as input).
-
-TROUBLESHOOTING
-----------------
-\u2022 "FFmpeg not found" \u2014 Install FFmpeg and ensure it is in your system PATH.
-\u2022 Translation fails \u2014 The selected language pair may not be installed. Check Help > Available Languages.
-\u2022 Subtitles are blank \u2014 The default speech model is `medium` (~1.5 GB first-run download). If this is the first run, make sure the model download completed successfully and that you had internet access during setup. Also check whether the video has an audio track.
-\u2022 API connection refused \u2014 The background server failed to start. Restart the application.
-"""
-
         label = ctk.CTkLabel(
             scroll,
-            text=tutorial_text.strip(),
+            text=self._s("dlg_tutorial_text"),
             justify="left",
             anchor="nw",
             wraplength=440,
@@ -1467,18 +1778,18 @@ TROUBLESHOOTING
         )
         label.pack(fill="both", expand=True)
 
-        ctk.CTkButton(win, text="Close", command=win.destroy).pack(pady=(0, 12))
+        ctk.CTkButton(win, text=self._s("dlg_tutorial_close"), command=win.destroy).pack(pady=(0, 12))
 
     def _show_language_pairs(self) -> None:
         """Open a dialog listing currently installed language pairs."""
         win = ctk.CTkToplevel(self)
-        win.title("Installed Language Pairs")
+        win.title(self._s("dlg_langs_title"))
         win.minsize(360, 300)
         win.grab_set()
 
         ctk.CTkLabel(
             win,
-            text="Installed Translation Pairs",
+            text=self._s("dlg_langs_header"),
             font=_font("body_bold"),
             text_color=_p("text_primary"),
         ).pack(pady=(16, 8))
@@ -1487,10 +1798,7 @@ TROUBLESHOOTING
         if not pairs:
             ctk.CTkLabel(
                 win,
-                text=(
-                    "No language pairs installed.\n"
-                    "Pairs are downloaded automatically on first translation."
-                ),
+                text=self._s("dlg_langs_empty"),
             ).pack(pady=20)
         else:
             scroll = ctk.CTkScrollableFrame(win)
@@ -1504,7 +1812,7 @@ TROUBLESHOOTING
                     anchor="w",
                 ).pack(fill="x", pady=2)
 
-        ctk.CTkButton(win, text="Close", command=win.destroy).pack(pady=(8, 16))
+        ctk.CTkButton(win, text=self._s("dlg_langs_close"), command=win.destroy).pack(pady=(8, 16))
 
     def _show_about(self) -> None:
         """Open About GenSubtitles dialog."""
@@ -1513,7 +1821,7 @@ TROUBLESHOOTING
         version = getattr(gensubtitles, "__version__", "0.1.0")
 
         win = ctk.CTkToplevel(self, fg_color=_p("bg"))
-        win.title("About GenSubtitles")
+        win.title(self._s("dlg_about_title"))
         win.resizable(False, False)
         win.grab_set()
 
@@ -1540,13 +1848,13 @@ TROUBLESHOOTING
 
         ctk.CTkButton(
             win,
-            text="GitHub Project",
+            text=self._s("dlg_about_github"),
             command=_open_github,
             fg_color=_p("accent"),
             hover_color=_p("accent_hov"),
         ).pack(pady=(8, 4))
         ctk.CTkButton(
-            win, text="Close", command=win.destroy,
+            win, text=self._s("dlg_about_close"), command=win.destroy,
             fg_color=_p("secondary"),
             hover_color=_p("secondary_hov"),
         ).pack(pady=(4, 24))
@@ -1562,12 +1870,12 @@ TROUBLESHOOTING
         if not input_path:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Missing input", "Please select a subtitle file.")
+            messagebox.showerror(self._s("msg_missing_input_title"), self._s("msg_missing_input_subtitle"))
             return
         if not output_path:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Missing output", "Please choose an output path.")
+            messagebox.showerror(self._s("msg_missing_output_title"), self._s("msg_missing_output_path"))
             return
 
         convert_only = self._tl_convert_only_var.get()
@@ -1586,7 +1894,7 @@ TROUBLESHOOTING
         self._tl_progress_bar.configure(progress_color=_p("progress_proc"))
         self._tl_progress_bar.start()
         self._tl_stage_label.configure(
-            text="Translating…" if not convert_only else "Converting…"
+            text=self._s("status_translating") if not convert_only else self._s("status_converting")
         )
         self._tl_elapsed_label.configure(text="00:00:00")
         self._tl_elapsed_start = time.monotonic()
@@ -1675,11 +1983,11 @@ TROUBLESHOOTING
         if error:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showerror("Translation failed", error)
+            messagebox.showerror(self._s("msg_translation_failed_title"), error)
         else:
             from tkinter import messagebox  # noqa: PLC0415
 
-            messagebox.showinfo("Done", f"Saved: {output_path}")
+            messagebox.showinfo(self._s("msg_done_title"), self._s("msg_saved_body").format(path=output_path))
 
     # ------------------------------------------------------------------
     # Server lifecycle
