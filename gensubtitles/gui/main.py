@@ -1671,6 +1671,7 @@ class GenSubtitlesApp(ctk.CTk):
                 if not renamed:
                     continue
 
+                # Deliberately updating private CTk internals — no public rename API exists
                 widget._name_list = new_name_list
                 widget._tab_dict = new_tab_dict
 
@@ -1705,11 +1706,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_browse_output.configure(text=self._s("save_as_btn"))
 
         # Stage label — update if currently showing a known status string
-        _known_statuses = {_STRINGS[l].get(k) for l in _STRINGS for k in ("starting_server", "status_done")}
+        _known_statuses = {_STRINGS[lang].get(key) for lang in _STRINGS for key in ("starting_server", "status_done")}
         current_stage_text = self._stage_label.cget("text")
         if current_stage_text in _known_statuses:
             for key in ("starting_server", "status_done"):
-                if current_stage_text in {_STRINGS[l].get(key) for l in _STRINGS}:
+                if current_stage_text in {_STRINGS[lang].get(key) for lang in _STRINGS}:
                     self._stage_label.configure(text=self._s(key))
                     break
 
