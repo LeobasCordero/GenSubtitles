@@ -637,14 +637,14 @@ Plans:
 
 ---
 
-### Phase 999.15: GUI — UI Bug Fixes & Polish (BACKLOG)
+### Phase 999.15: GUI — UI Bug Fixes & Polish
 
 **Goal:** Fix a batch of small but visible UI bugs in the GUI: (1) "Open folder" button persists after clicking "Generate subtitles" a second time — must be hidden at the start of each new generation run; (2) DeepL and LibreTranslate engine options are visible in the dropdown even though they are disabled — should be hidden or clearly marked as unavailable; (3) target language set in the config file is not reflected in the UI on startup — the dropdown must initialize from `AppSettings`; (4) the "About GenSubtitles" dialog in the Help menu does not follow the app's UI rules for spacing, fonts, and colors; (5) in light theme, disabled buttons are nearly invisible — update their disabled color to a more visible, accessible value.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [x] 999.15-01-PLAN.md — AppSettings target_lang + engine filtering + open folder hide + About dialog colors + disabled button text
 
 **Context captured:**
 - BUG-1: `_open_folder` button shown after first generation is not hidden when "Generate subtitles" is clicked again — hide it at the top of `_on_generate`
