@@ -555,5 +555,21 @@ Plans:
 
 ---
 
+### Phase 999.14: GUI — HTTP Timeout During Subtitle Generation (BACKLOG)
+
+**Goal:** Handle the case where the GUI's HTTP call to the local API server times out during a long subtitle generation run. Currently the error surfaces as a raw `HTTPConnectionPool read timed out` dialog with no user guidance. Fix should either increase/remove the read timeout for long jobs, add a progress-aware keep-alive mechanism, or stream progress from the API so the connection stays active — and show a meaningful error with retry option if the timeout is genuinely exceeded.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Error: `HTTPConnectionPool(host='127.0.0.1', port=8000): Read timed out. (read timeout=3600)`
+- Timeout is already set to 3600 s (1 hour) but long transcription+translation jobs can exceed it
+- Options: (A) remove read timeout entirely for local calls; (B) stream progress via SSE so the connection stays alive; (C) run the pipeline asynchronously and poll a `/status` endpoint; (D) show a user-friendly retry dialog instead of the raw exception
+
+---
+
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-12 — Backlog item 999.13 added (subtitle style settings)*
+*Last updated: 2026-04-13 — Backlog item 999.14 added (GUI HTTP timeout during generation)*
