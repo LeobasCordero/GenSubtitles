@@ -1628,8 +1628,9 @@ class GenSubtitlesApp(ctk.CTk):
             self._btn_open_folder.configure(text=self._s("open_folder_btn"))
 
         # Menu bar (tk.Menu uses entryconfigure, not CTk .configure)
-        self._menubar.entryconfigure(0, label=self._s("menu_settings"))
-        self._menubar.entryconfigure(1, label=self._s("menu_help"))
+        # menubar has tearoff=1 (default), so cascade entries start at index 1
+        self._menubar.entryconfigure(1, label=self._s("menu_settings"))
+        self._menubar.entryconfigure(2, label=self._s("menu_help"))
         self._settings_menu.entryconfigure(0, label=self._s("menu_preferences"))
         self._help_menu.entryconfigure(0, label=self._s("menu_tutorial"))
         self._help_menu.entryconfigure(1, label=self._s("menu_languages"))
