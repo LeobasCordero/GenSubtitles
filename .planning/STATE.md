@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1.0
-- **Active Phase:** 999.17 — GUI Installed Language Pairs Duplicates
-- **Last action:** Phase 999.17 complete — deduplicated list_installed_pairs() with seen-set guard; regression test added.
+- **Active Phase:** 999.18 — Documentation README Update
+- **Last action:** Phase 999.17 complete — deduplicated list_installed_pairs() with seen-set guard; regression test added. Phase 999.18 executing — README docs update.
 
 ## Milestone Progress
 

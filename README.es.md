@@ -55,13 +55,12 @@ Elige el modo de uso que mejor se adapte a tus necesidades:
 ### Generar subtítulos
 
 1. Inicia la aplicación: `python main.py gui`
-2. Haz clic en **Select Video** y elige tu archivo de vídeo (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`).
-3. Opcionalmente, establece una ruta de **Output** personalizada. Si se deja en blanco, el archivo de subtítulos se guarda en el mismo directorio que el vídeo.
-4. Elige un **modelo Whisper** en el menú desplegable. Los modelos más grandes son más precisos pero más lentos. El valor predeterminado es `medium`.
-5. Establece el **Source Language** (déjalo en blanco para detección automática) y opcionalmente un **Target Language** para activar la traducción.
-6. Haz clic en **Generate** para iniciar. El progreso se muestra en el área de estado.
+2. Haz clic en **Browse…** y elige tu archivo de vídeo (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`).
+3. Revisa el campo **Output**. Al elegir el vídeo con **Browse…**, la GUI lo pre-rellena automáticamente con una ruta de salida predeterminada; este campo debe tener siempre un valor. Si lo deseas, puedes cambiarlo por una ruta personalizada.
+4. Establece el **Source Language** (déjalo en blanco para detección automática) y opcionalmente un **Target Language** para activar la traducción.
+5. Haz clic en **Generate** para iniciar. El progreso se muestra en el área de estado.
 
-> **Primera ejecución:** El modelo Whisper seleccionado se descarga en el primer uso. El modelo `medium` ocupa ~1,5 GB. Usa `small` (~470 MB) o `tiny` (~75 MB) para reducir la descarga inicial.
+> **Primera ejecución:** Whisper descargará el modelo configurado en el primer uso. El valor predeterminado es `medium` (~1,5 GB). En el servidor API, el tamaño del modelo se controla mediante la variable de entorno `WHISPER_MODEL_SIZE`; también puedes usar `small` (~470 MB) o `tiny` (~75 MB) para reducir la descarga inicial.
 
 ### Configuración de traducción
 
@@ -71,9 +70,9 @@ Usa los menús desplegables **Source Language** y **Target Language** del formul
 - Establece **Target Language** con un código ISO 639-1 (p. ej., `es` para español, `fr` para francés) para traducir los subtítulos tras la transcripción.
 - Deja **Target Language** en blanco para omitir la traducción y obtener el subtítulo en el idioma original.
 
-La traducción en la GUI usa **Argos Translate** (offline, sin clave API). Los modelos de Argos para cada par de idiomas se descargan la primera vez (~50–200 MB) y se almacenan en caché localmente.
+La traducción en la GUI usa **Argos Translate** por defecto (offline, sin clave API). Los modelos de Argos para cada par de idiomas se descargan la primera vez (~50–200 MB) y se almacenan en caché localmente.
 
-> **Nota:** DeepL y LibreTranslate están disponibles via CLI (`--engine deepl`/`--engine libretranslate`); el soporte en la GUI llegará en una próxima versión.
+> **Nota:** La GUI también puede usar **DeepL** y **LibreTranslate** cuando están configurados. Estos motores aparecen en el selector de motor solo si has definido `deepl_api_key` (para DeepL) o `libretranslate_url` (para LibreTranslate) en la configuración. Si no están configurados, la GUI usará Argos Translate. En CLI también puedes seleccionarlos explícitamente con `--engine deepl` o `--engine libretranslate`.
 
 ### Configurar la aplicación (Diálogo de Configuración)
 
@@ -224,6 +223,7 @@ curl -X POST "http://localhost:8000/subtitles?target_lang=es" \
 **Parámetros de consulta:**
 - `target_lang` (opcional): Código ISO 639-1 de destino para la traducción
 - `source_lang` (opcional): Forzar idioma de origen (omitir para detección automática)
+- `engine` (opcional): Motor de traducción a usar (`argos`, `deepl` o `libretranslate`)
 
 ### Documentación interactiva de la API
 
@@ -235,10 +235,11 @@ http://localhost:8000/docs
 ## Configuración
 
 Los ajustes se guardan como JSON en:
-- **Linux / macOS:** `~/.config/GenSubtitles/settings.json`
+- **Linux:** `~/.config/GenSubtitles/settings.json`
+- **macOS:** `~/Library/Application Support/GenSubtitles/settings.json`
 - **Windows:** `%APPDATA%\GenSubtitles\settings.json`
 
-El archivo se crea automáticamente en el primer inicio. Puedes editarlo directamente o usar el diálogo de configuración de la GUI.
+El archivo se crea cuando se guardan los ajustes por primera vez (por ejemplo, desde el diálogo de configuración de la GUI), por lo que puede no existir todavía en el primer inicio. Puedes editarlo directamente cuando exista o usar el diálogo de configuración de la GUI.
 
 ### Campos de configuración
 
@@ -279,15 +280,19 @@ EnvironmentError: FFmpeg not found in PATH
 python main.py --input video.mp4 --output /ruta/al/directorio/subtitles.srt
 ```
 
-### DeepL / LibreTranslate no funcionan en la GUI
+### DeepL / LibreTranslate no funcionan
 
-DeepL y LibreTranslate no están activos en la GUI todavía. Usa el flag `--engine` en la CLI:
+La GUI soporta DeepL y LibreTranslate cuando están correctamente configurados. Si estos motores no funcionan, verifica lo siguiente:
+
+- **DeepL:** Asegúrate de que `deepl_api_key` esté configurada en el diálogo de configuración o en `settings.json`. Se requiere una [clave de API gratuita de DeepL](https://deepl.com) válida.
+- **LibreTranslate:** Asegúrate de que `libretranslate_url` apunte a un servidor accesible (p. ej., `http://localhost:5000`). Verifica que el servidor esté en ejecución y sea alcanzable.
+- **Errores de red:** Ambos motores requieren conectividad. Verifica tu conexión a internet y la configuración de firewall.
+
+También puedes usar estos motores vía CLI:
 ```bash
 python main.py --input video.mp4 --target-lang es --engine deepl
 python main.py --input video.mp4 --target-lang es --engine libretranslate
 ```
-
-El soporte en la GUI está previsto para una versión futura.
 
 ### Primera ejecución — descarga de modelo grande
 
@@ -295,148 +300,6 @@ El modelo `medium` predeterminado requiere una descarga de ~1,5 GB. Usa un model
 ```bash
 python main.py --input video.mp4 --model small   # ~470 MB
 python main.py --input video.mp4 --model tiny    # ~75 MB
-```
-
-## Licencia
-
-MIT
-
-GenSubtitles proporciona una interfaz de línea de comandos con 6 flags configurables.
-
-**Uso básico (detecta automáticamente la ruta de salida):**
-```bash
-python main.py --input video.mp4
-```
-
-**Ruta de salida personalizada:**
-```bash
-python main.py --input video.mp4 --output subtitles.srt
-```
-
-**Con traducción al español:**
-```bash
-python main.py --input video.mp4 --target-lang es
-```
-
-**Modelo y dispositivo personalizados:**
-```bash
-python main.py --input video.mp4 --model base --device cpu
-```
-
-### Flags disponibles
-
-| Flag | Descripción | Por defecto |
-|------|-------------|-------------|
-| `--input`, `-i` | Ruta al archivo de vídeo de entrada (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`) | Requerido |
-| `--output`, `-o` | Ruta de destino del archivo `.srt` | `<input>.srt` |
-| `--model`, `-m` | Tamaño del modelo Whisper: `tiny`, `base`, `small`, `medium`, `large-v1`, `large-v2`, `large-v3`, `turbo` | `medium` |
-| `--target-lang`, `-t` | Código de idioma ISO 639-1 de destino para la traducción (ej., `es`, `fr`, `de`) | Ninguno (sin traducción) |
-| `--source-lang`, `-s` | Código de idioma de origen (omitir para detección automática) | Detección automática |
-| `--device` | Dispositivo de cálculo: `auto`, `cpu`, `cuda` | `auto` |
-
-> **Primera ejecución:** El modelo por defecto (`medium`) requiere una descarga única de ~1,5 GB.
-> Usa `--model small` (~470 MB) o `--model tiny` (~75 MB) para una descarga inicial más pequeña.
-
-Para las opciones completas:
-```bash
-python main.py --help
-```
-
-## Uso de API
-
-GenSubtitles proporciona una API REST impulsada por FastAPI.
-
-### Iniciar el servidor
-
-**Usando el punto de entrada principal:**
-```bash
-python main.py serve
-```
-
-**Usando uvicorn directamente:**
-```bash
-uvicorn gensubtitles.api.main:app --host 0.0.0.0 --port 8000
-```
-
-### Endpoints
-
-#### POST /subtitles
-
-Sube un archivo de vídeo y recibe un archivo de subtítulos SRT en respuesta.
-
-**Ejemplo básico:**
-```bash
-curl -X POST http://localhost:8000/subtitles \
-  -F "file=@video.mp4" \
-  --output subtitles.srt
-```
-
-**Con traducción:**
-```bash
-curl -X POST "http://localhost:8000/subtitles?target_lang=es" \
-  -F "file=@video.mp4" \
-  --output subtitles.srt
-```
-
-**Parámetros de consulta:**
-- `target_lang` (opcional): Código de idioma ISO 639-1 de destino para la traducción
-- `source_lang` (opcional): Forzar la detección del idioma de origen (omitir para detección automática)
-
-#### Documentación interactiva de la API
-
-FastAPI proporciona documentación interactiva de la API en:
-```
-http://localhost:8000/docs
-```
-
-## Traducción de Idiomas
-
-GenSubtitles utiliza Argos Translate para la generación de subtítulos multilingües.
-
-**Descarga del modelo por primera vez:**
-- En el primer uso de un par de idiomas (por ejemplo, inglés → español), Argos Translate descarga el modelo requerido (~50-200 MB dependiendo del par de idiomas)
-- Los modelos se descargan desde internet — la primera traducción requiere conectividad de red
-- Los modelos descargados se almacenan en caché localmente en el directorio de caché apropiado del sistema operativo
-
-**Ejecuciones posteriores:**
-- Después de la descarga inicial, todas las ejecuciones de traducción son completamente offline
-- Los modelos permanecen en caché entre sesiones
-
-**Idiomas compatibles:**
-Usa códigos ISO 639-1 con el flag `--target-lang` (por ejemplo, `es` para español, `fr` para francés, `de` para alemán, `pt` para portugués).
-
-## Solución de Problemas
-
-### FFmpeg no encontrado
-
-**Error:**
-```
-EnvironmentError: FFmpeg not found in PATH
-```
-
-**Solución:**
-Instala FFmpeg usando los comandos de la sección de Instalación anterior. Después de la instalación, verifica con `ffmpeg -version` y reinicia tu terminal para actualizar el PATH.
-
-### Fallo en la descarga del modelo de Argos
-
-**Error:**
-Tiempo de espera de red agotado o error HTTP durante la descarga del modelo.
-
-**Solución:**
-Verifica tu conexión a internet y vuelve a intentar el comando. Los modelos de idiomas se descargan una vez en el primer uso y se almacenan en caché localmente. Si los fallos de descarga persisten, inténtalo de nuevo con una conexión de red estable.
-
-### Directorio de salida faltante
-
-**Error:**
-```
-FileNotFoundError
-```
-o errores de permisos al escribir el archivo SRT.
-
-**Solución:**
-Asegúrate de que el directorio de salida existe y es escribible. Puedes usar el flag `--output` para especificar una ruta válida:
-```bash
-python main.py --input video.mp4 --output /ruta/a/directorio/escribible/subtitles.srt
 ```
 
 ## Licencia

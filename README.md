@@ -55,13 +55,14 @@ Pick the usage mode that suits you:
 ### Generating Subtitles
 
 1. Launch the desktop app: `python main.py gui`
-2. Click **Select Video** and choose your video file (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`).
-3. Optionally set a custom **Output** path. If left blank, the subtitle file is saved in the same directory as the video.
-4. Choose a **Whisper model** from the dropdown. Larger models are more accurate but slower. The default is `medium`.
-5. Set the **Source Language** (leave blank for auto-detection) and optionally set a **Target Language** to enable translation.
-6. Click **Generate** to start. Progress steps are shown in the status area.
+2. Click **Browse…** and choose your video file (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`).
+3. The **Output** path is auto-populated by default after you select a video. You can change it if needed, but it must be set before clicking **Generate**.
+4. Set the **Source Language** (leave blank for auto-detection) and optionally set a **Target Language** to enable translation.
+5. Click **Generate** to start. Progress steps are shown in the status area.
 
-> **First run:** The selected Whisper model is downloaded on first use. The `medium` model is ~1.5 GB. Use `small` (~470 MB) or `tiny` (~75 MB) to reduce the initial download.
+> **Whisper model:** The GUI does not currently expose a model selector. Model size is controlled by the `WHISPER_MODEL_SIZE` environment variable and defaults to `medium`.
+>
+> **First run:** The configured Whisper model is downloaded on first use. The default `medium` model is ~1.5 GB. Use `small` (~470 MB) or `tiny` (~75 MB) via `WHISPER_MODEL_SIZE` to reduce the initial download.
 
 ### Translation Settings
 
@@ -71,9 +72,9 @@ Use the **Source Language** and **Target Language** dropdowns on the main form t
 - Set **Target Language** to an ISO 639-1 code (e.g., `es` for Spanish, `fr` for French) to translate subtitles after transcription.
 - Leave **Target Language** blank to skip translation and output in the source language.
 
-Translation in the GUI uses **Argos Translate** (offline, no API key required). Argos models for each language pair are downloaded on first use (~50–200 MB each) and cached locally.
+Translation in the GUI uses **Argos Translate** by default (offline, no API key required). Argos models for each language pair are downloaded on first use (~50–200 MB each) and cached locally.
 
-> **Note:** DeepL and LibreTranslate are available via CLI (`--engine deepl` / `--engine libretranslate`); GUI support is coming in a future release.
+> **Note:** The GUI can also use **DeepL** and **LibreTranslate** when they are configured. DeepL is available after setting `deepl_api_key`, and LibreTranslate is available after setting `libretranslate_url`. You can also select these engines via CLI with `--engine deepl` or `--engine libretranslate`.
 
 ### Configuring the App (Settings Dialog)
 
@@ -224,6 +225,7 @@ curl -X POST "http://localhost:8000/subtitles?target_lang=es" \
 **Query parameters:**
 - `target_lang` (optional): ISO 639-1 target language code for translation
 - `source_lang` (optional): Force source language (omit for auto-detect)
+- `engine` (optional): Translation engine to use (`argos`, `deepl`, or `libretranslate`)
 
 ### Interactive API documentation
 
@@ -235,10 +237,11 @@ http://localhost:8000/docs
 ## Configuration
 
 Settings are stored as JSON at:
-- **Linux / macOS:** `~/.config/GenSubtitles/settings.json`
+- **Linux:** `~/.config/GenSubtitles/settings.json`
+- **macOS:** `~/Library/Application Support/GenSubtitles/settings.json`
 - **Windows:** `%APPDATA%\GenSubtitles\settings.json`
 
-The file is created automatically on first launch. You can edit it directly or use the Settings dialog in the GUI.
+The file is created when settings are saved for the first time (e.g., from the GUI Settings dialog), so it may not exist yet on first launch. You can edit it directly once it exists or use the Settings dialog in the GUI.
 
 ### Settings fields
 
@@ -279,15 +282,19 @@ EnvironmentError: FFmpeg not found in PATH
 python main.py --input video.mp4 --output /path/to/writable/directory/subtitles.srt
 ```
 
-### DeepL / LibreTranslate not working in the GUI
+### DeepL / LibreTranslate not working
 
-DeepL and LibreTranslate are not yet active in the GUI. Use the CLI `--engine` flag instead:
+The GUI supports DeepL and LibreTranslate when they are properly configured. If these engines are not working, check the following:
+
+- **DeepL:** Ensure `deepl_api_key` is set in the Settings dialog or `settings.json`. A valid [DeepL Free API key](https://deepl.com) is required.
+- **LibreTranslate:** Ensure `libretranslate_url` is set to a reachable server (e.g., `http://localhost:5000`). Check that the server is running and accessible.
+- **Network errors:** Both engines require network connectivity. Verify your internet connection and firewall settings.
+
+You can also use these engines via CLI:
 ```bash
 python main.py --input video.mp4 --target-lang es --engine deepl
 python main.py --input video.mp4 --target-lang es --engine libretranslate
 ```
-
-GUI support is planned for a future release.
 
 ### First run — large model download
 
