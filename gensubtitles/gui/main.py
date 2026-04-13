@@ -698,11 +698,11 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _on_target_lang_change(self, selection: str) -> None:
         """Trigger background pair download when a target language is picked."""
+        no_target = selection in ("No target", "")
         # Show/hide engine row based on whether a target is selected
-        if selection in ("No target", ""):
+        if no_target:
             self._lbl_engine.grid_remove()
             self._option_engine.grid_remove()
-            return
         else:
             self._lbl_engine.grid()
             self._option_engine.grid()
@@ -710,7 +710,7 @@ class GenSubtitlesApp(ctk.CTk):
         try:
             from gensubtitles.core.settings import save_settings  # noqa: PLC0415
             if self._current_settings is not None:
-                tgt_code = _label_to_code(selection) if selection not in ("No target", "") else ""
+                tgt_code = _label_to_code(selection) if not no_target else ""
                 import dataclasses  # noqa: PLC0415
                 self._current_settings = dataclasses.replace(
                     self._current_settings, target_lang=tgt_code
@@ -718,6 +718,8 @@ class GenSubtitlesApp(ctk.CTk):
                 save_settings(self._current_settings)
         except Exception:  # noqa: BLE001
             pass
+        if no_target:
+            return
         src_label = self._source_lang_var.get()
         if src_label == "Auto-detect":
             return
