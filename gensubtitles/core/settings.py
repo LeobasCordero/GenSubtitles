@@ -50,9 +50,18 @@ DEFAULT_SETTINGS = AppSettings()
 
 
 def settings_path() -> Path:
-    """Return the resolved path to settings.json (for diagnostics)."""
-    from platformdirs import user_config_dir
+    """Return the resolved path to settings.json (for diagnostics).
 
+    If the ``GENSUBTITLES_CONFIG`` environment variable is set, its value is
+    used as the full path to the settings file. Otherwise the default OS user
+    config directory (via platformdirs) is used.
+    """
+    import os  # noqa: PLC0415
+    from platformdirs import user_config_dir  # noqa: PLC0415
+
+    custom = os.environ.get("GENSUBTITLES_CONFIG")
+    if custom:
+        return Path(custom)
     return Path(user_config_dir("GenSubtitles")) / "settings.json"
 
 
