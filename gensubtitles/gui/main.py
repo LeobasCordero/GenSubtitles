@@ -249,6 +249,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "font_size_lbl":        "Font size:",
         "text_color_lbl":       "Text color:",
         "outline_color_lbl":    "Outline color:",
+        "config_path_lbl":      "Config file:",
+        "open_config_folder_btn": "Open Folder",
         # Menu bar
         "menu_settings":        "Settings",
         "menu_preferences":     "Preferences\u2026",
@@ -367,6 +369,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "font_size_lbl":        "Tamaño de fuente:",
         "text_color_lbl":       "Color del texto:",
         "outline_color_lbl":    "Color del borde:",
+        "config_path_lbl":      "Archivo de config:",
+        "open_config_folder_btn": "Abrir carpeta",
         # Menu bar
         "menu_settings":        "Configuración",
         "menu_preferences":     "Preferencias\u2026",
@@ -792,9 +796,45 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._btn_outline_color_swatch.grid(row=8, column=1, sticky="w", padx=(0, 12), pady=6)
 
+        # Config file path (read-only info row)
+        self._lbl_config_path_label = ctk.CTkLabel(
+            sf, text=self._s("config_path_lbl"),
+            text_color=_p("text_secondary"),
+        )
+        self._lbl_config_path_label.grid(row=9, column=0, sticky="w", padx=(12, 8), pady=6)
+        self._lbl_config_path_value = ctk.CTkLabel(
+            sf, text="",
+            text_color=_p("text_secondary"),
+            wraplength=260,
+            anchor="w",
+            justify="left",
+        )
+        self._lbl_config_path_value.grid(row=9, column=1, sticky="ew", padx=(0, 8), pady=6)
+
+        def _open_config_folder() -> None:
+            from gensubtitles.core.settings import settings_path  # noqa: PLC0415
+            config_dir = settings_path().parent
+            sys_name = platform.system()
+            if sys_name == "Windows":
+                subprocess.Popen(["explorer", str(config_dir)])  # noqa: S603,S607
+            elif sys_name == "Darwin":
+                subprocess.Popen(["open", str(config_dir)])      # noqa: S603,S607
+            else:
+                subprocess.Popen(["xdg-open", str(config_dir)])  # noqa: S603,S607
+
+        self._btn_open_config_folder = ctk.CTkButton(
+            sf,
+            text=self._s("open_config_folder_btn"),
+            width=100,
+            command=_open_config_folder,
+            fg_color=_p("secondary"),
+            hover_color=_p("secondary_hov"),
+        )
+        self._btn_open_config_folder.grid(row=9, column=2, padx=(0, 12), pady=6, sticky="e")
+
         # Save / Back buttons
         btn_frame = ctk.CTkFrame(sf, fg_color="transparent")
-        btn_frame.grid(row=9, column=0, columnspan=2, pady=(16, 12), padx=12, sticky="ew")
+        btn_frame.grid(row=10, column=0, columnspan=2, pady=(16, 12), padx=12, sticky="ew")
         btn_frame.columnconfigure(0, weight=1)
         btn_frame.columnconfigure(1, weight=1)
         self._btn_settings_save = ctk.CTkButton(
@@ -1735,6 +1775,8 @@ class GenSubtitlesApp(ctk.CTk):
                 fg_color=outline_col, hover_color=outline_col
             )
         self._tabview.pack_forget()
+        from gensubtitles.core.settings import settings_path  # noqa: PLC0415
+        self._lbl_config_path_value.configure(text=str(settings_path()))
         self._settings_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
     def _hide_settings(self) -> None:
@@ -1936,6 +1978,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_font_size.configure(text=self._s("font_size_lbl"))
         self._lbl_text_color.configure(text=self._s("text_color_lbl"))
         self._lbl_outline_color.configure(text=self._s("outline_color_lbl"))
+        self._lbl_config_path_label.configure(text=self._s("config_path_lbl"))
+        self._btn_open_config_folder.configure(text=self._s("open_config_folder_btn"))
 
         # Open Folder button (created lazily in _show_success — may not exist yet)
         if hasattr(self, "_btn_open_folder"):
