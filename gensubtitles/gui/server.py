@@ -32,6 +32,7 @@ SERVER_PORT: int = 8000
 BASE_URL: str = f"http://127.0.0.1:{SERVER_PORT}"
 
 _SERVER_BIND_TIMEOUT: int = 30  # seconds to wait for Uvicorn to bind
+_MAX_CONSECUTIVE_POLL_ERRORS: int = 10  # terminal threshold for repeated poll failures
 
 # ---------------------------------------------------------------------------
 # Module-level server state
@@ -102,12 +103,15 @@ def start(
                 return
             time.sleep(1)
             try:
-                req.get(f"{BASE_URL}/status", timeout=1)
-                break  # server is up
+                with req.get(f"{BASE_URL}/status", timeout=1) as resp:
+                    resp.raise_for_status()
+                    if "stage" in resp.json():
+                        break  # confirmed GenSubtitles server is up
             except Exception:  # noqa: BLE001
                 continue
 
         # Phase 2: poll /status until model is ready, updating the GUI label
+        consecutive_errors = 0
         while not is_closing():
             if not thread.is_alive():
                 if not is_closing():
@@ -117,8 +121,10 @@ def start(
                 return
             time.sleep(1)
             try:
-                resp = req.get(f"{BASE_URL}/status", timeout=2)
-                data = resp.json()
+                with req.get(f"{BASE_URL}/status", timeout=2) as resp:
+                    resp.raise_for_status()
+                    data = resp.json()
+                consecutive_errors = 0
                 stage = data.get("stage", "")
                 message = data.get("message", "")
                 progress = data.get("progress", -1)
@@ -132,8 +138,18 @@ def start(
                     if not is_closing():
                         on_failed(message)
                     return
-            except Exception:  # noqa: BLE001
-                continue
+            except Exception as exc:  # noqa: BLE001
+                consecutive_errors += 1
+                logger.warning(
+                    "Status poll failed (%d/%d): %s",
+                    consecutive_errors,
+                    _MAX_CONSECUTIVE_POLL_ERRORS,
+                    exc,
+                )
+                if consecutive_errors >= _MAX_CONSECUTIVE_POLL_ERRORS:
+                    if not is_closing():
+                        on_failed("Server stopped responding during model loading.")
+                    return
 
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
