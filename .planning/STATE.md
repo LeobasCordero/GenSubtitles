@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 999.19
-last_updated: "2026-04-14T04:43:41.895Z"
+status: Phase 999.21 Complete
+last_updated: "2026-04-14T14:30:00.000Z"
 progress:
   total_phases: 34
-  completed_phases: 25
-  total_plans: 54
-  completed_plans: 52
+  completed_phases: 27
+  total_plans: 55
+  completed_plans: 55
 ---
 
 # GenSubtitles — Project State
@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1.0
-- **Active Phase:** 999.18 — Documentation README Update
-- **Last action:** Phase 999.17 complete — deduplicated list_installed_pairs() with seen-set guard; regression test added. Phase 999.18 executing — README docs update.
+- **Active Phase:** 999.21 — GUI Refactor Palette Colors — COMPLETE
+- **Last action:** Phase 999.21 complete — extracted `_PALETTES`/`_p()`/`_FONT_SIZES`/`_FONT_FAMILIES`/`_BOLD_ROLES`/`_font()` from `gui/main.py` into new `gui/theme.py`; renamed all call sites to public `p()` and `font()`. 165 tests passing, 0 new failures.
 
 ## Milestone Progress
 
