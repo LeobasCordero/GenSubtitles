@@ -609,10 +609,11 @@ Plans:
 
 **Goal:** Allow users to specify a custom path for the configuration JSON file instead of the hardcoded default (platformdirs AppData location). Useful for portable installs, shared network configs, or version-controlled project-level settings. Should be configurable via CLI flag (`--config`), environment variable (`GENSUBTITLES_CONFIG`), or both.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [x] 999.19-01-PLAN.md — settings_path() GENSUBTITLES_CONFIG env var override + regression tests
+- [x] 999.19-02-PLAN.md — GUI Settings panel: config path label + Open Folder button
 
 **Context captured:**
 - Current config path is resolved by `platformdirs.user_config_dir()` in `settings.py` — make this overridable
@@ -675,5 +676,51 @@ Plans:
 
 ---
 
+---
+
+### Phase 999.21: REFACTOR — Palette Colors Separation (BACKLOG)
+
+**Goal:** Separate palette color definitions into their own module/file so additional color palettes can be added in the future without touching component code.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
+### Phase 999.22: REFACTOR — Separate GUI Styles from Components (BACKLOG)
+
+**Goal:** Extract all styling definitions (fonts, sizes, paddings, widget configurations) out of GUI component classes into a dedicated styles layer, keeping components focused on layout and behaviour.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
+### Phase 999.23: REFACTOR — Apply SOLID Principles to GUI (BACKLOG)
+
+**Goal:** Refactor the GUI codebase to follow SOLID principles: single responsibility per class, open/closed extension points, Liskov-safe widget hierarchies, interface segregation, and dependency inversion for services injected into the GUI.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
+### Phase 999.24: REFACTOR — Localisation Separation (BACKLOG)
+
+**Goal:** Move all user-facing strings and locale/i18n logic into a dedicated localisation layer, decoupling translation concerns from GUI components and making it easy to add or swap languages.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-13 — Backlog item 999.14 added (GUI HTTP timeout during generation)*
+*Last updated: 2026-04-13 — Backlog items 999.21–999.24 added (GUI refactor: palette colors, styles separation, SOLID principles, localisation separation)*

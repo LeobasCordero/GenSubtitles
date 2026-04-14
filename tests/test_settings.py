@@ -5,11 +5,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+
+import pytest
 from gensubtitles.core.settings import AppSettings, load_settings, save_settings, settings_path
 
 
-def test_settings_path_returns_path():
+def test_settings_path_returns_path(monkeypatch):
     """settings_path() returns a Path ending with settings.json."""
+    monkeypatch.delenv("GENSUBTITLES_CONFIG", raising=False)
     p = settings_path()
     assert isinstance(p, Path)
     assert p.name == "settings.json"
@@ -83,3 +86,56 @@ def test_save_creates_parent_dirs(tmp_path, monkeypatch):
 
     save_settings(AppSettings())
     assert fake_json.exists()
+
+
+# --- GENSUBTITLES_CONFIG env var override tests ---
+
+
+def test_settings_path_respects_env_var(tmp_path, monkeypatch):
+    """settings_path() returns the path from GENSUBTITLES_CONFIG when set."""
+    custom = tmp_path / "custom_settings.json"
+    monkeypatch.setenv("GENSUBTITLES_CONFIG", str(custom))
+
+    p = settings_path()
+    assert p == custom
+
+
+def test_settings_path_rejects_directory(tmp_path, monkeypatch):
+    """settings_path() raises ValueError when GENSUBTITLES_CONFIG points to a directory."""
+    monkeypatch.setenv("GENSUBTITLES_CONFIG", str(tmp_path))
+
+    with pytest.raises(ValueError, match="not a directory"):
+        settings_path()
+
+
+def test_settings_path_expands_user(monkeypatch, tmp_path):
+    """settings_path() expands ~ in GENSUBTITLES_CONFIG."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("GENSUBTITLES_CONFIG", "~/my_settings.json")
+
+    p = settings_path()
+    assert p == tmp_path / "my_settings.json"
+
+
+def test_load_settings_uses_env_var_path(tmp_path, monkeypatch):
+    """load_settings() reads from GENSUBTITLES_CONFIG path when set."""
+    custom = tmp_path / "env_settings.json"
+    data = {"appearance_mode": "Dark", "ui_language": "es"}
+    custom.write_text(json.dumps(data), encoding="utf-8")
+    monkeypatch.setenv("GENSUBTITLES_CONFIG", str(custom))
+
+    loaded = load_settings()
+    assert loaded.appearance_mode == "Dark"
+    assert loaded.ui_language == "es"
+
+
+def test_save_settings_uses_env_var_path(tmp_path, monkeypatch):
+    """save_settings() writes to GENSUBTITLES_CONFIG path when set."""
+    custom = tmp_path / "subdir" / "env_settings.json"
+    monkeypatch.setenv("GENSUBTITLES_CONFIG", str(custom))
+
+    save_settings(AppSettings(appearance_mode="Light"))
+
+    assert custom.exists()
+    saved = json.loads(custom.read_text(encoding="utf-8"))
+    assert saved["appearance_mode"] == "Light"
