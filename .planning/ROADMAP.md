@@ -723,5 +723,23 @@ Plans:
 
 ---
 
+### Phase 999.25: BUG — GUI `s()` TypeError int not callable in `_finish_generate` (BACKLOG)
+
+**Goal:** Fix `TypeError: 'int' object is not callable` raised in `_finish_generate` when calling `s("msg_generation_failed_title")` — `s` is shadowed by an integer somewhere before the call.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Error context:
+```
+File "gensubtitles\gui\main.py", line 1143, in _finish_generate
+    messagebox.showerror(s("msg_generation_failed_title"), error)
+TypeError: 'int' object is not callable
+```
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-13 — Backlog items 999.21–999.24 added (GUI refactor: palette colors, styles separation, SOLID principles, localisation separation)*
+*Last updated: 2026-04-14 — Backlog item 999.25 added (GUI bug: s() TypeError int not callable in _finish_generate)*
