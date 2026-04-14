@@ -20,9 +20,9 @@ from pathlib import Path
 import customtkinter as ctk
 from .theme import font, p
 from .styles import (
-    SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG, SPACING_XL, SPACING_XXL,
     BTN_HEIGHT_PRIMARY, BTN_HEIGHT_CANCEL, BTN_HEIGHT_MINI,
-    BTN_WIDTH_BROWSE, BTN_WIDTH_NARROW, BTN_WIDTH_SWATCH, PROGRESS_BAR_HEIGHT,
+    BTN_WIDTH_BROWSE, BTN_WIDTH_NARROW, BTN_WIDTH_SWATCH, ENTRY_WIDTH_SMALL,
+    PROGRESS_BAR_HEIGHT,
     apply_entry_style, apply_accent_btn_style, apply_secondary_btn_style,
     apply_cancel_btn_style, apply_progress_bar_style, apply_stage_label_style,
     apply_secondary_label_style, apply_settings_header_style, apply_window_bg,
@@ -663,7 +663,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_font_size.grid(row=6, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_font_size_var = ctk.StringVar(value="20")
         self._settings_font_size_entry = ctk.CTkEntry(
-            sf, textvariable=self._settings_font_size_var, width=BTN_WIDTH_BROWSE,
+            sf, textvariable=self._settings_font_size_var, width=ENTRY_WIDTH_SMALL,
         )
         apply_entry_style(self._settings_font_size_entry)
         self._settings_font_size_entry.grid(row=6, column=1, sticky="w", padx=(0, 12), pady=6)
@@ -1447,6 +1447,13 @@ class GenSubtitlesApp(ctk.CTk):
         # Secondary buttons
         apply_secondary_btn_style(self._btn_clear)
 
+        # Cancel button
+        apply_cancel_btn_style(self._btn_cancel)
+
+        # Stage / status labels
+        apply_stage_label_style(self._stage_label)
+        apply_stage_label_style(self._tl_stage_label)
+
         # Progress bars — reset to idle colour only (active colour is set dynamically)
         for pb in (self._progress_bar, self._tl_progress_bar):
             if pb.cget("mode") == "indeterminate" and not self._job_active:
@@ -1465,6 +1472,12 @@ class GenSubtitlesApp(ctk.CTk):
             apply_secondary_label_style(self._lbl_subtitle_style)
         if hasattr(self, "_settings_header_lbl"):
             apply_settings_header_style(self._settings_header_lbl)
+        if hasattr(self, "_btn_open_config_folder"):
+            apply_secondary_btn_style(self._btn_open_config_folder)
+        if hasattr(self, "_lbl_config_path_label"):
+            apply_secondary_label_style(self._lbl_config_path_label)
+        if hasattr(self, "_lbl_config_path_value"):
+            apply_secondary_label_style(self._lbl_config_path_value)
 
         # tkinter Menu bar (not a CTK widget — must be reconfigured manually)
         if hasattr(self, "_menubar") and hasattr(self, "_menus"):
