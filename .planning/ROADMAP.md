@@ -609,11 +609,11 @@ Plans:
 
 **Goal:** Allow users to specify a custom path for the configuration JSON file instead of the hardcoded default (platformdirs AppData location). Useful for portable installs, shared network configs, or version-controlled project-level settings. Should be configurable via CLI flag (`--config`), environment variable (`GENSUBTITLES_CONFIG`), or both.
 **Requirements:** TBD
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 999.19-01-PLAN.md — settings_path() GENSUBTITLES_CONFIG env var override + regression tests
-- [ ] 999.19-02-PLAN.md — GUI Settings panel: config path label + Open Folder button
+- [x] 999.19-01-PLAN.md — settings_path() GENSUBTITLES_CONFIG env var override + regression tests
+- [x] 999.19-02-PLAN.md — GUI Settings panel: config path label + Open Folder button
 
 **Context captured:**
 - Current config path is resolved by `platformdirs.user_config_dir()` in `settings.py` — make this overridable
