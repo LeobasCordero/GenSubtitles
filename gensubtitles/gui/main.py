@@ -19,6 +19,14 @@ from pathlib import Path
 
 import customtkinter as ctk
 from .theme import font, p
+from .styles import (
+    BTN_HEIGHT_PRIMARY, BTN_HEIGHT_CANCEL, BTN_HEIGHT_MINI,
+    BTN_WIDTH_BROWSE, BTN_WIDTH_NARROW, BTN_WIDTH_SWATCH, ENTRY_WIDTH_SMALL,
+    PROGRESS_BAR_HEIGHT,
+    apply_entry_style, apply_accent_btn_style, apply_secondary_btn_style,
+    apply_cancel_btn_style, apply_progress_bar_style, apply_stage_label_style,
+    apply_secondary_label_style, apply_settings_header_style, apply_window_bg,
+)
 
 # Suppress HuggingFace Hub symlink warning (not supported without Developer Mode on Windows)
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
@@ -423,26 +431,22 @@ class GenSubtitlesApp(ctk.CTk):
         # Row 0 — Input video
         self._lbl_input_video = ctk.CTkLabel(self._frame, text="Input video *:")
         self._lbl_input_video.grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
-        self._entry_input = ctk.CTkEntry(
-            self._frame, textvariable=self._input_var,
-            fg_color=p("input_bg"), text_color=p("text_primary"),
-        )
+        self._entry_input = ctk.CTkEntry(self._frame, textvariable=self._input_var)
+        apply_entry_style(self._entry_input)
         self._entry_input.grid(row=0, column=1, sticky="ew", pady=(0, 8))
         self._btn_browse_input = ctk.CTkButton(
-            self._frame, text="Browse…", width=80, command=self._browse_input
+            self._frame, text="Browse…", width=BTN_WIDTH_BROWSE, command=self._browse_input
         )
         self._btn_browse_input.grid(row=0, column=2, padx=(8, 0), pady=(0, 8))
 
         # Row 1 — Output file
         self._lbl_output_file = ctk.CTkLabel(self._frame, text="Output file *:")
         self._lbl_output_file.grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(0, 24))
-        self._entry_output = ctk.CTkEntry(
-            self._frame, textvariable=self._output_var,
-            fg_color=p("input_bg"), text_color=p("text_primary"),
-        )
+        self._entry_output = ctk.CTkEntry(self._frame, textvariable=self._output_var)
+        apply_entry_style(self._entry_output)
         self._entry_output.grid(row=1, column=1, sticky="ew", pady=(0, 24))
         self._btn_browse_output = ctk.CTkButton(
-            self._frame, text="Save as…", width=80, command=self._browse_output
+            self._frame, text="Save as…", width=BTN_WIDTH_BROWSE, command=self._browse_output
         )
         self._btn_browse_output.grid(row=1, column=2, padx=(8, 0), pady=(0, 24))
 
@@ -500,11 +504,12 @@ class GenSubtitlesApp(ctk.CTk):
 
         # Row 6 — Generate button (disabled until server is ready)
         self._btn_generate = ctk.CTkButton(
-            self._frame, text="Generate Subtitles", command=self._on_generate, height=44,
-            fg_color=p("accent"), hover_color=p("accent_hov"),
+            self._frame, text="Generate Subtitles", command=self._on_generate,
+            height=BTN_HEIGHT_PRIMARY,
             state="disabled",
             text_color_disabled=("#757575", "#9E9E9E"),
         )
+        apply_accent_btn_style(self._btn_generate)
         self._btn_generate.grid(row=6, column=0, columnspan=3, pady=(24, 0), sticky="ew")
 
         # Row 7 — Clear button
@@ -513,11 +518,10 @@ class GenSubtitlesApp(ctk.CTk):
             text="Clear",
             command=self._on_clear,
             state="disabled",
-            height=44,
-            fg_color=p("secondary"),
-            hover_color=p("secondary_hov"),
+            height=BTN_HEIGHT_PRIMARY,
             text_color_disabled=("#757575", "#9E9E9E"),
         )
+        apply_secondary_btn_style(self._btn_clear)
         self._btn_clear.grid(row=7, column=0, columnspan=3, pady=(16, 8), sticky="ew")
 
         # Row 8 — Elapsed time counter (hidden initially)
@@ -527,9 +531,9 @@ class GenSubtitlesApp(ctk.CTk):
 
         # Row 9 — Progress bar (hidden initially)
         self._progress_bar = ctk.CTkProgressBar(
-            self._frame, mode="indeterminate", height=16,
-            progress_color=p("progress_idle"),
+            self._frame, mode="indeterminate", height=PROGRESS_BAR_HEIGHT,
         )
+        apply_progress_bar_style(self._progress_bar)
         self._progress_bar.grid(row=9, column=0, columnspan=3, pady=(32, 32), sticky="ew")
         self._progress_bar.grid_remove()
 
@@ -538,7 +542,8 @@ class GenSubtitlesApp(ctk.CTk):
         stage_text = _STRINGS.get(_startup_lang, _STRINGS["en"]).get(
             "starting_server", _STRINGS["en"]["starting_server"]
         )
-        self._stage_label = ctk.CTkLabel(self._frame, text=stage_text, text_color=p("text_secondary"))
+        self._stage_label = ctk.CTkLabel(self._frame, text=stage_text)
+        apply_stage_label_style(self._stage_label)
         self._stage_label.grid(row=10, column=0, columnspan=3, pady=4)
 
         # Row 11 — Cancel button (hidden initially; shown only during active generation)
@@ -546,11 +551,9 @@ class GenSubtitlesApp(ctk.CTk):
             self._frame,
             text="Cancel",
             command=self._on_cancel,
-            height=36,
-            fg_color=p("progress_err"),
-            hover_color=p("secondary_hov"),
-            text_color=("#FFFFFF", "#FFFFFF"),
+            height=BTN_HEIGHT_CANCEL,
         )
+        apply_cancel_btn_style(self._btn_cancel)
         self._btn_cancel.grid(row=11, column=0, columnspan=3, pady=(4, 0), sticky="ew")
         self._btn_cancel.grid_remove()  # hidden by default
 
@@ -599,11 +602,8 @@ class GenSubtitlesApp(ctk.CTk):
         sf = self._settings_frame
         sf.columnconfigure(1, weight=1)
 
-        self._settings_header_lbl = ctk.CTkLabel(
-            sf, text="Settings",
-            font=font("subheader"),
-            text_color=p("text_primary"),
-        )
+        self._settings_header_lbl = ctk.CTkLabel(sf, text="Settings")
+        apply_settings_header_style(self._settings_header_lbl)
         self._settings_header_lbl.grid(
             row=0, column=0, columnspan=2, pady=(12, 8), sticky="w", padx=12
         )
@@ -633,16 +633,16 @@ class GenSubtitlesApp(ctk.CTk):
         self._settings_outdir_entry = ctk.CTkEntry(
             sf, textvariable=self._settings_outdir_var,
             placeholder_text="(same directory as input)",
-            fg_color=p("input_bg"), text_color=p("text_primary"),
         )
+        apply_entry_style(self._settings_outdir_entry)
         self._settings_outdir_entry.grid(row=3, column=1, sticky="ew", padx=(0, 12), pady=6)
 
         # Subtitle Style section
         self._lbl_subtitle_style = ctk.CTkLabel(
             sf, text="Subtitle Style",
             font=font("body"),
-            text_color=p("text_secondary"),
         )
+        apply_secondary_label_style(self._lbl_subtitle_style)
         self._lbl_subtitle_style.grid(
             row=4, column=0, columnspan=2, sticky="w", padx=(12, 8), pady=(16, 2)
         )
@@ -663,9 +663,9 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_font_size.grid(row=6, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_font_size_var = ctk.StringVar(value="20")
         self._settings_font_size_entry = ctk.CTkEntry(
-            sf, textvariable=self._settings_font_size_var, width=80,
-            fg_color=p("input_bg"), text_color=p("text_primary"),
+            sf, textvariable=self._settings_font_size_var, width=ENTRY_WIDTH_SMALL,
         )
+        apply_entry_style(self._settings_font_size_entry)
         self._settings_font_size_entry.grid(row=6, column=1, sticky="w", padx=(0, 12), pady=6)
 
         # Text color
@@ -673,7 +673,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_text_color.grid(row=7, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_text_color_var = ctk.StringVar(value="#FFFFFF")
         self._btn_text_color_swatch = ctk.CTkButton(
-            sf, text="", width=36, height=28,
+            sf, text="", width=BTN_WIDTH_SWATCH, height=BTN_HEIGHT_MINI,
             fg_color=self._settings_text_color_var.get(),
             hover_color=self._settings_text_color_var.get(),
             command=self._on_pick_text_color,
@@ -685,7 +685,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_outline_color.grid(row=8, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_outline_color_var = ctk.StringVar(value="#000000")
         self._btn_outline_color_swatch = ctk.CTkButton(
-            sf, text="", width=36, height=28,
+            sf, text="", width=BTN_WIDTH_SWATCH, height=BTN_HEIGHT_MINI,
             fg_color=self._settings_outline_color_var.get(),
             hover_color=self._settings_outline_color_var.get(),
             command=self._on_pick_outline_color,
@@ -695,16 +695,16 @@ class GenSubtitlesApp(ctk.CTk):
         # Config file path (read-only info row)
         self._lbl_config_path_label = ctk.CTkLabel(
             sf, text=self._s("config_path_lbl"),
-            text_color=p("text_secondary"),
         )
+        apply_secondary_label_style(self._lbl_config_path_label)
         self._lbl_config_path_label.grid(row=9, column=0, sticky="w", padx=(12, 8), pady=6)
         self._lbl_config_path_value = ctk.CTkLabel(
             sf, text="",
-            text_color=p("text_secondary"),
             wraplength=260,
             anchor="w",
             justify="left",
         )
+        apply_secondary_label_style(self._lbl_config_path_value)
         self._lbl_config_path_value.grid(row=9, column=1, sticky="ew", padx=(0, 8), pady=6)
 
         def _open_config_folder() -> None:
@@ -721,11 +721,10 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_open_config_folder = ctk.CTkButton(
             sf,
             text=self._s("open_config_folder_btn"),
-            width=100,
+            width=BTN_WIDTH_NARROW,
             command=_open_config_folder,
-            fg_color=p("secondary"),
-            hover_color=p("secondary_hov"),
         )
+        apply_secondary_btn_style(self._btn_open_config_folder)
         self._btn_open_config_folder.grid(row=9, column=2, padx=(0, 12), pady=6, sticky="e")
 
         # Save / Back buttons
@@ -735,14 +734,14 @@ class GenSubtitlesApp(ctk.CTk):
         btn_frame.columnconfigure(1, weight=1)
         btn_frame.columnconfigure(2, weight=1)
         self._btn_settings_save = ctk.CTkButton(
-            btn_frame, text="Save", command=self._save_settings, height=44,
-            fg_color=p("accent"), hover_color=p("accent_hov"),
+            btn_frame, text="Save", command=self._save_settings, height=BTN_HEIGHT_PRIMARY,
         )
+        apply_accent_btn_style(self._btn_settings_save)
         self._btn_settings_save.grid(row=0, column=0, padx=(0, 4), sticky="ew")
         self._btn_settings_back = ctk.CTkButton(
-            btn_frame, text="Back", command=self._hide_settings, height=44,
-            fg_color=p("secondary"), hover_color=p("secondary_hov"),
+            btn_frame, text="Back", command=self._hide_settings, height=BTN_HEIGHT_PRIMARY,
         )
+        apply_secondary_btn_style(self._btn_settings_back)
         self._btn_settings_back.grid(row=0, column=1, padx=(4, 0), sticky="ew")
 
     def _build_translate_tab(self) -> None:
@@ -755,13 +754,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_tl_input_sub = ctk.CTkLabel(tf, text="Input subtitle *:")
         self._lbl_tl_input_sub.grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
         self._tl_input_var = ctk.StringVar()
-        self._tl_entry_input = ctk.CTkEntry(
-            tf, textvariable=self._tl_input_var,
-            fg_color=p("input_bg"), text_color=p("text_primary"),
-        )
+        self._tl_entry_input = ctk.CTkEntry(tf, textvariable=self._tl_input_var)
+        apply_entry_style(self._tl_entry_input)
         self._tl_entry_input.grid(row=0, column=1, sticky="ew", pady=(0, 8))
         self._tl_btn_browse = ctk.CTkButton(
-            tf, text="Browse…", width=80, command=self._tl_browse_input
+            tf, text="Browse…", width=BTN_WIDTH_BROWSE, command=self._tl_browse_input
         )
         self._tl_btn_browse.grid(row=0, column=2, padx=(8, 0), pady=(0, 8))
 
@@ -769,13 +766,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_tl_output_path = ctk.CTkLabel(tf, text="Output path *:")
         self._lbl_tl_output_path.grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(0, 24))
         self._tl_output_var = ctk.StringVar()
-        self._tl_entry_output = ctk.CTkEntry(
-            tf, textvariable=self._tl_output_var,
-            fg_color=p("input_bg"), text_color=p("text_primary"),
-        )
+        self._tl_entry_output = ctk.CTkEntry(tf, textvariable=self._tl_output_var)
+        apply_entry_style(self._tl_entry_output)
         self._tl_entry_output.grid(row=1, column=1, sticky="ew", pady=(0, 24))
         self._tl_btn_browse_out = ctk.CTkButton(
-            tf, text="Save as…", width=80, command=self._tl_browse_output
+            tf, text="Save as…", width=BTN_WIDTH_BROWSE, command=self._tl_browse_output
         )
         self._tl_btn_browse_out.grid(row=1, column=2, padx=(8, 0), pady=(0, 24))
 
@@ -810,10 +805,11 @@ class GenSubtitlesApp(ctk.CTk):
 
         # Row 5 — Translate button (disabled until server is ready)
         self._tl_btn_translate = ctk.CTkButton(
-            tf, text="Translate / Convert", command=self._on_translate, height=44,
-            fg_color=p("accent"), hover_color=p("accent_hov"),
+            tf, text="Translate / Convert", command=self._on_translate,
+            height=BTN_HEIGHT_PRIMARY,
             state="disabled",
         )
+        apply_accent_btn_style(self._tl_btn_translate)
         self._tl_btn_translate.grid(row=5, column=0, columnspan=3, pady=(24, 8), sticky="ew")
 
         # Row 6 — Elapsed label
@@ -823,9 +819,9 @@ class GenSubtitlesApp(ctk.CTk):
 
         # Row 7 — Progress bar
         self._tl_progress_bar = ctk.CTkProgressBar(
-            tf, mode="indeterminate", height=16,
-            progress_color=p("progress_idle"),
+            tf, mode="indeterminate", height=PROGRESS_BAR_HEIGHT,
         )
+        apply_progress_bar_style(self._tl_progress_bar)
         self._tl_progress_bar.grid(row=7, column=0, columnspan=3, pady=(32, 32), sticky="ew")
         self._tl_progress_bar.grid_remove()
 
@@ -1435,54 +1431,53 @@ class GenSubtitlesApp(ctk.CTk):
         set_appearance_mode() is called, but colours passed as explicit hex
         strings in constructors are static and must be refreshed here.
         """
-        self.configure(fg_color=p("bg"))
+        apply_window_bg(self)
 
         # Entry fields
         for entry in (
             self._entry_input, self._entry_output,
             self._tl_entry_input, self._tl_entry_output,
         ):
-            entry.configure(fg_color=p("input_bg"), text_color=p("text_primary"))
+            apply_entry_style(entry)
 
         # Accent (primary) buttons
         for btn in (self._btn_generate, self._tl_btn_translate):
-            btn.configure(fg_color=p("accent"), hover_color=p("accent_hov"))
+            apply_accent_btn_style(btn)
 
         # Secondary buttons
-        self._btn_clear.configure(
-            fg_color=p("secondary"), hover_color=p("secondary_hov")
-        )
+        apply_secondary_btn_style(self._btn_clear)
+
+        # Cancel button
+        apply_cancel_btn_style(self._btn_cancel)
+
+        # Stage / status labels
+        apply_stage_label_style(self._stage_label)
+        apply_stage_label_style(self._tl_stage_label)
 
         # Progress bars — reset to idle colour only (active colour is set dynamically)
         for pb in (self._progress_bar, self._tl_progress_bar):
             if pb.cget("mode") == "indeterminate" and not self._job_active:
-                pb.configure(progress_color=p("progress_idle"))
+                apply_progress_bar_style(pb)
 
         # Settings panel widgets
         if hasattr(self, "_btn_settings_save"):
-            self._btn_settings_save.configure(
-                fg_color=p("accent"), hover_color=p("accent_hov")
-            )
+            apply_accent_btn_style(self._btn_settings_save)
         if hasattr(self, "_btn_settings_back"):
-            self._btn_settings_back.configure(
-                fg_color=p("secondary"), hover_color=p("secondary_hov")
-            )
+            apply_secondary_btn_style(self._btn_settings_back)
         if hasattr(self, "_settings_outdir_entry"):
-            self._settings_outdir_entry.configure(
-                fg_color=p("input_bg"), text_color=p("text_primary")
-            )
+            apply_entry_style(self._settings_outdir_entry)
         if hasattr(self, "_settings_font_size_entry"):
-            self._settings_font_size_entry.configure(
-                fg_color=p("input_bg"), text_color=p("text_primary")
-            )
+            apply_entry_style(self._settings_font_size_entry)
         if hasattr(self, "_lbl_subtitle_style"):
-            self._lbl_subtitle_style.configure(text_color=p("text_secondary"))
-
+            apply_secondary_label_style(self._lbl_subtitle_style)
         if hasattr(self, "_settings_header_lbl"):
-            self._settings_header_lbl.configure(
-                font=font("subheader"),
-                text_color=p("text_primary"),
-            )
+            apply_settings_header_style(self._settings_header_lbl)
+        if hasattr(self, "_btn_open_config_folder"):
+            apply_secondary_btn_style(self._btn_open_config_folder)
+        if hasattr(self, "_lbl_config_path_label"):
+            apply_secondary_label_style(self._lbl_config_path_label)
+        if hasattr(self, "_lbl_config_path_value"):
+            apply_secondary_label_style(self._lbl_config_path_value)
 
         # tkinter Menu bar (not a CTK widget — must be reconfigured manually)
         if hasattr(self, "_menubar") and hasattr(self, "_menus"):
