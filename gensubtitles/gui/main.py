@@ -28,6 +28,7 @@ from .styles import (
     apply_secondary_label_style, apply_settings_header_style, apply_window_bg,
 )
 from .locale import s, set_language, s_lang, LANGUAGES
+from . import server
 
 # Suppress HuggingFace Hub symlink warning (not supported without Developer Mode on Windows)
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
@@ -94,9 +95,6 @@ def _detect_os_theme() -> str:
     return "Dark"
 
 
-_SERVER_PORT = 8000
-_BASE_URL = f"http://127.0.0.1:{_SERVER_PORT}"
-
 _CODE_TO_LABEL: dict[str, str] = {
     "en": "English", "es": "Spanish", "fr": "French",
     "de": "German", "it": "Italian", "pt": "Portuguese",
@@ -140,7 +138,6 @@ class GenSubtitlesApp(ctk.CTk):
         self._language_pairs: list[dict] = []
 
         # Server references
-        self._server = None
         self._stage_timer = None
         self._elapsed_timer = None
         self._elapsed_start: float = 0.0
@@ -781,7 +778,7 @@ class GenSubtitlesApp(ctk.CTk):
 
         pairs: list[dict] = []
         try:
-            resp = req.get(f"{_BASE_URL}/languages", timeout=30)
+            resp = req.get(f"{server.BASE_URL}/languages", timeout=30)
             resp.raise_for_status()
             pairs = resp.json().get("pairs", [])
         except Exception as exc:  # noqa: BLE001
@@ -864,7 +861,7 @@ class GenSubtitlesApp(ctk.CTk):
         def _do_cancel() -> None:
             try:
                 import requests as req  # noqa: PLC0415
-                req.delete(f"{_BASE_URL}/subtitles/{job_id}", timeout=5)
+                req.delete(f"{server.BASE_URL}/subtitles/{job_id}", timeout=5)
             except Exception:  # noqa: BLE001
                 pass  # server might be busy; cancellation happens server-side regardless
 
@@ -999,7 +996,7 @@ class GenSubtitlesApp(ctk.CTk):
             with open(input_path, "rb") as fh:
                 video_name = Path(input_path).name
                 resp = req.post(
-                    f"{_BASE_URL}/subtitles/async",
+                    f"{server.BASE_URL}/subtitles/async",
                     files={"file": (video_name, fh, "application/octet-stream")},
                     params=params,
                     timeout=30,  # short — should respond immediately
@@ -1020,7 +1017,7 @@ class GenSubtitlesApp(ctk.CTk):
 
             # Step 2: GET /subtitles/{job_id}/stream — SSE stream of progress events
             with req.get(
-                f"{_BASE_URL}/subtitles/{job_id}/stream",
+                f"{server.BASE_URL}/subtitles/{job_id}/stream",
                 stream=True,
                 timeout=(5, None),  # fail fast if server unreachable; keep stream reads unbounded
             ) as stream_resp:
@@ -1048,7 +1045,7 @@ class GenSubtitlesApp(ctk.CTk):
 
             # Step 3: GET /subtitles/{job_id}/result — fetch SRT bytes
             result_resp = req.get(
-                f"{_BASE_URL}/subtitles/{job_id}/result",
+                f"{server.BASE_URL}/subtitles/{job_id}/result",
                 timeout=60,
             )
             if result_resp.status_code != 200:
@@ -1889,89 +1886,20 @@ class GenSubtitlesApp(ctk.CTk):
     # ------------------------------------------------------------------
 
     def _start_server(self) -> None:
-        import uvicorn  # noqa: PLC0415
-
-        _SERVER_BIND_TIMEOUT = 30  # seconds to wait for Uvicorn to bind
-
-        def _run() -> None:
-            try:
-                config = uvicorn.Config(
-                    "gensubtitles.api.main:app",
-                    host="127.0.0.1",
-                    port=_SERVER_PORT,
-                    log_level="error",
-                )
-                self._server = uvicorn.Server(config)
-                self._server.run()
-            except OSError as exc:
-                logger.error("GUI server failed to start: %s", exc)
-
-        def _wait_for_server() -> None:
-            import requests as req  # noqa: PLC0415
-
-            # Phase 1: wait until the HTTP server binds and /status responds
-            deadline = time.monotonic() + _SERVER_BIND_TIMEOUT
-            while not self._closing:
-                if not thread.is_alive():
-                    if not self._closing:
-                        self.after(0, lambda: self._on_server_failed(
-                            f"Server process exited unexpectedly. Check port {_SERVER_PORT}.",
-                        ))
-                    return
-                if time.monotonic() > deadline:
-                    if not self._closing:
-                        self.after(0, lambda: self._on_server_failed(
-                            "Server did not start within "
-                            f"{_SERVER_BIND_TIMEOUT}s. Check port {_SERVER_PORT}.",
-                        ))
-                    return
-                time.sleep(1)
-                try:
-                    req.get(f"{_BASE_URL}/status", timeout=1)
-                    break  # server is up
-                except Exception:  # noqa: BLE001
-                    continue
-
-            # Phase 2: poll /status until model is ready, updating the GUI label
-            while not self._closing:
-                if not thread.is_alive():
-                    if not self._closing:
-                        self.after(0, lambda: self._on_server_failed(
-                            "Server process exited unexpectedly during model loading.",
-                        ))
-                    return
-                time.sleep(1)
-                try:
-                    resp = req.get(f"{_BASE_URL}/status", timeout=2)
-                    data = resp.json()
-                    stage = data.get("stage", "")
-                    message = data.get("message", "")
-                    progress = data.get("progress", -1)
-                    if not self._closing:
-                        self.after(0, lambda m=message, p=progress: self._apply_startup_progress(m, p))
-                    if stage == "ready":
-                        if not self._closing:
-                            self._server_ready = True
-                            self.after(0, self._on_server_ready)
-                        return
-                    if stage == "error":
-                        if not self._closing:
-                            self.after(0, lambda m=message: self._on_server_failed(m))
-                        return
-                except Exception:  # noqa: BLE001
-                    continue
-
-        thread = threading.Thread(target=_run, daemon=True)
-        thread.start()
-        threading.Thread(target=_wait_for_server, daemon=True).start()
-        # Show startup progress bar immediately
+        server.start(
+            on_progress=lambda m, prog: self.after(
+                0, lambda: self._apply_startup_progress(m, prog)
+            ),
+            on_ready=lambda: self.after(0, self._on_server_ready),
+            on_failed=lambda detail: self.after(
+                0, lambda: self._on_server_failed(detail)
+            ),
+            is_closing=lambda: self._closing,
+        )
+        # Show startup progress bar immediately (widget work stays in main.py)
         self._progress_bar.configure(mode="indeterminate", progress_color=p("progress_idle"))
         self._progress_bar.grid()
         self._progress_bar.start()
-
-    def _stop_server(self) -> None:
-        if self._server is not None:
-            self._server.should_exit = True
 
     def _apply_startup_progress(self, message: str, progress: int) -> None:
         """Update progress bar and label during model download/load phases."""
@@ -2014,7 +1942,7 @@ class GenSubtitlesApp(ctk.CTk):
     def on_closing(self) -> None:
         self._closing = True
         self._stop_os_theme_listener()
-        self._stop_server()
+        server.stop()
         self.destroy()
 
 
