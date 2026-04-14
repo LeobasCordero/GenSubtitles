@@ -703,12 +703,12 @@ Plans:
 
 ### Phase 999.23: REFACTOR — Apply SOLID Principles to GUI (BACKLOG)
 
-**Goal:** Refactor the GUI codebase to follow SOLID principles: single responsibility per class, open/closed extension points, Liskov-safe widget hierarchies, interface segregation, and dependency inversion for services injected into the GUI.
+**Goal:** Apply SRP to `gensubtitles/gui/main.py` by extracting the server lifecycle concern into a new dedicated module `gensubtitles/gui/server.py` (widget-free, callback-based), continuing the theme → styles → locale refactor series.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [x] 999.23-01-PLAN.md — Create server.py (extract start/stop/polling loop + constants) + migrate main.py (5 BASE_URL refs, _start_server wrapper, on_closing)
 
 ---
 
