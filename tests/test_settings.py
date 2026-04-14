@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+
+import pytest
 from gensubtitles.core.settings import AppSettings, load_settings, save_settings, settings_path
 
 
@@ -100,7 +102,6 @@ def test_settings_path_respects_env_var(tmp_path, monkeypatch):
 
 def test_settings_path_rejects_directory(tmp_path, monkeypatch):
     """settings_path() raises ValueError when GENSUBTITLES_CONFIG points to a directory."""
-    import pytest
     monkeypatch.setenv("GENSUBTITLES_CONFIG", str(tmp_path))
 
     with pytest.raises(ValueError, match="not a directory"):

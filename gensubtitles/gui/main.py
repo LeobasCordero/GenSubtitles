@@ -837,6 +837,7 @@ class GenSubtitlesApp(ctk.CTk):
         btn_frame.grid(row=10, column=0, columnspan=3, pady=(16, 12), padx=12, sticky="ew")
         btn_frame.columnconfigure(0, weight=1)
         btn_frame.columnconfigure(1, weight=1)
+        btn_frame.columnconfigure(2, weight=1)
         self._btn_settings_save = ctk.CTkButton(
             btn_frame, text="Save", command=self._save_settings, height=44,
             fg_color=_p("accent"), hover_color=_p("accent_hov"),
