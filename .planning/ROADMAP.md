@@ -693,11 +693,11 @@ Plans:
 
 **Goal:** Extract all styling definitions (fonts, sizes, paddings, widget configurations) out of GUI component classes into a dedicated styles layer, keeping components focused on layout and behaviour.
 **Requirements:** TBD
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 999.22-01-PLAN.md — Create gensubtitles/gui/styles.py (spacing/dimension constants + widget-style helpers)
-- [ ] 999.22-02-PLAN.md — Update main.py: apply-after-construction pattern + replace magic numbers + simplify _apply_theme()
+- [x] 999.22-01-PLAN.md — Create gensubtitles/gui/styles.py (spacing/dimension constants + widget-style helpers)
+- [x] 999.22-02-PLAN.md — Update main.py: apply-after-construction pattern + replace magic numbers + simplify _apply_theme()
 
 ---
 
