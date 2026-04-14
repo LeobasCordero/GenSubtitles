@@ -716,10 +716,10 @@ Plans:
 
 **Goal:** Move all user-facing strings and locale/i18n logic into a dedicated localisation layer, decoupling translation concerns from GUI components and making it easy to add or swap languages.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] 999.24-01-PLAN.md — Create locale.py (move _STRINGS + s()/set_language()/s_lang()) + migrate 66 call sites in main.py
 
 ---
 
