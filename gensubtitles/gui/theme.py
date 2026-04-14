@@ -2,8 +2,8 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~
 Colour palettes and typography scale for the GenSubtitles desktop UI.
 
-Extracted from gui/main.py so future palette changes require only edits
-here, without touching any widget/component code.
+Extracted from gui/main.py to centralise the primary palette and
+typography definitions, so most future theme changes can be made here.
 
 Public API
 ----------

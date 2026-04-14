@@ -842,8 +842,8 @@ class GenSubtitlesApp(ctk.CTk):
         if path:
             self._tl_input_var.set(path)
             if not self._tl_output_var.get():
-                p = Path(path)
-                self._tl_output_var.set(str(p.with_stem(p.stem + "_translated")))
+                fpath = Path(path)
+                self._tl_output_var.set(str(fpath.with_stem(fpath.stem + "_translated")))
 
     def _tl_browse_output(self) -> None:
         from tkinter import filedialog  # noqa: PLC0415
@@ -1022,9 +1022,9 @@ class GenSubtitlesApp(ctk.CTk):
         current = self._output_var.get()
         if not current:
             return
-        p = Path(current)
+        fpath = Path(current)
         new_ext = ".ssa" if selection == "SSA" else ".srt"
-        self._output_var.set(str(p.with_suffix(new_ext)))
+        self._output_var.set(str(fpath.with_suffix(new_ext)))
 
     def _populate_language_dropdowns(self) -> None:
         """Runs in background thread. Queries GET /languages then updates dropdowns on main thread."""
