@@ -682,7 +682,7 @@ Plans:
 
 **Goal:** Separate palette color definitions into their own module/file so additional color palettes can be added in the future without touching component code.
 **Requirements:** TBD
-**Plans:** 1 plan
+**Plans:** 0/1 plans executed
 
 Plans:
 - [ ] 999.21-01-PLAN.md — Create theme.py and migrate all color/typography definitions from main.py
