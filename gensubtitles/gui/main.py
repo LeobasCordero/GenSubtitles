@@ -834,7 +834,7 @@ class GenSubtitlesApp(ctk.CTk):
 
         # Save / Back buttons
         btn_frame = ctk.CTkFrame(sf, fg_color="transparent")
-        btn_frame.grid(row=10, column=0, columnspan=2, pady=(16, 12), padx=12, sticky="ew")
+        btn_frame.grid(row=10, column=0, columnspan=3, pady=(16, 12), padx=12, sticky="ew")
         btn_frame.columnconfigure(0, weight=1)
         btn_frame.columnconfigure(1, weight=1)
         self._btn_settings_save = ctk.CTkButton(

@@ -8,8 +8,9 @@ from pathlib import Path
 from gensubtitles.core.settings import AppSettings, load_settings, save_settings, settings_path
 
 
-def test_settings_path_returns_path():
+def test_settings_path_returns_path(monkeypatch):
     """settings_path() returns a Path ending with settings.json."""
+    monkeypatch.delenv("GENSUBTITLES_CONFIG", raising=False)
     p = settings_path()
     assert isinstance(p, Path)
     assert p.name == "settings.json"
@@ -95,6 +96,24 @@ def test_settings_path_respects_env_var(tmp_path, monkeypatch):
 
     p = settings_path()
     assert p == custom
+
+
+def test_settings_path_rejects_directory(tmp_path, monkeypatch):
+    """settings_path() raises ValueError when GENSUBTITLES_CONFIG points to a directory."""
+    import pytest
+    monkeypatch.setenv("GENSUBTITLES_CONFIG", str(tmp_path))
+
+    with pytest.raises(ValueError, match="not a directory"):
+        settings_path()
+
+
+def test_settings_path_expands_user(monkeypatch, tmp_path):
+    """settings_path() expands ~ in GENSUBTITLES_CONFIG."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("GENSUBTITLES_CONFIG", "~/my_settings.json")
+
+    p = settings_path()
+    assert p == tmp_path / "my_settings.json"
 
 
 def test_load_settings_uses_env_var_path(tmp_path, monkeypatch):
