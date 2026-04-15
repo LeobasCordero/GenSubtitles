@@ -281,11 +281,16 @@ async def post_subtitles_extract(
     from gensubtitles.core.steps import extract_audio_step  # noqa: PLC0415
 
     suffix = Path(video.filename or "upload").suffix.lower() or ".mp4"
-    tmp_video = Path(tempfile.mktemp(suffix=suffix))
+    _tmp_video = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    try:
+        shutil.copyfileobj(video.file, _tmp_video)
+    finally:
+        _tmp_video.flush()
+        _tmp_video.close()
+        video.file.close()
+    tmp_video = Path(_tmp_video.name)
     tmp_work = Path(tempfile.mkdtemp())
     try:
-        with tmp_video.open("wb") as f:
-            shutil.copyfileobj(video.file, f)
         extract_audio_step(tmp_video, tmp_work)
     except Exception as exc:  # noqa: BLE001
         tmp_video.unlink(missing_ok=True)
@@ -327,6 +332,8 @@ async def post_subtitles_transcribe(
     except Exception as exc:  # noqa: BLE001
         shutil.rmtree(tmp_work, ignore_errors=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    finally:
+        audio.file.close()
 
     json_path = tmp_work / "transcription.json"
     background_tasks.add_task(shutil.rmtree, tmp_work, True)
@@ -355,6 +362,8 @@ async def post_subtitles_translate(
     except Exception as exc:  # noqa: BLE001
         shutil.rmtree(tmp_work, ignore_errors=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    finally:
+        segments.file.close()
 
     out_path = tmp_work / "translation.json"
     background_tasks.add_task(shutil.rmtree, tmp_work, True)
@@ -383,6 +392,8 @@ async def post_subtitles_write(
     except Exception as exc:  # noqa: BLE001
         shutil.rmtree(tmp_work, ignore_errors=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    finally:
+        segments.file.close()
 
     background_tasks.add_task(shutil.rmtree, tmp_work, True)
     return FileResponse(srt_out, media_type="text/plain", filename="subtitles.srt")

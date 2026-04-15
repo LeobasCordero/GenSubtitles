@@ -295,12 +295,23 @@ def write_srt_step(
 def _read_source_lang(work_dir: Path) -> str:
     """Read the detected source language stored in transcription.json metadata.
 
-    Returns "auto" if the metadata is absent (translate_segments handles it gracefully).
+    Raises ``ValueError`` if the language field is absent so that callers get a
+    clear error rather than silently passing an unsupported "auto" value to
+    ``translate_segments()`` (which requires a real ISO 639-1 code).
+
+    Note: callers must ensure transcription.json exists before calling this helper.
     """
     trans_path = work_dir / TRANSCRIPTION_FILENAME
-    if not trans_path.is_file():
-        return "auto"
     raw = json.loads(trans_path.read_text(encoding="utf-8"))
     if isinstance(raw, dict):
-        return raw.get("language", "auto")
-    return "auto"  # old flat-list format — no language stored
+        lang = raw.get("language")
+        if lang:
+            return lang
+        raise ValueError(
+            f"{TRANSCRIPTION_FILENAME} does not contain a 'language' field. "
+            "Re-run transcribe_step to regenerate the file with language detection."
+        )
+    raise ValueError(
+        f"{TRANSCRIPTION_FILENAME} uses a legacy flat-list format that does not "
+        "store the source language. Re-run transcribe_step to regenerate the file."
+    )
