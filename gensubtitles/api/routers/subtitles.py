@@ -265,3 +265,124 @@ def get_languages() -> dict:
     from gensubtitles.core.translator import list_installed_pairs  # noqa: PLC0415
 
     return {"pairs": list_installed_pairs()}
+
+
+# ── stateless upload/download step endpoints ──────────────────────────────────
+
+@router.post("/subtitles/extract", summary="Step 1: Extract audio from video")
+async def post_subtitles_extract(
+    video: UploadFile,
+    background_tasks: BackgroundTasks,
+) -> FileResponse:
+    """Upload a video file; receive the extracted 16kHz mono WAV as a file download.
+
+    Stateless — no server-side state retained.
+    """
+    from gensubtitles.core.steps import extract_audio_step  # noqa: PLC0415
+
+    suffix = Path(video.filename or "upload").suffix.lower() or ".mp4"
+    tmp_video = Path(tempfile.mktemp(suffix=suffix))
+    tmp_work = Path(tempfile.mkdtemp())
+    try:
+        with tmp_video.open("wb") as f:
+            shutil.copyfileobj(video.file, f)
+        extract_audio_step(tmp_video, tmp_work)
+    except Exception as exc:  # noqa: BLE001
+        tmp_video.unlink(missing_ok=True)
+        shutil.rmtree(tmp_work, ignore_errors=True)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    finally:
+        tmp_video.unlink(missing_ok=True)
+
+    wav_path = tmp_work / "audio.wav"
+    background_tasks.add_task(shutil.rmtree, tmp_work, True)
+    return FileResponse(wav_path, media_type="audio/wav", filename="audio.wav")
+
+
+@router.post("/subtitles/transcribe", summary="Step 2: Transcribe audio to segments JSON")
+async def post_subtitles_transcribe(
+    audio: UploadFile,
+    background_tasks: BackgroundTasks,
+    source_lang: Optional[str] = Query(None, description="Force source language (ISO 639-1). Omit for auto-detect."),
+    model_size: str = Query("medium", description="Whisper model size."),
+    transcriber: WhisperTranscriber = Depends(get_transcriber),
+) -> FileResponse:
+    """Upload a WAV file; receive transcription.json (segments with detected language).
+
+    Stateless. Uses the pre-loaded WhisperTranscriber from server lifespan.
+    """
+    from gensubtitles.core.steps import transcribe_step  # noqa: PLC0415
+
+    tmp_work = Path(tempfile.mkdtemp())
+    wav_path = tmp_work / "audio.wav"
+    try:
+        with wav_path.open("wb") as f:
+            shutil.copyfileobj(audio.file, f)
+        transcribe_step(
+            tmp_work,
+            transcriber=transcriber,
+            model_size=model_size,
+            source_lang=source_lang or None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        shutil.rmtree(tmp_work, ignore_errors=True)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    json_path = tmp_work / "transcription.json"
+    background_tasks.add_task(shutil.rmtree, tmp_work, True)
+    return FileResponse(json_path, media_type="application/json", filename="transcription.json")
+
+
+@router.post("/subtitles/translate", summary="Step 3: Translate segments JSON")
+async def post_subtitles_translate(
+    segments: UploadFile,
+    background_tasks: BackgroundTasks,
+    target_lang: str = Query(..., description="Target ISO 639-1 language code (e.g. 'es')."),
+    engine: str = Query("argos", description="Translation engine: argos / deepl / libretranslate."),
+) -> FileResponse:
+    """Upload transcription.json; receive translation.json.
+
+    Stateless. Input file is used as transcription.json regardless of filename.
+    """
+    from gensubtitles.core.steps import translate_step  # noqa: PLC0415
+
+    tmp_work = Path(tempfile.mkdtemp())
+    trans_path = tmp_work / "transcription.json"
+    try:
+        with trans_path.open("wb") as f:
+            shutil.copyfileobj(segments.file, f)
+        translate_step(tmp_work, target_lang=target_lang, engine=engine)
+    except Exception as exc:  # noqa: BLE001
+        shutil.rmtree(tmp_work, ignore_errors=True)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    out_path = tmp_work / "translation.json"
+    background_tasks.add_task(shutil.rmtree, tmp_work, True)
+    return FileResponse(out_path, media_type="application/json", filename="translation.json")
+
+
+@router.post("/subtitles/write", summary="Step 4: Write SRT from segments JSON")
+async def post_subtitles_write(
+    segments: UploadFile,
+    background_tasks: BackgroundTasks,
+) -> FileResponse:
+    """Upload transcription.json or translation.json; receive subtitles.srt.
+
+    Stateless. Input treated as a flat segments JSON list [{start,end,text}].
+    """
+    from gensubtitles.core.steps import write_srt_step  # noqa: PLC0415
+
+    tmp_work = Path(tempfile.mkdtemp())
+    # Save as translation.json so write_srt_step prefers it (flat list format)
+    seg_path = tmp_work / "translation.json"
+    srt_out = tmp_work / "subtitles.srt"
+    try:
+        with seg_path.open("wb") as f:
+            shutil.copyfileobj(segments.file, f)
+        write_srt_step(tmp_work, srt_out)
+    except Exception as exc:  # noqa: BLE001
+        shutil.rmtree(tmp_work, ignore_errors=True)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    background_tasks.add_task(shutil.rmtree, tmp_work, True)
+    return FileResponse(srt_out, media_type="text/plain", filename="subtitles.srt")
