@@ -305,7 +305,7 @@ def _read_source_lang(work_dir: Path) -> str:
     raw = json.loads(trans_path.read_text(encoding="utf-8"))
     if isinstance(raw, dict):
         lang = raw.get("language")
-        if lang:
+        if lang is not None:
             return lang
         raise ValueError(
             f"{TRANSCRIPTION_FILENAME} does not contain a 'language' field. "

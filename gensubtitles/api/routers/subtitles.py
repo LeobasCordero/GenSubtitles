@@ -282,21 +282,19 @@ async def post_subtitles_extract(
 
     suffix = Path(video.filename or "upload").suffix.lower() or ".mp4"
     _tmp_video = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-    try:
-        shutil.copyfileobj(video.file, _tmp_video)
-    finally:
-        _tmp_video.flush()
-        _tmp_video.close()
-        video.file.close()
     tmp_video = Path(_tmp_video.name)
     tmp_work = Path(tempfile.mkdtemp())
     try:
+        shutil.copyfileobj(video.file, _tmp_video)
+        _tmp_video.flush()
+        _tmp_video.close()
         extract_audio_step(tmp_video, tmp_work)
     except Exception as exc:  # noqa: BLE001
-        tmp_video.unlink(missing_ok=True)
         shutil.rmtree(tmp_work, ignore_errors=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     finally:
+        video.file.close()
+        _tmp_video.close()  # no-op if already closed
         tmp_video.unlink(missing_ok=True)
 
     wav_path = tmp_work / "audio.wav"

@@ -26,7 +26,7 @@ from gensubtitles.core.transcriber import WhisperTranscriber
 
 router = APIRouter(tags=["steps"])
 
-_LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
+_LOOPBACK_HOSTS = {"127.0.0.1", "::1"}
 
 
 def _require_loopback(request: Request) -> None:
