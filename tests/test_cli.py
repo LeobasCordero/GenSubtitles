@@ -245,3 +245,85 @@ class TestGuiCommand:
 
         assert result.exit_code == 1
         assert "gensubtitles[gui]" in result.output
+
+
+# ── step mode tests ───────────────────────────────────────────────────────────
+
+from collections import namedtuple  # noqa: E402
+from unittest.mock import MagicMock  # noqa: E402
+
+_TR_CLI = namedtuple("TranscriptionResult", ["segments", "language", "duration"])
+
+
+def test_step_extract_success(tmp_path):
+    """--step extract calls extract_audio_step and exits 0."""
+    video = tmp_path / "test.mp4"
+    video.write_bytes(b"fake")
+    work = tmp_path / "work"
+    wav_path = work / "audio.wav"
+    with patch("gensubtitles.core.steps.extract_audio_step", return_value=wav_path) as mock_fn:
+        result = runner.invoke(
+            app, ["--step", "extract", "--input", str(video), "--work-dir", str(work)]
+        )
+    assert result.exit_code == 0, result.output
+    assert "Done:" in result.output
+    mock_fn.assert_called_once()
+
+
+def test_step_transcribe_success(tmp_path):
+    """--step transcribe calls transcribe_step and exits 0."""
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "audio.wav").write_bytes(b"fake")
+    fake_result = _TR_CLI(segments=[MagicMock()], language="en", duration=1.0)
+    with patch("gensubtitles.core.steps.transcribe_step", return_value=fake_result) as mock_fn:
+        result = runner.invoke(app, ["--step", "transcribe", "--work-dir", str(work)])
+    assert result.exit_code == 0, result.output
+    mock_fn.assert_called_once()
+
+
+def test_step_translate_success(tmp_path):
+    """--step translate calls translate_step and exits 0."""
+    work = tmp_path / "work"
+    work.mkdir()
+    with patch("gensubtitles.core.steps.translate_step", return_value=[]) as mock_fn:
+        result = runner.invoke(
+            app, ["--step", "translate", "--work-dir", str(work), "--target-lang", "es"]
+        )
+    assert result.exit_code == 0, result.output
+    mock_fn.assert_called_once()
+
+
+def test_step_write_success(tmp_path):
+    """--step write calls write_srt_step and exits 0."""
+    work = tmp_path / "work"
+    work.mkdir()
+    srt_out = work / "subtitles.srt"
+    with patch("gensubtitles.core.steps.write_srt_step", return_value=srt_out) as mock_fn:
+        result = runner.invoke(app, ["--step", "write", "--work-dir", str(work)])
+    assert result.exit_code == 0, result.output
+    assert "Done:" in result.output
+    mock_fn.assert_called_once()
+
+
+def test_step_requires_work_dir():
+    """--step without --work-dir exits 2 with error."""
+    result = runner.invoke(app, ["--step", "extract"])
+    assert result.exit_code == 2
+    assert "--work-dir" in result.output
+
+
+def test_step_extract_requires_input(tmp_path):
+    """--step extract without --input exits 2."""
+    work = tmp_path / "work"
+    result = runner.invoke(app, ["--step", "extract", "--work-dir", str(work)])
+    assert result.exit_code == 2
+    assert "--input" in result.output
+
+
+def test_step_translate_requires_target_lang(tmp_path):
+    """--step translate without --target-lang exits 2."""
+    work = tmp_path / "work"
+    result = runner.invoke(app, ["--step", "translate", "--work-dir", str(work)])
+    assert result.exit_code == 2
+    assert "--target-lang" in result.output
