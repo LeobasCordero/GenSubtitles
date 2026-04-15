@@ -723,11 +723,11 @@ Plans:
 
 ---
 
-### Phase 999.25: BUG — GUI `s()` TypeError int not callable in `_finish_generate` (BACKLOG)
+### Phase 999.25: BUG — GUI `s()` TypeError int not callable in `_finish_generate` (COMPLETE)
 
 **Goal:** Fix `TypeError: 'int' object is not callable` raised in `_finish_generate` when calling `s("msg_generation_failed_title")` — `s` is shadowed by an integer somewhere before the call.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 0 plans (resolved without a dedicated plan — fixed as side effect of 999.24)
 
 Error context:
 ```
@@ -736,8 +736,7 @@ File "gensubtitles\gui\main.py", line 1143, in _finish_generate
 TypeError: 'int' object is not callable
 ```
 
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+**Resolution:** Fixed during Phase 999.24 (localisation refactor). `_finish_generate` originally used `s = elapsed % 60` which shadowed the `s()` locale function. The variable was renamed to `secs` in the current codebase — verified 2026-04-15.
 
 ---
 
@@ -781,4 +780,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-15 — Backlog items 999.26 (console log display) and 999.27 (stepper mode for pipeline steps) added*
+*Last updated: 2026-04-15 — Phase 999.25 marked COMPLETE (bug already fixed in 999.24 refactor); backlog items 999.26 and 999.27 added*
