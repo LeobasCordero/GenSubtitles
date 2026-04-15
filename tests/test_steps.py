@@ -199,6 +199,15 @@ def test_translate_step_missing_language_field(tmp_path):
         translate_step(tmp_path, target_lang="es")
 
 
+def test_translate_step_empty_language_field(tmp_path):
+    """translate_step raises ValueError when transcription.json has an empty language field."""
+    path = tmp_path / TRANSCRIPTION_FILENAME
+    path.write_text(json.dumps({"language": "", "segments": [{"start": 0, "end": 1, "text": "Hi"}]}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="language"):
+        translate_step(tmp_path, target_lang="es")
+
+
 def test_translate_step_flat_list_raises(tmp_path):
     """translate_step raises ValueError for legacy flat-list transcription.json format."""
     path = tmp_path / TRANSCRIPTION_FILENAME

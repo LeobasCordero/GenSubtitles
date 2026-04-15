@@ -287,14 +287,13 @@ async def post_subtitles_extract(
     try:
         shutil.copyfileobj(video.file, _tmp_video)
         _tmp_video.flush()
-        _tmp_video.close()
         extract_audio_step(tmp_video, tmp_work)
     except Exception as exc:  # noqa: BLE001
         shutil.rmtree(tmp_work, ignore_errors=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     finally:
         video.file.close()
-        _tmp_video.close()  # no-op if already closed
+        _tmp_video.close()
         tmp_video.unlink(missing_ok=True)
 
     wav_path = tmp_work / "audio.wav"
