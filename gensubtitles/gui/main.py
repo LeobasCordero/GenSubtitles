@@ -1103,8 +1103,8 @@ class GenSubtitlesApp(ctk.CTk):
         elapsed = int(time.monotonic() - self._elapsed_start)
         h = elapsed // 3600
         m = (elapsed % 3600) // 60
-        s = elapsed % 60
-        self._elapsed_label.configure(text=f"{h:02d}:{m:02d}:{s:02d}")
+        secs = elapsed % 60
+        self._elapsed_label.configure(text=f"{h:02d}:{m:02d}:{secs:02d}")
 
         if self._elapsed_timer is not None:
             self.after_cancel(self._elapsed_timer)
