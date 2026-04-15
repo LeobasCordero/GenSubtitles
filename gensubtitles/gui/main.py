@@ -152,6 +152,16 @@ class GenSubtitlesApp(ctk.CTk):
         self._server_ready = False
         self._os_listener_active = False  # guard for the darkdetect listener thread
 
+        # Stepper mode state
+        self._work_dir_var = ctk.StringVar()
+        self._step_states: dict[str, str] = {
+            "extract": "pending",
+            "transcribe": "pending",
+            "translate": "pending",
+            "write": "pending",
+        }
+        self._stepper_refresh_id: str | None = None  # after() cancel token
+
         self._apply_startup_settings()
         self._build_ui()
         self._apply_startup_theme()
@@ -311,11 +321,254 @@ class GenSubtitlesApp(ctk.CTk):
         for var in (self._input_var, self._output_var, self._target_lang_var):
             var.trace_add("write", lambda *_: self._update_clear_state())
 
+        self._build_stepper_section()
+
         # Build Translate tab
         self._build_translate_tab()
         # Build Settings panel and menu bar
         self._build_settings_panel()
         self._build_menu_bar()
+
+    def _build_stepper_section(self) -> None:
+        """Build rows 12-15: work dir picker + stepper widget + clear-work button."""
+        # ── Row 12: Section separator label ───────────────────────────────────
+        self._lbl_stepper_section = ctk.CTkLabel(
+            self._frame, text="Step-by-step mode",
+            font=font("body"),
+        )
+        apply_secondary_label_style(self._lbl_stepper_section)
+        self._lbl_stepper_section.grid(
+            row=12, column=0, columnspan=3, sticky="w", pady=(24, 4)
+        )
+
+        # ── Row 13: Work directory picker ─────────────────────────────────────
+        self._lbl_work_dir = ctk.CTkLabel(self._frame, text="Work directory:")
+        self._lbl_work_dir.grid(row=13, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
+        self._entry_work_dir = ctk.CTkEntry(self._frame, textvariable=self._work_dir_var)
+        apply_entry_style(self._entry_work_dir)
+        self._entry_work_dir.grid(row=13, column=1, sticky="ew", pady=(0, 8))
+        self._btn_browse_work_dir = ctk.CTkButton(
+            self._frame, text="Browse…", width=BTN_WIDTH_BROWSE,
+            command=self._browse_work_dir,
+        )
+        self._btn_browse_work_dir.grid(row=13, column=2, padx=(8, 0), pady=(0, 8))
+
+        # ── Row 14: Stepper frame ─────────────────────────────────────────────
+        self._stepper_frame = ctk.CTkFrame(self._frame, fg_color=p("surface"))
+        self._stepper_frame.grid(row=14, column=0, columnspan=3, sticky="ew", pady=(0, 8))
+        self._stepper_frame.columnconfigure((0, 1, 2, 3), weight=1)
+
+        _stage_defs = [
+            ("extract",    "1. Extract Audio"),
+            ("transcribe", "2. Transcribe"),
+            ("translate",  "3. Translate"),
+            ("write",      "4. Write SRT"),
+        ]
+        _btn_labels = {
+            "extract":    "Extract Audio",
+            "transcribe": "Transcribe",
+            "translate":  "Translate",
+            "write":      "Write SRT",
+        }
+        _btn_commands = {
+            "extract":    self._on_step_extract,
+            "transcribe": self._on_step_transcribe,
+            "translate":  self._on_step_translate,
+            "write":      self._on_step_write,
+        }
+
+        self._step_status_labels: dict[str, ctk.CTkLabel] = {}
+        self._step_buttons: dict[str, ctk.CTkButton] = {}
+
+        for col, (stage_key, stage_name) in enumerate(_stage_defs):
+            sub = ctk.CTkFrame(self._stepper_frame, fg_color="transparent")
+            sub.grid(row=0, column=col, padx=6, pady=8, sticky="nsew")
+            sub.columnconfigure(0, weight=1)
+
+            ctk.CTkLabel(sub, text=stage_name, font=font("body")).grid(
+                row=0, column=0, sticky="ew", pady=(0, 2)
+            )
+            status_lbl = ctk.CTkLabel(sub, text="—", font=font("body"))
+            apply_secondary_label_style(status_lbl)
+            status_lbl.grid(row=1, column=0, sticky="ew", pady=(0, 6))
+            self._step_status_labels[stage_key] = status_lbl
+
+            btn = ctk.CTkButton(
+                sub, text=_btn_labels[stage_key],
+                command=_btn_commands[stage_key],
+                state="disabled",
+                height=BTN_HEIGHT_MINI,
+                text_color_disabled=("#757575", "#9E9E9E"),
+            )
+            apply_secondary_btn_style(btn)
+            btn.grid(row=2, column=0, sticky="ew")
+            self._step_buttons[stage_key] = btn
+
+        # ── Row 15: Clear Work Files button ───────────────────────────────────
+        self._btn_clear_work = ctk.CTkButton(
+            self._frame, text="Clear Work Files",
+            command=self._on_clear_work,
+            state="disabled",
+            height=BTN_HEIGHT_PRIMARY,
+            text_color_disabled=("#757575", "#9E9E9E"),
+        )
+        apply_secondary_btn_style(self._btn_clear_work)
+        self._btn_clear_work.grid(row=15, column=0, columnspan=3, pady=(4, 8), sticky="ew")
+
+        # Start polling when work dir changes
+        self._work_dir_var.trace_add("write", lambda *_: self._refresh_stepper_state())
+        self._schedule_stepper_refresh()
+
+    # ------------------------------------------------------------------
+    # Stepper mode — browse, polling, step execution
+    # ------------------------------------------------------------------
+
+    def _browse_work_dir(self) -> None:
+        from tkinter import filedialog  # noqa: PLC0415
+        path = filedialog.askdirectory(title="Select work directory")
+        if path:
+            self._work_dir_var.set(path)
+
+    def _schedule_stepper_refresh(self) -> None:
+        """Schedule periodic stepper state refresh every 2 seconds."""
+        if not self._closing:
+            self._stepper_refresh_id = self.after(2000, self._do_stepper_refresh)
+
+    def _do_stepper_refresh(self) -> None:
+        if self._closing:
+            return
+        self._refresh_stepper_state()
+        self._schedule_stepper_refresh()
+
+    def _refresh_stepper_state(self) -> None:
+        """Check work_dir artifact existence and update step button/label states."""
+        from gensubtitles.core.steps import (  # noqa: PLC0415
+            AUDIO_FILENAME, TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME,
+        )
+        work_dir_str = self._work_dir_var.get().strip()
+        if not work_dir_str:
+            for key in ("extract", "transcribe", "translate", "write"):
+                self._step_buttons[key].configure(state="disabled")
+                if self._step_states[key] not in ("running", "done", "error"):
+                    self._step_status_labels[key].configure(text="—")
+            self._btn_clear_work.configure(state="disabled")
+            return
+
+        work_dir = Path(work_dir_str)
+        has_video = bool(self._input_var.get().strip())
+        has_audio = (work_dir / AUDIO_FILENAME).is_file()
+        has_transcription = (work_dir / TRANSCRIPTION_FILENAME).is_file()
+        has_translation = (work_dir / TRANSLATION_FILENAME).is_file()
+        has_target_lang = self._target_lang_var.get() not in ("No target", "")
+
+        def _btn_state(step_key: str, prerequisite: bool) -> str:
+            if self._step_states[step_key] == "running":
+                return "disabled"
+            return "normal" if prerequisite else "disabled"
+
+        self._step_buttons["extract"].configure(state=_btn_state("extract", has_video and self._server_ready))
+        self._step_buttons["transcribe"].configure(state=_btn_state("transcribe", has_audio))
+        self._step_buttons["translate"].configure(state=_btn_state("translate", has_transcription and has_target_lang))
+        self._step_buttons["write"].configure(state=_btn_state("write", has_transcription or has_translation))
+
+        if self._step_states["translate"] == "pending" and not has_target_lang:
+            self._step_status_labels["translate"].configure(text="\u2298 Skipped")
+        elif self._step_states["translate"] == "pending":
+            self._step_status_labels["translate"].configure(text="\u2014")
+
+        any_artifact = has_audio or has_transcription or has_translation
+        self._btn_clear_work.configure(state="normal" if any_artifact else "disabled")
+
+    def _run_step_in_bg(self, step_key: str, api_endpoint: str, payload: dict) -> None:
+        """Execute a step API call in a background thread; update stepper state on completion."""
+        self._step_states[step_key] = "running"
+        self._step_status_labels[step_key].configure(text="\u23f3 Running\u2026")
+        self._step_buttons[step_key].configure(state="disabled")
+
+        def _worker() -> None:
+            try:
+                import requests as req  # noqa: PLC0415
+                resp = req.post(f"{server.BASE_URL}{api_endpoint}", json=payload, timeout=600)
+                if resp.status_code == 200:
+                    self.after(0, self._on_step_success, step_key)
+                else:
+                    try:
+                        detail = resp.json().get("detail", f"HTTP {resp.status_code}")
+                    except Exception:  # noqa: BLE001
+                        detail = f"HTTP {resp.status_code}"
+                    self.after(0, self._on_step_error, step_key, detail)
+            except Exception as exc:  # noqa: BLE001
+                self.after(0, self._on_step_error, step_key, str(exc))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_step_success(self, step_key: str) -> None:
+        self._step_states[step_key] = "done"
+        self._step_status_labels[step_key].configure(text="\u2713 Done")
+        self._refresh_stepper_state()
+
+    def _on_step_error(self, step_key: str, detail: str) -> None:
+        self._step_states[step_key] = "error"
+        self._step_status_labels[step_key].configure(text="\u2717 Error")
+        self._stage_label.configure(text=f"Step error ({step_key}): {str(detail)[:120]}")
+        self._refresh_stepper_state()
+
+    def _on_step_extract(self) -> None:
+        video = self._input_var.get().strip()
+        work = self._work_dir_var.get().strip()
+        if not video or not work:
+            return
+        self._run_step_in_bg("extract", "/steps/extract", {"video_path": video, "work_dir": work})
+
+    def _on_step_transcribe(self) -> None:
+        work = self._work_dir_var.get().strip()
+        if not work:
+            return
+        src = self._source_lang_var.get()
+        src_code = None if src == "Auto-detect" else _label_to_code(src)
+        self._run_step_in_bg("transcribe", "/steps/transcribe", {
+            "work_dir": work,
+            "source_lang": src_code,
+            "device": "auto",
+        })
+
+    def _on_step_translate(self) -> None:
+        work = self._work_dir_var.get().strip()
+        tgt = self._target_lang_var.get()
+        if not work or tgt in ("No target", ""):
+            return
+        tgt_code = _label_to_code(tgt)
+        eng = self._engine_var.get().lower()
+        self._run_step_in_bg("translate", "/steps/translate", {
+            "work_dir": work,
+            "target_lang": tgt_code,
+            "engine": eng,
+        })
+
+    def _on_step_write(self) -> None:
+        work = self._work_dir_var.get().strip()
+        if not work:
+            return
+        from gensubtitles.core.steps import SRT_FILENAME  # noqa: PLC0415
+        output = self._output_var.get().strip()
+        srt_out = output if output else str(Path(work) / SRT_FILENAME)
+        self._run_step_in_bg("write", "/steps/write", {"work_dir": work, "output_path": srt_out})
+
+    def _on_clear_work(self) -> None:
+        """Delete intermediate artifacts from work_dir; reset stepper state."""
+        from gensubtitles.core.steps import (  # noqa: PLC0415
+            AUDIO_FILENAME, TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME,
+        )
+        work_dir_str = self._work_dir_var.get().strip()
+        if not work_dir_str:
+            return
+        work_dir = Path(work_dir_str)
+        for fname in (AUDIO_FILENAME, TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME):
+            (work_dir / fname).unlink(missing_ok=True)
+        for key in self._step_states:
+            self._step_states[key] = "pending"
+            self._step_status_labels[key].configure(text="\u2014")
+        self._refresh_stepper_state()
 
     def _build_menu_bar(self) -> None:
         import tkinter as tk  # noqa: PLC0415
@@ -1941,6 +2194,9 @@ class GenSubtitlesApp(ctk.CTk):
 
     def on_closing(self) -> None:
         self._closing = True
+        if self._stepper_refresh_id is not None:
+            self.after_cancel(self._stepper_refresh_id)
+            self._stepper_refresh_id = None
         self._stop_os_theme_listener()
         server.stop()
         self.destroy()

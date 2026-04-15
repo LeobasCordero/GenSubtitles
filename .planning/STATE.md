@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Milestone complete
-last_updated: "2026-04-14T17:54:44.106Z"
+status: Phase 999.27 Complete
+last_updated: "2026-04-15T00:00:00.000Z"
 progress:
-  total_phases: 34
-  completed_phases: 29
-  total_plans: 58
-  completed_plans: 58
+  total_phases: 37
+  completed_phases: 31
+  total_plans: 64
+  completed_plans: 64
 ---
 
 # GenSubtitles — Project State
@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1.0
-- **Active Phase:** 999.21 — GUI Refactor Palette Colors — COMPLETE
-- **Last action:** Phase 999.21 complete — extracted `_PALETTES`/`_p()`/`_FONT_SIZES`/`_FONT_FAMILIES`/`_BOLD_ROLES`/`_font()` from `gui/main.py` into new `gui/theme.py`; renamed all call sites to public `p()` and `font()`. 165 tests passing, 0 new failures.
+- **Active Phase:** 999.27 — Stepper Mode for Pipeline Steps — COMPLETE
+- **Last action:** Phase 999.27 complete — added step-by-step pipeline execution across CLI (`--step`/`--work-dir`), REST API (upload/download + path-based `/steps/*` endpoints), and GUI (stepper widget with work dir picker, 4-stage buttons, polling, clear-work). 14 + 7 + 5 + 8 new tests (all pass). 199 tests passing.
 
 ## Milestone Progress
 
@@ -41,6 +41,7 @@ progress:
 | 999.11 | Subtitle Silence VAD Quality | ✅ Complete (2/2 plans) |
 | 999.12 | Translation Quality — Context-Aware & Engine Upgrade | ✅ Complete (4/4 plans, completed 2026-04-12) |
 | refactor/ui | GUI Theme System — OS detection, dual-mode palettes, typography, server startup | ✅ Complete (untracked — merged PR #22, 2026-04-12) |
+| 999.27 | Stepper Mode for Pipeline Steps | ✅ Complete (5/5 plans, completed 2026-04-15) |
 
 ## Key Decisions Log
 

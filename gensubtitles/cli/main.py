@@ -75,11 +75,87 @@ def generate(
         help="Translation engine: argos (offline default) / deepl / libretranslate.",
         click_type=click.Choice(["argos", "deepl", "libretranslate"], case_sensitive=False),
     ),
+    step: Optional[str] = typer.Option(
+        None,
+        "--step",
+        help="Run a single pipeline stage: extract | transcribe | translate | write. Requires --work-dir.",
+        click_type=click.Choice(["extract", "transcribe", "translate", "write"], case_sensitive=False),
+    ),
+    work_dir: Optional[Path] = typer.Option(
+        None,
+        "--work-dir",
+        help="Directory for intermediate artefacts (audio.wav, transcription.json, etc.) when using --step.",
+    ),
 ) -> None:
     """Generate subtitles from a video file."""
     # If a subcommand (e.g. 'serve') is being invoked, skip generate logic entirely.
     if ctx.invoked_subcommand is not None:
         return
+
+    # ── step mode dispatch ────────────────────────────────────────────────────
+    if step is not None:
+        if work_dir is None:
+            typer.echo("Error: --work-dir is required when using --step.", err=True)
+            raise typer.Exit(code=2)
+
+        work_dir.mkdir(parents=True, exist_ok=True)
+
+        from gensubtitles.core.steps import (  # noqa: PLC0415
+            extract_audio_step,
+            transcribe_step,
+            translate_step,
+            write_srt_step,
+        )
+
+        def _step_progress(label: str, current: int, total: int) -> None:
+            typer.echo(f"[{current}/{total}] {label}...")
+
+        try:
+            if step == "extract":
+                if video_path is None:
+                    typer.echo("Error: --input is required for --step extract.", err=True)
+                    raise typer.Exit(code=2)
+                if not video_path.is_file():
+                    typer.echo(f"Error: Input file not found: {video_path}", err=True)
+                    raise typer.Exit(code=1)
+                wav = extract_audio_step(video_path, work_dir, progress_callback=_step_progress)
+                typer.echo(f"Done: {wav}")
+
+            elif step == "transcribe":
+                result = transcribe_step(
+                    work_dir,
+                    model_size=model,
+                    source_lang=source_lang,
+                    device=device,
+                    progress_callback=_step_progress,
+                )
+                typer.echo(
+                    f"Done: {work_dir / 'transcription.json'} "
+                    f"({len(result.segments)} segments, lang={result.language})"
+                )
+
+            elif step == "translate":
+                if target_lang is None:
+                    typer.echo("Error: --target-lang is required for --step translate.", err=True)
+                    raise typer.Exit(code=2)
+                translate_step(work_dir, target_lang=target_lang, engine=engine, progress_callback=_step_progress)
+                typer.echo(f"Done: {work_dir / 'translation.json'}")
+
+            elif step == "write":
+                srt_out = output if output is not None else (work_dir / "subtitles.srt")
+                write_srt_step(work_dir, srt_out, progress_callback=_step_progress)
+                typer.echo(f"Done: {srt_out}")
+
+            raise typer.Exit(code=0)
+
+        except typer.Exit:
+            raise
+        except FileNotFoundError as exc:
+            typer.echo(f"Error: {exc}", err=True)
+            raise typer.Exit(code=1)
+        except Exception as exc:  # noqa: BLE001
+            typer.echo(f"Error: {exc}", err=True)
+            raise typer.Exit(code=1)
 
     # Validate --input existence before importing the pipeline
     if video_path is None:
