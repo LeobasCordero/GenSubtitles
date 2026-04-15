@@ -741,5 +741,44 @@ Plans:
 
 ---
 
+### Phase 999.26: Console Log Display for User Tracking (BACKLOG)
+
+**Goal:** Display a real-time console/log panel so users can track exactly what the pipeline is doing at each step — model loading, audio extraction, transcription progress, translation, and SRT writing — instead of watching a silent progress bar.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Users have no visibility into what's happening during long runs (e.g. large model download, slow transcription)
+- Each pipeline stage should emit a timestamped log line (e.g. `[00:03] Transcribing audio...`, `[00:47] Translating 128 segments...`)
+- GUI: scrollable read-only text area or log panel below the progress bar that streams messages in real time
+- CLI: `--verbose` flag (or always-on) that prints stage banners to stdout
+- API: could surface as SSE events (ties into Phase 999.14 async/SSE work)
+- Backend: a logging callback/hook injected into `pipeline.py` stages so the core doesn't depend on any UI layer
+
+---
+
+### Phase 999.27: Stepper Mode for Pipeline Steps (BACKLOG)
+
+**Goal:** Add a step-by-step execution mode so users can run one pipeline stage at a time (extract audio → transcribe → translate → write SRT), with the option to run the full pipeline in one shot (existing behaviour) as the default. Each step saves its output so subsequent steps can resume without repeating work already done.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Motivation: a failure in the last step (e.g. translation crash) currently discards all prior work; step mode lets the user retry from the failing stage
+- Default first-screen option: "Generate subtitles (all steps)" — preserves current one-click UX
+- Step-by-step mode exposes individual buttons: "1. Extract Audio", "2. Transcribe", "3. Translate", "4. Write SRT"
+- Each step should output an intermediate artefact (WAV, JSON/segments, translated segments, SRT) that the next step reads as input
+- GUI: a stepper widget (horizontal step indicator) showing completed/current/pending stages; each stage activates its action button only when its prerequisite output exists
+- CLI: `--step extract|transcribe|translate|write` flag to run a single stage; `--input-from` flag to point at a prior stage's output
+- Ties into Phase 999.26 (console log) — each step completion is a natural log event
+
+---
+
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-14 — Backlog item 999.25 added (GUI bug: s() TypeError int not callable in _finish_generate)*
+*Last updated: 2026-04-15 — Backlog items 999.26 (console log display) and 999.27 (stepper mode for pipeline steps) added*
