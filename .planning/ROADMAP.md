@@ -763,10 +763,10 @@ Plans:
 
 **Goal:** Add a step-by-step execution mode so users can run one pipeline stage at a time (extract audio → transcribe → translate → write SRT), with the option to run the full pipeline in one shot (existing behaviour) as the default. Each step saves its output so subsequent steps can resume without repeating work already done.
 **Requirements:** TBD
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 
 Plans:
-- [ ] 999.27-01-PLAN.md — Core step functions + JSON serialization (gensubtitles/core/steps.py + tests)
+- [x] 999.27-01-PLAN.md — Core step functions + JSON serialization (gensubtitles/core/steps.py + tests)
 - [ ] 999.27-02-PLAN.md — CLI step mode (--step and --work-dir flags in cli/main.py)
 - [ ] 999.27-03-PLAN.md — API upload/download step endpoints (POST /subtitles/extract|transcribe|translate|write)
 - [ ] 999.27-04-PLAN.md — API path-based step endpoints for GUI (POST /steps/*, new api/routers/steps.py)
