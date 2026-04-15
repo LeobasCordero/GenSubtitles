@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from gensubtitles.core.transcriber import WhisperTranscriber
+from gensubtitles.api.routers.steps import router as steps_router
 from gensubtitles.api.routers.subtitles import router as subtitles_router
 
 logger = logging.getLogger(__name__)
@@ -203,6 +204,7 @@ async def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResp
 
 # ── routers ───────────────────────────────────────────────────────────────────
 app.include_router(subtitles_router)
+app.include_router(steps_router)
 
 
 # ── status endpoint ───────────────────────────────────────────────────────────
