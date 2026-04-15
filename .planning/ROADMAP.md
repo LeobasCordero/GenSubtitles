@@ -759,18 +759,18 @@ Plans:
 
 ---
 
-### Phase 999.27: Stepper Mode for Pipeline Steps (BACKLOG)
+### Phase 999.27: Stepper Mode for Pipeline Steps (COMPLETE)
 
 **Goal:** Add a step-by-step execution mode so users can run one pipeline stage at a time (extract audio → transcribe → translate → write SRT), with the option to run the full pipeline in one shot (existing behaviour) as the default. Each step saves its output so subsequent steps can resume without repeating work already done.
 **Requirements:** TBD
-**Plans:** 1/5 plans executed
+**Plans:** 5/5 plans executed
 
 Plans:
 - [x] 999.27-01-PLAN.md — Core step functions + JSON serialization (gensubtitles/core/steps.py + tests)
-- [ ] 999.27-02-PLAN.md — CLI step mode (--step and --work-dir flags in cli/main.py)
-- [ ] 999.27-03-PLAN.md — API upload/download step endpoints (POST /subtitles/extract|transcribe|translate|write)
-- [ ] 999.27-04-PLAN.md — API path-based step endpoints for GUI (POST /steps/*, new api/routers/steps.py)
-- [ ] 999.27-05-PLAN.md — GUI stepper widget (work dir picker + 4-stage stepper + step execution + clear-work)
+- [x] 999.27-02-PLAN.md — CLI step mode (--step and --work-dir flags in cli/main.py)
+- [x] 999.27-03-PLAN.md — API upload/download step endpoints (POST /subtitles/extract|transcribe|translate|write)
+- [x] 999.27-04-PLAN.md — API path-based step endpoints for GUI (POST /steps/*, new api/routers/steps.py)
+- [x] 999.27-05-PLAN.md — GUI stepper widget (work dir picker + 4-stage stepper + step execution + clear-work)
 
 **Context captured:**
 - Motivation: a failure in the last step (e.g. translation crash) currently discards all prior work; step mode lets the user retry from the failing stage
@@ -784,4 +784,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-15 — Phase 999.25 marked COMPLETE (bug already fixed in 999.24 refactor); backlog items 999.26 and 999.27 added*
+*Last updated: 2026-04-15 — Phase 999.25 marked COMPLETE (bug already fixed in 999.24 refactor); backlog items 999.26 and 999.27 added; Phase 999.27 COMPLETE (all 5 plans executed 2026-04-15)*
