@@ -130,6 +130,17 @@ def test_extract_audio_step_named_with_stem(tmp_path):
     assert result == tmp_path / "My_Video_2024.wav"
 
 
+def test_extract_audio_step_uses_default_name_when_sanitized_stem_empty(tmp_path):
+    from gensubtitles.core.steps import extract_audio_step
+
+    video = tmp_path / "!!!.mp4"
+    video.write_bytes(b"fake")
+    with patch("gensubtitles.core.audio.extract_audio"):
+        result = extract_audio_step(video, tmp_path)
+    assert result.name == AUDIO_FILENAME
+    assert result == tmp_path / AUDIO_FILENAME
+
+
 def test_extract_audio_step_missing_video(tmp_path):
     from gensubtitles.core.steps import extract_audio_step
 
@@ -157,6 +168,17 @@ def test_transcribe_step_success(tmp_path):
 
 
 def test_transcribe_step_no_wav(tmp_path):
+    with pytest.raises(FileNotFoundError, match="No .wav file found"):
+        transcribe_step(tmp_path, transcriber=MagicMock())
+
+
+def test_transcribe_step_missing_work_dir(tmp_path):
+    with pytest.raises(FileNotFoundError, match="work_dir does not exist or is not a directory"):
+        transcribe_step(tmp_path / "missing", transcriber=MagicMock())
+
+
+def test_transcribe_step_ignores_wav_directories(tmp_path):
+    (tmp_path / "folder.wav").mkdir()
     with pytest.raises(FileNotFoundError, match="No .wav file found"):
         transcribe_step(tmp_path, transcriber=MagicMock())
 

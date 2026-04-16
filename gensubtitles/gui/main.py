@@ -571,38 +571,38 @@ class GenSubtitlesApp(ctk.CTk):
         })
 
     def _on_step_transcribe(self) -> None:
-        work = self._work_dir_var.get().strip()
-        if not work:
+        work = self._get_effective_work_dir()
+        if work is None:
             return
         src = self._source_lang_var.get()
         src_code = None if src == "Auto-detect" else _label_to_code(src)
         self._run_step_in_bg("transcribe", "/steps/transcribe", {
-            "work_dir": work,
+            "work_dir": str(work),
             "source_lang": src_code,
             "device": "auto",
         })
 
     def _on_step_translate(self) -> None:
-        work = self._work_dir_var.get().strip()
+        work = self._get_effective_work_dir()
         tgt = self._target_lang_var.get()
-        if not work or tgt in ("No target", ""):
+        if work is None or tgt in ("No target", ""):
             return
         tgt_code = _label_to_code(tgt)
         eng = self._engine_var.get().lower()
         self._run_step_in_bg("translate", "/steps/translate", {
-            "work_dir": work,
+            "work_dir": str(work),
             "target_lang": tgt_code,
             "engine": eng,
         })
 
     def _on_step_write(self) -> None:
-        work = self._work_dir_var.get().strip()
-        if not work:
+        work = self._get_effective_work_dir()
+        if work is None:
             return
         from gensubtitles.core.steps import SRT_FILENAME  # noqa: PLC0415
         output = self._output_var.get().strip()
-        srt_out = output if output else str(Path(work) / SRT_FILENAME)
-        self._run_step_in_bg("write", "/steps/write", {"work_dir": work, "output_path": srt_out})
+        srt_out = output if output else str(work / SRT_FILENAME)
+        self._run_step_in_bg("write", "/steps/write", {"work_dir": str(work), "output_path": srt_out})
 
     def _on_clear_work(self) -> None:
         """Delete intermediate artifacts from work_dir; reset stepper state."""
@@ -614,7 +614,8 @@ class GenSubtitlesApp(ctk.CTk):
             return
         # Delete stem-named WAV (name is variable — glob all *.wav)
         for wav in work_dir.glob("*.wav"):
-            wav.unlink(missing_ok=True)
+            if wav.is_file():
+                wav.unlink(missing_ok=True)
         for fname in (TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME):
             (work_dir / fname).unlink(missing_ok=True)
         for key in self._step_states:
