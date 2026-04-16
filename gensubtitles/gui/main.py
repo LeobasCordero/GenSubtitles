@@ -499,7 +499,7 @@ class GenSubtitlesApp(ctk.CTk):
             return
 
         has_video = bool(self._input_var.get().strip())
-        has_audio = any(work_dir.glob("*.wav")) if work_dir.is_dir() else False
+        has_audio = any(p.is_file() for p in work_dir.glob("*.wav")) if work_dir.is_dir() else False
         has_transcription = (work_dir / TRANSCRIPTION_FILENAME).is_file()
         has_translation = (work_dir / TRANSLATION_FILENAME).is_file()
         has_target_lang = self._target_lang_var.get() not in ("No target", "")

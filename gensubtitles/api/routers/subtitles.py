@@ -278,9 +278,11 @@ async def post_subtitles_extract(
 
     Stateless — no server-side state retained.
     """
-    from gensubtitles.core.steps import extract_audio_step  # noqa: PLC0415
+    from gensubtitles.core.steps import AUDIO_FILENAME, extract_audio_step, sanitize_stem  # noqa: PLC0415
 
     suffix = Path(video.filename or "upload").suffix.lower() or ".mp4"
+    original_stem = sanitize_stem(Path(video.filename or "").stem)
+    download_name = f"{original_stem}.wav" if original_stem else AUDIO_FILENAME
     _tmp_video = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     tmp_video = Path(_tmp_video.name)
     tmp_work = Path(tempfile.mkdtemp())
@@ -297,7 +299,7 @@ async def post_subtitles_extract(
         tmp_video.unlink(missing_ok=True)
 
     background_tasks.add_task(shutil.rmtree, tmp_work, True)
-    return FileResponse(wav_path, media_type="audio/wav", filename=wav_path.name)
+    return FileResponse(wav_path, media_type="audio/wav", filename=download_name)
 
 
 @router.post("/subtitles/transcribe", summary="Step 2: Transcribe audio to segments JSON")

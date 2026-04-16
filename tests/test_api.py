@@ -422,6 +422,7 @@ def test_post_subtitles_extract_success(tmp_path):
             )
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("audio/wav")
+    assert "test.wav" in resp.headers.get("content-disposition", "")
 
 
 def test_post_subtitles_transcribe_success():

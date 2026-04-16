@@ -18,7 +18,6 @@ from gensubtitles.core.steps import (
     AUDIO_FILENAME,
     TRANSCRIPTION_FILENAME,
     TRANSLATION_FILENAME,
-    sanitize_stem,
     segments_from_json,
     segments_to_json,
     transcribe_step,
