@@ -130,6 +130,9 @@ def extract_audio_step(
 ) -> Path:
     """Stage 1: Extract audio from video, write <sanitized_stem>.wav to work_dir.
 
+    If sanitizing ``video_path.stem`` yields an empty string, falls back to
+    :data:`AUDIO_FILENAME` (``audio.wav``).
+
     Args:
         video_path: Path to input video file.
         work_dir:   Directory where audio output will be written.

@@ -15,6 +15,7 @@ import platform
 import subprocess
 import threading
 import time
+from hashlib import sha1
 from pathlib import Path
 
 import customtkinter as ctk
@@ -453,9 +454,11 @@ class GenSubtitlesApp(ctk.CTk):
         """Return the effective work_dir path for the current state.
 
         When the user selected a parent folder via Browse AND a video is loaded,
-        returns parent / sanitized_stem (the subfolder that will hold this
-        video's artifacts). If the user typed a path manually, returns that
-        path as-is (power-user mode, per D-05).
+        returns parent / subfolder (the folder that will hold this video's
+        artifacts). The subfolder uses the video's sanitized stem, or a
+        deterministic hash-based fallback when sanitization is empty.
+        If the user typed a path manually, returns that path as-is (power-user
+        mode, per D-05).
 
         Returns None if the work-dir entry is empty.
         """
@@ -468,9 +471,9 @@ class GenSubtitlesApp(ctk.CTk):
         if self._work_dir_from_browse:
             video_str = self._input_var.get().strip()
             if video_str:
-                stem = sanitize_stem(Path(video_str).stem)
-                if stem:
-                    return work / stem
+                raw_stem = Path(video_str).stem
+                stem = sanitize_stem(raw_stem) or f"video-{sha1(raw_stem.encode('utf-8')).hexdigest()[:8]}"
+                return work / stem
         return work
 
     def _schedule_stepper_refresh(self) -> None:
