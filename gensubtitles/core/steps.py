@@ -14,8 +14,8 @@ Artefact filenames (constants exported for use by CLI, API, GUI):
     SRT_FILENAME           = "subtitles.srt"
 
 Step functions:
-    extract_audio_step()   — video → audio.wav
-    transcribe_step()      — audio.wav → transcription.json
+    extract_audio_step()   — video → <sanitized_video_stem>.wav (fallback: audio.wav)
+    transcribe_step()      — single *.wav in work_dir → transcription.json
     translate_step()       — transcription.json → translation.json
     write_srt_step()       — translation.json (or transcription.json) → .srt
 
@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from collections import namedtuple
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
@@ -42,6 +43,26 @@ AUDIO_FILENAME: str = "audio.wav"
 TRANSCRIPTION_FILENAME: str = "transcription.json"
 TRANSLATION_FILENAME: str = "translation.json"
 SRT_FILENAME: str = "subtitles.srt"
+
+# ── filename helpers ─────────────────────────────────────────────────────────
+
+def sanitize_stem(name: str) -> str:
+    """Sanitize a filename stem for use as a work-dir subfolder or audio filename.
+
+    Replaces spaces with underscores; strips any character that is not
+    alphanumeric, a hyphen, or an underscore.
+
+    Examples::
+
+        sanitize_stem("My Video (2024)")  # → "My_Video_2024"
+        sanitize_stem("hello world")      # → "hello_world"
+        sanitize_stem("my-video_file")    # → "my-video_file"
+    """
+    name = name.replace(" ", "_")
+    name = re.sub(r"[^\w\-]", "", name)
+    # \w is Unicode-aware in Python; combined with \- keeps letters/digits/_/-.
+    return name
+
 
 # ── internal deserialization namedtuple ───────────────────────────────────────
 # Duck-typed: write_srt() and translate_segments() only need .start, .end, .text
@@ -107,15 +128,18 @@ def extract_audio_step(
     work_dir: str | Path,
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
 ) -> Path:
-    """Stage 1: Extract audio from video, write audio.wav to work_dir.
+    """Stage 1: Extract audio from video, write <sanitized_stem>.wav to work_dir.
+
+    If sanitizing ``video_path.stem`` yields an empty string, falls back to
+    :data:`AUDIO_FILENAME` (``audio.wav``).
 
     Args:
         video_path: Path to input video file.
-        work_dir:   Directory where audio.wav will be written.
+        work_dir:   Directory where audio output will be written.
         progress_callback: Optional callable(label, current, total).
 
     Returns:
-        Path to the written audio.wav file.
+        Path to the written WAV file.
 
     Raises:
         FileNotFoundError: If video_path does not exist.
@@ -130,7 +154,9 @@ def extract_audio_step(
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
     work_dir.mkdir(parents=True, exist_ok=True)
-    wav_path = work_dir / AUDIO_FILENAME
+    stem = sanitize_stem(video_path.stem)
+    audio_name = f"{stem}.wav" if stem else AUDIO_FILENAME
+    wav_path = work_dir / audio_name
 
     if progress_callback is not None:
         progress_callback("Extracting audio", 1, 4)
@@ -148,14 +174,14 @@ def transcribe_step(
     device: str = "auto",
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
 ) -> "TranscriptionResult":
-    """Stage 2: Transcribe audio.wav, write transcription.json to work_dir.
+    """Stage 2: Transcribe one *.wav in work_dir, write transcription.json.
 
     The transcription JSON is written in dict format::
 
         {"language": "en", "duration": 12.5, "segments": [{start, end, text}, ...]}
 
     Args:
-        work_dir:     Directory containing audio.wav; transcription.json written here.
+        work_dir:     Existing directory containing exactly one .wav file.
         transcriber:  Pre-loaded WhisperTranscriber (pass from API lifespan to avoid
                       re-loading model). If None, a new instance is created.
         model_size:   Whisper model size (used only when transcriber=None).
@@ -167,15 +193,26 @@ def transcribe_step(
         TranscriptionResult(segments, language, duration).
 
     Raises:
-        FileNotFoundError: If audio.wav is not present in work_dir.
+        FileNotFoundError: If work_dir is missing/not a directory or no .wav file exists.
     """
     from gensubtitles.core.transcriber import WhisperTranscriber  # noqa: PLC0415
 
     work_dir = Path(work_dir)
-    wav_path = work_dir / AUDIO_FILENAME
-
-    if not wav_path.is_file():
-        raise FileNotFoundError(f"audio.wav not found in work_dir: {wav_path}")
+    if not work_dir.is_dir():
+        raise FileNotFoundError(f"work_dir does not exist or is not a directory: {work_dir}")
+    wavs = [p for p in work_dir.glob("*.wav") if p.is_file()]
+    if len(wavs) == 0:
+        raise FileNotFoundError(
+            f"No .wav file found in work_dir: {work_dir}. "
+            "Run extract_audio_step first."
+        )
+    if len(wavs) > 1:
+        files = ", ".join(p.name for p in sorted(wavs))
+        raise FileNotFoundError(
+            f"Multiple .wav files found in work_dir: {work_dir} ({files}). "
+            "Expected exactly one. Remove extra .wav files and retry."
+        )
+    wav_path = wavs[0]
 
     if transcriber is None:
         transcriber = WhisperTranscriber(model_size=model_size, device=device)

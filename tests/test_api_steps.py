@@ -41,7 +41,7 @@ _LOOPBACK_CLIENT = ("127.0.0.1", 50000)
 
 
 def test_steps_extract_success(tmp_path):
-    """POST /steps/extract with valid video_path → 200 status=done, output_path ends with audio.wav."""
+    """POST /steps/extract with valid video_path → 200 status=done, output_path ends with stem.wav."""
     video = tmp_path / "test.mp4"
     video.write_bytes(b"fake mp4")
     work = tmp_path / "work"
@@ -57,7 +57,7 @@ def test_steps_extract_success(tmp_path):
     assert resp.status_code == 200
     body = resp.json()
     assert body["status"] == "done"
-    assert body["output_path"].endswith("audio.wav")
+    assert body["output_path"].endswith("test.wav")
 
 
 def test_steps_extract_video_not_found(tmp_path):

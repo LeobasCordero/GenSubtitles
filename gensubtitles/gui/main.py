@@ -15,6 +15,7 @@ import platform
 import subprocess
 import threading
 import time
+from hashlib import sha1
 from pathlib import Path
 
 import customtkinter as ctk
@@ -161,6 +162,8 @@ class GenSubtitlesApp(ctk.CTk):
             "write": "pending",
         }
         self._stepper_refresh_id: str | None = None  # after() cancel token
+        self._work_dir_from_browse: bool = False   # True when work_dir was set via Browse dialog
+        self._work_dir_browse_just_set: bool = False  # sentinel to prevent trace resetting the flag
 
         self._apply_startup_settings()
         self._build_ui()
@@ -416,7 +419,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_clear_work.grid(row=15, column=0, columnspan=3, pady=(4, 8), sticky="ew")
 
         # Start polling when work dir changes
-        self._work_dir_var.trace_add("write", lambda *_: self._refresh_stepper_state())
+        self._work_dir_var.trace_add("write", self._on_work_dir_changed)
         self._schedule_stepper_refresh()
 
     # ------------------------------------------------------------------
@@ -427,7 +430,51 @@ class GenSubtitlesApp(ctk.CTk):
         from tkinter import filedialog  # noqa: PLC0415
         path = filedialog.askdirectory(title="Select work directory")
         if path:
-            self._work_dir_var.set(path)
+            self._work_dir_from_browse = True    # mark: set by Browse
+            self._work_dir_browse_just_set = True  # prevent trace from clearing flag
+            self._work_dir_var.set(path)          # fires trace (consuming sentinel)
+
+    def _on_work_dir_changed(self, *_) -> None:
+        """Handle work-dir StringVar write.
+
+        When the change came from _browse_work_dir(), _work_dir_browse_just_set
+        is True — consume the sentinel and keep _work_dir_from_browse=True.
+        When the user edits the entry manually, both flags are False and stay
+        False, so power-user paths are used as-is (per D-05).
+        """
+        if self._work_dir_browse_just_set:
+            self._work_dir_browse_just_set = False  # consume sentinel
+            # _work_dir_from_browse already set to True in _browse_work_dir()
+        else:
+            # Manual edit — reset browse flag
+            self._work_dir_from_browse = False
+        self._refresh_stepper_state()
+
+    def _get_effective_work_dir(self) -> "Path | None":
+        """Return the effective work_dir path for the current state.
+
+        When the user selected a parent folder via Browse AND a video is loaded,
+        returns parent / subfolder (the folder that will hold this video's
+        artifacts). The subfolder uses the video's sanitized stem, or a
+        deterministic hash-based fallback when sanitization is empty.
+        If the user typed a path manually, returns that path as-is (power-user
+        mode, per D-05).
+
+        Returns None if the work-dir entry is empty.
+        """
+        from gensubtitles.core.steps import sanitize_stem  # noqa: PLC0415
+
+        work_str = self._work_dir_var.get().strip()
+        if not work_str:
+            return None
+        work = Path(work_str)
+        if self._work_dir_from_browse:
+            video_str = self._input_var.get().strip()
+            if video_str:
+                raw_stem = Path(video_str).stem
+                stem = sanitize_stem(raw_stem) or f"video-{sha1(raw_stem.encode('utf-8')).hexdigest()[:8]}"
+                return work / stem
+        return work
 
     def _schedule_stepper_refresh(self) -> None:
         """Schedule periodic stepper state refresh every 2 seconds."""
@@ -443,10 +490,10 @@ class GenSubtitlesApp(ctk.CTk):
     def _refresh_stepper_state(self) -> None:
         """Check work_dir artifact existence and update step button/label states."""
         from gensubtitles.core.steps import (  # noqa: PLC0415
-            AUDIO_FILENAME, TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME,
+            TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME,
         )
-        work_dir_str = self._work_dir_var.get().strip()
-        if not work_dir_str:
+        work_dir = self._get_effective_work_dir()
+        if work_dir is None:
             for key in ("extract", "transcribe", "translate", "write"):
                 self._step_buttons[key].configure(state="disabled")
                 if self._step_states[key] not in ("running", "done", "error"):
@@ -454,9 +501,8 @@ class GenSubtitlesApp(ctk.CTk):
             self._btn_clear_work.configure(state="disabled")
             return
 
-        work_dir = Path(work_dir_str)
         has_video = bool(self._input_var.get().strip())
-        has_audio = (work_dir / AUDIO_FILENAME).is_file()
+        has_audio = any(p.is_file() for p in work_dir.glob("*.wav")) if work_dir.is_dir() else False
         has_transcription = (work_dir / TRANSCRIPTION_FILENAME).is_file()
         has_translation = (work_dir / TRANSLATION_FILENAME).is_file()
         has_target_lang = self._target_lang_var.get() not in ("No target", "")
@@ -515,55 +561,65 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _on_step_extract(self) -> None:
         video = self._input_var.get().strip()
-        work = self._work_dir_var.get().strip()
-        if not video or not work:
+        if not video:
             return
-        self._run_step_in_bg("extract", "/steps/extract", {"video_path": video, "work_dir": work})
+        effective = self._get_effective_work_dir()
+        if effective is None:
+            return
+        # Create the subfolder now so it exists when the API call arrives
+        effective.mkdir(parents=True, exist_ok=True)
+        self._run_step_in_bg("extract", "/steps/extract", {
+            "video_path": video,
+            "work_dir": str(effective),
+        })
 
     def _on_step_transcribe(self) -> None:
-        work = self._work_dir_var.get().strip()
-        if not work:
+        work = self._get_effective_work_dir()
+        if work is None:
             return
         src = self._source_lang_var.get()
         src_code = None if src == "Auto-detect" else _label_to_code(src)
         self._run_step_in_bg("transcribe", "/steps/transcribe", {
-            "work_dir": work,
+            "work_dir": str(work),
             "source_lang": src_code,
             "device": "auto",
         })
 
     def _on_step_translate(self) -> None:
-        work = self._work_dir_var.get().strip()
+        work = self._get_effective_work_dir()
         tgt = self._target_lang_var.get()
-        if not work or tgt in ("No target", ""):
+        if work is None or tgt in ("No target", ""):
             return
         tgt_code = _label_to_code(tgt)
         eng = self._engine_var.get().lower()
         self._run_step_in_bg("translate", "/steps/translate", {
-            "work_dir": work,
+            "work_dir": str(work),
             "target_lang": tgt_code,
             "engine": eng,
         })
 
     def _on_step_write(self) -> None:
-        work = self._work_dir_var.get().strip()
-        if not work:
+        work = self._get_effective_work_dir()
+        if work is None:
             return
         from gensubtitles.core.steps import SRT_FILENAME  # noqa: PLC0415
         output = self._output_var.get().strip()
-        srt_out = output if output else str(Path(work) / SRT_FILENAME)
-        self._run_step_in_bg("write", "/steps/write", {"work_dir": work, "output_path": srt_out})
+        srt_out = output if output else str(work / SRT_FILENAME)
+        self._run_step_in_bg("write", "/steps/write", {"work_dir": str(work), "output_path": srt_out})
 
     def _on_clear_work(self) -> None:
         """Delete intermediate artifacts from work_dir; reset stepper state."""
         from gensubtitles.core.steps import (  # noqa: PLC0415
-            AUDIO_FILENAME, TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME,
+            TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME,
         )
-        work_dir_str = self._work_dir_var.get().strip()
-        if not work_dir_str:
+        work_dir = self._get_effective_work_dir()
+        if work_dir is None:
             return
-        work_dir = Path(work_dir_str)
-        for fname in (AUDIO_FILENAME, TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME):
+        # Delete stem-named WAV (name is variable — glob all *.wav)
+        for wav in work_dir.glob("*.wav"):
+            if wav.is_file():
+                wav.unlink(missing_ok=True)
+        for fname in (TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME):
             (work_dir / fname).unlink(missing_ok=True)
         for key in self._step_states:
             self._step_states[key] = "pending"
