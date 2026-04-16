@@ -787,11 +787,11 @@ Plans:
 
 **Goal:** Improve stepper mode UX with two related changes: (1) when the user selects a parent working folder in the GUI, automatically create a subfolder named after the video file and use that as the actual `work_dir`; (2) name the extracted audio file after the video file (e.g. `myvideo.wav`) rather than the fixed `audio.wav` constant — so multiple videos can share the same parent folder without overwriting each other's artifacts.
 **Requirements:** TBD
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 999.28-01-PLAN.md — core/steps.py: sanitize_stem() helper + named audio output + glob-based WAV discovery in transcribe_step + updated tests
-- [ ] 999.28-02-PLAN.md — gui/main.py: browse-tracking flags, _get_effective_work_dir(), auto-subfolder in _on_step_extract(), glob WAV detection in _refresh_stepper_state and _on_clear_work
+- [x] 999.28-01-PLAN.md — core/steps.py: sanitize_stem() helper + named audio output + glob-based WAV discovery in transcribe_step + updated tests
+- [x] 999.28-02-PLAN.md — gui/main.py: browse-tracking flags, _get_effective_work_dir(), auto-subfolder in _on_step_extract(), glob WAV detection in _refresh_stepper_state and _on_clear_work
 
 ---
 
