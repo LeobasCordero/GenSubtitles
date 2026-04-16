@@ -287,7 +287,7 @@ async def post_subtitles_extract(
     try:
         shutil.copyfileobj(video.file, _tmp_video)
         _tmp_video.flush()
-        extract_audio_step(tmp_video, tmp_work)
+        wav_path = extract_audio_step(tmp_video, tmp_work)
     except Exception as exc:  # noqa: BLE001
         shutil.rmtree(tmp_work, ignore_errors=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -296,9 +296,8 @@ async def post_subtitles_extract(
         _tmp_video.close()
         tmp_video.unlink(missing_ok=True)
 
-    wav_path = tmp_work / "audio.wav"
     background_tasks.add_task(shutil.rmtree, tmp_work, True)
-    return FileResponse(wav_path, media_type="audio/wav", filename="audio.wav")
+    return FileResponse(wav_path, media_type="audio/wav", filename=wav_path.name)
 
 
 @router.post("/subtitles/transcribe", summary="Step 2: Transcribe audio to segments JSON")

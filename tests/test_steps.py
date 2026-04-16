@@ -18,6 +18,7 @@ from gensubtitles.core.steps import (
     AUDIO_FILENAME,
     TRANSCRIPTION_FILENAME,
     TRANSLATION_FILENAME,
+    sanitize_stem,
     segments_from_json,
     segments_to_json,
     transcribe_step,
@@ -114,8 +115,19 @@ def test_extract_audio_step_success(tmp_path):
     with patch("gensubtitles.core.audio.extract_audio") as mock_extract:
         result = extract_audio_step(video, tmp_path)
 
-    mock_extract.assert_called_once_with(video, tmp_path / AUDIO_FILENAME)
-    assert result == tmp_path / AUDIO_FILENAME
+    mock_extract.assert_called_once_with(video, tmp_path / "video.wav")
+    assert result == tmp_path / "video.wav"
+
+
+def test_extract_audio_step_named_with_stem(tmp_path):
+    from gensubtitles.core.steps import extract_audio_step
+
+    video = tmp_path / "My Video (2024).mp4"
+    video.write_bytes(b"fake")
+    with patch("gensubtitles.core.audio.extract_audio"):
+        result = extract_audio_step(video, tmp_path)
+    assert result.name == "My_Video_2024.wav"
+    assert result == tmp_path / "My_Video_2024.wav"
 
 
 def test_extract_audio_step_missing_video(tmp_path):
@@ -128,7 +140,7 @@ def test_extract_audio_step_missing_video(tmp_path):
 # ── transcribe_step ───────────────────────────────────────────────────────────
 
 def test_transcribe_step_success(tmp_path):
-    (tmp_path / AUDIO_FILENAME).write_bytes(b"fake audio")
+    (tmp_path / "myvideo.wav").write_bytes(b"fake audio")
     mock_transcriber = MagicMock()
     mock_transcriber.transcribe.return_value = _TR(
         segments=[_make_seg()], language="en", duration=1.0
@@ -145,12 +157,12 @@ def test_transcribe_step_success(tmp_path):
 
 
 def test_transcribe_step_no_wav(tmp_path):
-    with pytest.raises(FileNotFoundError, match="audio.wav not found"):
+    with pytest.raises(FileNotFoundError, match="No .wav file found"):
         transcribe_step(tmp_path, transcriber=MagicMock())
 
 
 def test_transcribe_step_creates_transcriber_when_none(tmp_path):
-    (tmp_path / AUDIO_FILENAME).write_bytes(b"fake audio")
+    (tmp_path / "myvideo.wav").write_bytes(b"fake audio")
 
     mock_instance = MagicMock()
     mock_instance.transcribe.return_value = _TR(
@@ -163,6 +175,13 @@ def test_transcribe_step_creates_transcriber_when_none(tmp_path):
 
     MockClass.assert_called_once_with(model_size="tiny", device="cpu")
     mock_instance.transcribe.assert_called_once()
+
+
+def test_transcribe_step_multiple_wav_files(tmp_path):
+    (tmp_path / "video1.wav").write_bytes(b"fake1")
+    (tmp_path / "video2.wav").write_bytes(b"fake2")
+    with pytest.raises(FileNotFoundError, match="Multiple .wav files"):
+        transcribe_step(tmp_path, transcriber=MagicMock())
 
 
 # ── translate_step ────────────────────────────────────────────────────────────

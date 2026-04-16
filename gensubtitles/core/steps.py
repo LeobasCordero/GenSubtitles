@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from collections import namedtuple
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
@@ -42,6 +43,26 @@ AUDIO_FILENAME: str = "audio.wav"
 TRANSCRIPTION_FILENAME: str = "transcription.json"
 TRANSLATION_FILENAME: str = "translation.json"
 SRT_FILENAME: str = "subtitles.srt"
+
+# ── filename helpers ─────────────────────────────────────────────────────────
+
+def sanitize_stem(name: str) -> str:
+    """Sanitize a filename stem for use as a work-dir subfolder or audio filename.
+
+    Replaces spaces with underscores; strips any character that is not
+    alphanumeric, a hyphen, or an underscore.
+
+    Examples::
+
+        sanitize_stem("My Video (2024)")  # → "My_Video_2024"
+        sanitize_stem("hello world")      # → "hello_world"
+        sanitize_stem("my-video_file")    # → "my-video_file"
+    """
+    name = name.replace(" ", "_")
+    name = re.sub(r"[^\w\-]", "", name)
+    # \w matches [A-Za-z0-9_]; combined with \- covers alphanumeric, underscore, hyphen
+    return name
+
 
 # ── internal deserialization namedtuple ───────────────────────────────────────
 # Duck-typed: write_srt() and translate_segments() only need .start, .end, .text
@@ -130,7 +151,8 @@ def extract_audio_step(
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
     work_dir.mkdir(parents=True, exist_ok=True)
-    wav_path = work_dir / AUDIO_FILENAME
+    audio_name = f"{sanitize_stem(video_path.stem)}.wav"
+    wav_path = work_dir / audio_name
 
     if progress_callback is not None:
         progress_callback("Extracting audio", 1, 4)
@@ -172,10 +194,19 @@ def transcribe_step(
     from gensubtitles.core.transcriber import WhisperTranscriber  # noqa: PLC0415
 
     work_dir = Path(work_dir)
-    wav_path = work_dir / AUDIO_FILENAME
-
-    if not wav_path.is_file():
-        raise FileNotFoundError(f"audio.wav not found in work_dir: {wav_path}")
+    wavs = list(work_dir.glob("*.wav"))
+    if len(wavs) == 0:
+        raise FileNotFoundError(
+            f"No .wav file found in work_dir: {work_dir}. "
+            "Run extract_audio_step first."
+        )
+    if len(wavs) > 1:
+        files = ", ".join(p.name for p in sorted(wavs))
+        raise FileNotFoundError(
+            f"Multiple .wav files found in work_dir: {work_dir} ({files}). "
+            "Expected exactly one. Remove extra .wav files and retry."
+        )
+    wav_path = wavs[0]
 
     if transcriber is None:
         transcriber = WhisperTranscriber(model_size=model_size, device=device)
