@@ -37,6 +37,9 @@ def _transcription_json(language="en"):
     })
 
 
+_LOOPBACK_CLIENT = ("127.0.0.1", 50000)
+
+
 def test_steps_extract_success(tmp_path):
     """POST /steps/extract with valid video_path → 200 status=done, output_path ends with audio.wav."""
     video = tmp_path / "test.mp4"
@@ -48,7 +51,7 @@ def test_steps_extract_success(tmp_path):
         Path(output_path).write_bytes(b"RIFF fake wav")
 
     with patch("gensubtitles.core.audio.extract_audio", side_effect=_side):
-        with TestClient(app) as client:
+        with TestClient(app, client=_LOOPBACK_CLIENT) as client:
             resp = client.post("/steps/extract", json={"video_path": str(video), "work_dir": str(work)})
 
     assert resp.status_code == 200
@@ -59,12 +62,22 @@ def test_steps_extract_success(tmp_path):
 
 def test_steps_extract_video_not_found(tmp_path):
     """POST /steps/extract with missing video returns 404."""
-    with TestClient(app) as client:
+    with TestClient(app, client=_LOOPBACK_CLIENT) as client:
         resp = client.post("/steps/extract", json={
             "video_path": str(tmp_path / "nonexistent.mp4"),
             "work_dir": str(tmp_path / "work"),
         })
     assert resp.status_code == 404
+
+
+def test_steps_non_loopback_rejected(tmp_path):
+    """POST /steps/* from a non-loopback host returns 403."""
+    with TestClient(app) as client:
+        resp = client.post("/steps/extract", json={
+            "video_path": str(tmp_path / "video.mp4"),
+            "work_dir": str(tmp_path / "work"),
+        })
+    assert resp.status_code == 403
 
 
 def test_steps_transcribe_success(tmp_path):
@@ -76,7 +89,7 @@ def test_steps_transcribe_success(tmp_path):
     mock_tr = _make_mock_transcriber()
     app.dependency_overrides[get_transcriber] = lambda: mock_tr
     try:
-        with TestClient(app) as client:
+        with TestClient(app, client=_LOOPBACK_CLIENT) as client:
             resp = client.post("/steps/transcribe", json={"work_dir": str(work)})
     finally:
         app.dependency_overrides.pop(get_transcriber, None)
@@ -110,7 +123,7 @@ def test_steps_transcribe_uses_preloaded_model(tmp_path):
     app.dependency_overrides[get_transcriber] = lambda: mock_tr
     try:
         with patch.object(steps_module, "transcribe_step", _mock_ts):
-            with TestClient(app) as client:
+            with TestClient(app, client=_LOOPBACK_CLIENT) as client:
                 resp = client.post("/steps/transcribe", json={"work_dir": str(work)})
     finally:
         app.dependency_overrides.pop(get_transcriber, None)
@@ -129,7 +142,7 @@ def test_steps_translate_success(tmp_path):
 
     with patch("gensubtitles.core.translator.translate_segments") as mock_tl:
         mock_tl.return_value = [_make_seg(text="Hola")]
-        with TestClient(app) as client:
+        with TestClient(app, client=_LOOPBACK_CLIENT) as client:
             resp = client.post("/steps/translate", json={"work_dir": str(work), "target_lang": "es"})
 
     assert resp.status_code == 200
@@ -141,7 +154,7 @@ def test_steps_translate_missing_transcription(tmp_path):
     """POST /steps/translate with empty work_dir returns 404."""
     work = tmp_path / "work"
     work.mkdir()
-    with TestClient(app) as client:
+    with TestClient(app, client=_LOOPBACK_CLIENT) as client:
         resp = client.post("/steps/translate", json={"work_dir": str(work), "target_lang": "es"})
     assert resp.status_code == 404
 
@@ -154,7 +167,7 @@ def test_steps_write_success(tmp_path):
     (work / "translation.json").write_text(segs, encoding="utf-8")
     out_srt = str(tmp_path / "out.srt")
 
-    with TestClient(app) as client:
+    with TestClient(app, client=_LOOPBACK_CLIENT) as client:
         resp = client.post("/steps/write", json={"work_dir": str(work), "output_path": out_srt})
 
     assert resp.status_code == 200
@@ -166,7 +179,7 @@ def test_steps_write_missing_json(tmp_path):
     """POST /steps/write with empty work_dir returns 404."""
     work = tmp_path / "work"
     work.mkdir()
-    with TestClient(app) as client:
+    with TestClient(app, client=_LOOPBACK_CLIENT) as client:
         resp = client.post("/steps/write", json={
             "work_dir": str(work),
             "output_path": str(tmp_path / "out.srt"),

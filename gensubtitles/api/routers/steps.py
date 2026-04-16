@@ -18,13 +18,25 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from gensubtitles.api.dependencies import get_transcriber
 from gensubtitles.core.transcriber import WhisperTranscriber
 
 router = APIRouter(tags=["steps"])
+
+_LOOPBACK_HOSTS = {"127.0.0.1", "::1"}
+
+
+def _require_loopback(request: Request) -> None:
+    """Raise 403 if the request did not originate from the loopback interface."""
+    host = request.client.host if request.client else None
+    if host not in _LOOPBACK_HOSTS:
+        raise HTTPException(
+            status_code=403,
+            detail="This endpoint is only available to local clients.",
+        )
 
 
 # ── request/response models ───────────────────────────────────────────────────
@@ -60,11 +72,12 @@ class StepResponse(BaseModel):
 # ── route handlers ────────────────────────────────────────────────────────────
 
 @router.post("/steps/extract", response_model=StepResponse, summary="Step 1 (local path): Extract audio")
-def post_steps_extract(req: ExtractRequest) -> StepResponse:
+def post_steps_extract(req: ExtractRequest, request: Request) -> StepResponse:
     """Extract audio from a locally accessible video file.
 
     Writes audio.wav to req.work_dir. Returns the path to the written file.
     """
+    _require_loopback(request)
     from gensubtitles.core.steps import extract_audio_step  # noqa: PLC0415
 
     try:
@@ -79,12 +92,14 @@ def post_steps_extract(req: ExtractRequest) -> StepResponse:
 @router.post("/steps/transcribe", response_model=StepResponse, summary="Step 2 (local path): Transcribe audio")
 def post_steps_transcribe(
     req: TranscribeRequest,
+    request: Request,
     transcriber: WhisperTranscriber = Depends(get_transcriber),
 ) -> StepResponse:
     """Transcribe audio.wav from work_dir. Writes transcription.json.
 
     Uses the pre-loaded WhisperTranscriber from server lifespan — no model reload.
     """
+    _require_loopback(request)
     from gensubtitles.core.steps import TRANSCRIPTION_FILENAME, transcribe_step  # noqa: PLC0415
 
     try:
@@ -105,8 +120,9 @@ def post_steps_transcribe(
 
 
 @router.post("/steps/translate", response_model=StepResponse, summary="Step 3 (local path): Translate segments")
-def post_steps_translate(req: TranslateRequest) -> StepResponse:
+def post_steps_translate(req: TranslateRequest, request: Request) -> StepResponse:
     """Translate transcription.json in work_dir. Writes translation.json."""
+    _require_loopback(request)
     from gensubtitles.core.steps import TRANSLATION_FILENAME, translate_step  # noqa: PLC0415
 
     try:
@@ -121,8 +137,9 @@ def post_steps_translate(req: TranslateRequest) -> StepResponse:
 
 
 @router.post("/steps/write", response_model=StepResponse, summary="Step 4 (local path): Write SRT")
-def post_steps_write(req: WriteRequest) -> StepResponse:
+def post_steps_write(req: WriteRequest, request: Request) -> StepResponse:
     """Write SRT from translation.json (or transcription.json) in work_dir."""
+    _require_loopback(request)
     from gensubtitles.core.steps import write_srt_step  # noqa: PLC0415
 
     try:
