@@ -32,6 +32,14 @@ _STRINGS: dict[str, dict[str, str]] = {
         "output_format_lbl":    "Output format:",
         "generate_btn":         "Generate Subtitles",
         "clear_btn":            "Clear",
+        # Three-panel layout — Phase 999.29
+        "panel_files_title":        "Initial Steps",
+        "panel_process_title":      "Configuration",
+        "panel_status_title":       "Control & Progress",
+        "stepper_switch_lbl":       "Step-by-step mode",
+        "work_dir_lbl":             "Work directory:",
+        "generate_step_start_btn":  "Start Step-by-step",
+        "clear_work_btn":           "Clear Work Files",
         "browse_btn":           "Browse\u2026",
         "save_as_btn":          "Save as\u2026",
         # Translate tab
@@ -152,6 +160,14 @@ _STRINGS: dict[str, dict[str, str]] = {
         "output_format_lbl":    "Formato de salida:",
         "generate_btn":         "Generar Subtítulos",
         "clear_btn":            "Limpiar",
+        # Three-panel layout — Phase 999.29
+        "panel_files_title":        "Pasos iniciales",
+        "panel_process_title":      "Configuraci\u00f3n",
+        "panel_status_title":       "Control y Progreso",
+        "stepper_switch_lbl":       "Modo paso a paso",
+        "work_dir_lbl":             "Directorio de trabajo:",
+        "generate_step_start_btn":  "Iniciar Proceso Paso a Paso",
+        "clear_work_btn":           "Limpiar archivos de trabajo",
         "browse_btn":           "Explorar\u2026",
         "save_as_btn":          "Guardar como\u2026",
         # Translate tab

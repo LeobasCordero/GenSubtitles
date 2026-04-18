@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 999.28 Complete
-last_updated: "2026-04-16T20:34:35.477Z"
+status: Phase 999.29 Complete
+last_updated: "2026-04-18T23:30:00.000Z"
 progress:
-  total_phases: 38
-  completed_phases: 32
-  total_plans: 66
-  completed_plans: 66
+  total_phases: 39
+  completed_phases: 33
+  total_plans: 69
+  completed_plans: 69
 ---
 
 # GenSubtitles — Project State
@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1.0
-- **Active Phase:** 999.28 — Stepper Work-Dir Auto-Subfolder and Named Audio Output — COMPLETE
-- **Last action:** Phase 999.28 complete — core now writes stem-named WAVs (with fallback), transcribe enforces exactly one WAV file, GUI browse-mode uses effective per-video work dir with safer WAV checks, and API extract returns stem-based download names.
+- **Active Phase:** 999.29 — GUI Redesign Three-Panel Vertical Layout — COMPLETE
+- **Last action:** Phase 999.29 complete — GUI rewritten with 3 side-by-side panels (Files / Process / Status), CTkSwitch stepper mode, activity log textbox with 15 routing sites, and all panel labels localised in EN+ES.
 
 ## Milestone Progress
 
@@ -43,6 +43,7 @@ progress:
 | refactor/ui | GUI Theme System — OS detection, dual-mode palettes, typography, server startup | ✅ Complete (untracked — merged PR #22, 2026-04-12) |
 | 999.27 | Stepper Mode for Pipeline Steps | ✅ Complete (5/5 plans, completed 2026-04-15) |
 | 999.28 | Stepper Work-Dir Auto-Subfolder and Named Audio Output | ✅ Complete (2/2 plans, completed 2026-04-16) |
+| 999.29 | GUI Redesign Three-Panel Vertical Layout | ✅ Complete (3/3 plans, completed 2026-04-18) |
 
 ## Key Decisions Log
 
