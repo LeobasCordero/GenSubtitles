@@ -799,10 +799,12 @@ Plans:
 
 **Goal:** Rediseñar el layout principal de la GUI con tres paneles verticales diferenciados: (1) Panel Izquierdo — "Pasos iniciales" con entrada de video (Entry + Explorar) y archivo de salida (Entry + Guardar como); (2) Panel Central — "Configuración" con ComboBoxes para idioma origen, idioma destino, motor de traducción y formato de salida; (3) Panel Derecho — "Control y Progreso" con switch "Modo paso a paso", flujo horizontal visual de 4 etapas (Extract → Transcribe → Translate → Write SRT) con indicadores de estado, botón principal de acción con texto dinámico según el switch, barra de progreso moderna, y CTkTextbox deshabilitado como registro de actividad. Cada panel delimitado con CTkFrame de corner_radius suave y color de fondo diferenciado; botones Explorar/Guardar como en color secundario y botón Generar en color de acento principal.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] 999.29-01-PLAN.md — locale.py: 8 new string keys (EN + ES) for 3-panel layout
+- [ ] 999.29-02-PLAN.md — main.py: rewrite _build_ui() (3-panel scaffold + files_frame + process_frame) + _build_stepper_section() (status_frame with CTkSwitch, work_dir, 4-stage flow, log textbox)
+- [ ] 999.29-03-PLAN.md — main.py: _apply_ui_language() new widget refs + log routing at 15 call sites + human verification
 
 **Context captured:**
 - Panel Izquierdo (`files_frame`): CTkLabel título "Pasos iniciales" + grupo video entrada (Entry + botón Explorar) + grupo archivo salida (Entry + botón Guardar como)
