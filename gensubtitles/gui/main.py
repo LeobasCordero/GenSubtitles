@@ -156,7 +156,6 @@ class GenSubtitlesApp(ctk.CTk):
         # Stepper mode state
         self._work_dir_var = ctk.StringVar()
         self._stepper_switch_var = ctk.BooleanVar(value=False)
-        self._stepper_phase_started: bool = False  # tracks first step done in step mode
         self._step_states: dict[str, str] = {
             "extract": "pending",
             "transcribe": "pending",
@@ -558,12 +557,10 @@ class GenSubtitlesApp(ctk.CTk):
             # Switch ON: show work_dir row, set button to step-by-step text
             self._work_dir_row_frame.grid()
             self._btn_generate.configure(text=s("generate_step_start_btn"))
-            self._stepper_phase_started = False
         else:
             # Switch OFF: hide work_dir row, reset button text
             self._work_dir_row_frame.grid_remove()
             self._btn_generate.configure(text=s("generate_btn"))
-            self._stepper_phase_started = False
         # Refresh stepper button availability
         self._refresh_stepper_state()
 
@@ -1616,12 +1613,12 @@ class GenSubtitlesApp(ctk.CTk):
 
         if not hasattr(self, "_btn_open_folder"):
             self._btn_open_folder = ctk.CTkButton(
-                self._frame, text="Open Folder", command=_open_folder
+                self._status_frame, text=s("open_folder_btn"), command=_open_folder
             )
-            self._btn_open_folder.grid(row=10, column=0, columnspan=3, pady=(4, 0), sticky="ew")
+            self._btn_open_folder.grid(row=11, column=0, padx=12, pady=(4, 0), sticky="ew")
         else:
-            self._btn_open_folder.configure(command=_open_folder)
-            self._btn_open_folder.grid(row=10, column=0, columnspan=3, pady=(4, 0), sticky="ew")
+            self._btn_open_folder.configure(text=s("open_folder_btn"), command=_open_folder)
+            self._btn_open_folder.grid(row=11, column=0, padx=12, pady=(4, 0), sticky="ew")
 
     # ------------------------------------------------------------------
     # Theme / colour palette
@@ -2030,7 +2027,10 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_target_lang.configure(text=s("target_lang_lbl"))
         self._lbl_engine.configure(text=s("engine_lbl"))
         self._lbl_output_format.configure(text=s("output_format_lbl"))
-        self._btn_generate.configure(text=s("generate_btn"))
+        if self._stepper_switch_var.get():
+            self._btn_generate.configure(text=s("generate_step_start_btn"))
+        else:
+            self._btn_generate.configure(text=s("generate_btn"))
         self._btn_clear.configure(text=s("clear_btn"))
         self._btn_browse_input.configure(text=s("browse_btn"))
         self._btn_browse_output.configure(text=s("save_as_btn"))
@@ -2041,10 +2041,8 @@ class GenSubtitlesApp(ctk.CTk):
         self._switch_stepper.configure(text=s("stepper_switch_lbl"))
         self._lbl_work_dir.configure(text=s("work_dir_lbl"))
         self._btn_clear_work.configure(text=s("clear_work_btn"))
-        # Update dynamic action button text only when switch is OFF (switch ON text stays as-is)
-        if not self._stepper_switch_var.get():
-            self._btn_generate.configure(text=s("generate_btn"))
-
+        if hasattr(self, "_btn_open_folder"):
+            self._btn_open_folder.configure(text=s("open_folder_btn"))
         # Stage label — update if currently showing a known status string
         _known_statuses = {s_lang(key, lang_code) for lang_code in LANGUAGES for key in ("starting_server", "status_done")}
         current_stage_text = self._stage_label.cget("text")

@@ -795,7 +795,7 @@ Plans:
 
 ---
 
-### Phase 999.29: GUI — Rediseño de Layout en Tres Paneles Verticales (BACKLOG)
+### Phase 999.29: GUI — Rediseño de Layout en Tres Paneles Verticales (COMPLETE)
 
 **Goal:** Rediseñar el layout principal de la GUI con tres paneles verticales diferenciados: (1) Panel Izquierdo — "Pasos iniciales" con entrada de video (Entry + Explorar) y archivo de salida (Entry + Guardar como); (2) Panel Central — "Configuración" con ComboBoxes para idioma origen, idioma destino, motor de traducción y formato de salida; (3) Panel Derecho — "Control y Progreso" con switch "Modo paso a paso", flujo horizontal visual de 4 etapas (Extract → Transcribe → Translate → Write SRT) con indicadores de estado, botón principal de acción con texto dinámico según el switch, barra de progreso moderna, y CTkTextbox deshabilitado como registro de actividad. Cada panel delimitado con CTkFrame de corner_radius suave y color de fondo diferenciado; botones Explorar/Guardar como en color secundario y botón Generar en color de acento principal.
 **Requirements:** TBD
@@ -815,4 +815,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-18 — Backlog item 999.29 added (GUI rediseño layout tres paneles verticales)*
+*Last updated: 2026-04-18 — Phase 999.29 completed (GUI rediseño layout tres paneles verticales)*
