@@ -666,6 +666,7 @@ class GenSubtitlesApp(ctk.CTk):
         """Execute a step API call in a background thread; update stepper state on completion."""
         self._step_states[step_key] = "running"
         self._step_status_labels[step_key].configure(text="\u23f3 Running\u2026")
+        self._log(f"\u23f3 Running step: {step_key}")
         self._step_buttons[step_key].configure(state="disabled")
 
         def _worker() -> None:
@@ -688,12 +689,14 @@ class GenSubtitlesApp(ctk.CTk):
     def _on_step_success(self, step_key: str) -> None:
         self._step_states[step_key] = "done"
         self._step_status_labels[step_key].configure(text="\u2713 Done")
+        self._log(f"\u2713 Step {step_key} completed successfully")
         self._refresh_stepper_state()
 
     def _on_step_error(self, step_key: str, detail: str) -> None:
         self._step_states[step_key] = "error"
         self._step_status_labels[step_key].configure(text="\u2717 Error")
         self._stage_label.configure(text=f"Step error ({step_key}): {str(detail)[:120]}")
+        self._log(f"Step error ({step_key}): {str(detail)[:120]}")
         self._refresh_stepper_state()
 
     def _on_step_extract(self) -> None:
@@ -1184,25 +1187,25 @@ class GenSubtitlesApp(ctk.CTk):
             except RuntimeError as exc:
                 logger.warning("No route for %s→%s: %s", src_code, tgt_code, exc)
                 msg = f"⚠ No translation route available for {src_code}→{tgt_code}"
-                self.after(0, lambda m=msg: self._stage_label.configure(text=m))
+                self.after(0, lambda m=msg: (self._stage_label.configure(text=m), self._log(m)))
                 return
 
             if all(_is_installed(f, t) for f, t in route):
                 return  # already installed, nothing to do
 
             via = " → ".join(f"{f}→{t}" for f, t in route)
-            self.after(0, lambda v=via: self._stage_label.configure(
+            self.after(0, lambda v=via: (self._stage_label.configure(
                 text=f"⏬ Downloading {v} model…"
-            ))
+            ), self._log(f"⏬ Downloading {v} model…")))
             try:
                 ensure_route_installed(src_code, tgt_code)
-                self.after(0, lambda v=via: self._stage_label.configure(
+                self.after(0, lambda v=via: (self._stage_label.configure(
                     text=f"✓ {v} model ready"
-                ))
+                ), self._log(f"✓ {v} model ready")))
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Background prefetch failed for %s→%s: %s", src_code, tgt_code, exc)
                 msg = f"⚠ Could not download model for {src_code}→{tgt_code}: {exc}"
-                self.after(0, lambda m=msg: self._stage_label.configure(text=m))
+                self.after(0, lambda m=msg: (self._stage_label.configure(text=m), self._log(m)))
             finally:
                 with self._prefetch_lock:
                     self._prefetch_in_progress.discard(pair_key)
@@ -1334,6 +1337,7 @@ class GenSubtitlesApp(ctk.CTk):
         stage = data.get("stage", "")
         if label:
             self._stage_label.configure(text=label)
+            self._log(label)
         # Switch progress bar to determinate mode during translation
         if stage == "translating" and total > 0:
             pct = current / total
@@ -1586,11 +1590,14 @@ class GenSubtitlesApp(ctk.CTk):
             from tkinter import messagebox  # noqa: PLC0415
 
             self._stage_label.configure(text="")
+            self._log("")
             messagebox.showerror(s("msg_generation_failed_title"), error)
         elif cancelled:
             self._stage_label.configure(text="Generation cancelled.")
+            self._log("Generation cancelled.")
         else:
             self._stage_label.configure(text=s("status_done"))
+            self._log(s("status_done"))
             if output_path is None:
                 raise AssertionError("output_path must not be None on success")
             self._show_success(output_path)
@@ -2027,6 +2034,16 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_clear.configure(text=s("clear_btn"))
         self._btn_browse_input.configure(text=s("browse_btn"))
         self._btn_browse_output.configure(text=s("save_as_btn"))
+        # Three-panel titles and new widgets
+        self._lbl_files_title.configure(text=s("panel_files_title"))
+        self._lbl_process_title.configure(text=s("panel_process_title"))
+        self._lbl_status_title.configure(text=s("panel_status_title"))
+        self._switch_stepper.configure(text=s("stepper_switch_lbl"))
+        self._lbl_work_dir.configure(text=s("work_dir_lbl"))
+        self._btn_clear_work.configure(text=s("clear_work_btn"))
+        # Update dynamic action button text only when switch is OFF (switch ON text stays as-is)
+        if not self._stepper_switch_var.get():
+            self._btn_generate.configure(text=s("generate_btn"))
 
         # Stage label — update if currently showing a known status string
         _known_statuses = {s_lang(key, lang_code) for lang_code in LANGUAGES for key in ("starting_server", "status_done")}
@@ -2035,6 +2052,7 @@ class GenSubtitlesApp(ctk.CTk):
             for key in ("starting_server", "status_done"):
                 if current_stage_text in {s_lang(key, lang_code) for lang_code in LANGUAGES}:
                     self._stage_label.configure(text=s(key))
+                    self._log(s(key))
                     break
 
         # Translate Subtitles tab
@@ -2350,6 +2368,7 @@ class GenSubtitlesApp(ctk.CTk):
     def _apply_startup_progress(self, message: str, progress: int) -> None:
         """Update progress bar and label during model download/load phases."""
         self._stage_label.configure(text=message)
+        self._log(message)
         if progress >= 0:
             # Determinate — real percentage available (downloading)
             if self._progress_bar.cget("mode") != "determinate":
@@ -2371,6 +2390,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_generate.configure(state="normal")
         self._tl_btn_translate.configure(state="normal")
         self._stage_label.configure(text="", text_color=p("text_secondary"))
+        self._log("")
         # Run in background — list_installed_pairs() can be slow on first Argos load
         threading.Thread(target=self._populate_language_dropdowns, daemon=True).start()
 
@@ -2384,6 +2404,7 @@ class GenSubtitlesApp(ctk.CTk):
             text=text,
             text_color=p("progress_err"),
         )
+        self._log(text)
 
     def on_closing(self) -> None:
         self._closing = True
