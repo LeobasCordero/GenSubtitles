@@ -795,5 +795,22 @@ Plans:
 
 ---
 
+### Phase 999.29: GUI — Rediseño de Layout en Tres Paneles Verticales (BACKLOG)
+
+**Goal:** Rediseñar el layout principal de la GUI con tres paneles verticales diferenciados: (1) Panel Izquierdo — "Pasos iniciales" con entrada de video (Entry + Explorar) y archivo de salida (Entry + Guardar como); (2) Panel Central — "Configuración" con ComboBoxes para idioma origen, idioma destino, motor de traducción y formato de salida; (3) Panel Derecho — "Control y Progreso" con switch "Modo paso a paso", flujo horizontal visual de 4 etapas (Extract → Transcribe → Translate → Write SRT) con indicadores de estado, botón principal de acción con texto dinámico según el switch, barra de progreso moderna, y CTkTextbox deshabilitado como registro de actividad. Cada panel delimitado con CTkFrame de corner_radius suave y color de fondo diferenciado; botones Explorar/Guardar como en color secundario y botón Generar en color de acento principal.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Context captured:**
+- Panel Izquierdo (`files_frame`): CTkLabel título "Pasos iniciales" + grupo video entrada (Entry + botón Explorar) + grupo archivo salida (Entry + botón Guardar como)
+- Panel Central (`process_frame`): CTkLabel título "Configuración" + ComboBox idioma origen + ComboBox idioma destino + ComboBox motor de traducción + ComboBox formato de salida
+- Panel Derecho (`status_frame`): CTkLabel título "Control y Progreso" + CTkSwitch "Modo paso a paso" + área de 4 etapas secuenciales con indicador de estado (sin botones individuales) + botón grande "Iniciar Proceso Completo" / "Iniciar Proceso Paso a Paso" (dinámico) + barra de progreso + CTkTextbox registro de actividad
+- Estilo: CTkFrame con corner_radius suave, fondo de paneles ligeramente diferente al fondo principal, botones secundarios para Explorar/Guardar y acento para Generar
+
+---
+
 *Roadmap created: 2026-04-02*  
-*Last updated: 2026-04-16 — Phase 999.27 COMPLETE; backlog item 999.28 added (stepper work-dir auto-subfolder + named audio output)*
+*Last updated: 2026-04-18 — Backlog item 999.29 added (GUI rediseño layout tres paneles verticales)*
