@@ -135,6 +135,18 @@ class GenSubtitlesApp(ctk.CTk):
         self._output_format_var = ctk.StringVar(value="SRT")
         self._engine_var = ctk.StringVar(value="Argos")
 
+        # Phase 999.30 — per-tab StringVars for step tabs 3-6
+        self._extract_input_var = ctk.StringVar()
+        self._extract_output_var = ctk.StringVar()
+        self._transcribe_input_var = ctk.StringVar()
+        self._translate_step_input_var = ctk.StringVar()
+        self._translate_step_source_var = ctk.StringVar()
+        self._translate_step_target_var = ctk.StringVar(value="No target")
+        self._translate_step_engine_var = ctk.StringVar(value="Argos")
+        self._write_input_var = ctk.StringVar()
+        self._write_output_var = ctk.StringVar()
+        self._write_format_var = ctk.StringVar(value="SRT")
+
         # Dynamic language pairs loaded from API
         self._language_pairs: list[dict] = []
 
@@ -184,6 +196,10 @@ class GenSubtitlesApp(ctk.CTk):
         self._tabview.pack(fill="both", expand=True, padx=16, pady=16)
         self._tabview.add("Generate Subtitles")
         self._tabview.add("Translate Subtitles")
+        self._tabview.add("Extract Audio")    # Tab 3 — built by Plan 03
+        self._tabview.add("Transcribe")       # Tab 4 — built by Plan 03
+        self._tabview.add("Translate")        # Tab 5 — built by Plan 03
+        self._tabview.add("Write Subtitle")   # Tab 6 — built by Plan 03
 
         _tab_gen = self._tabview.tab("Generate Subtitles")
 
@@ -564,15 +580,38 @@ class GenSubtitlesApp(ctk.CTk):
         # Refresh stepper button availability
         self._refresh_stepper_state()
 
-    def _log(self, msg: str) -> None:
-        """Append a message to the activity log textbox with auto-scroll."""
+    def _log_to(self, textbox: "ctk.CTkTextbox", msg: str) -> None:
+        """Append *msg* to any CTkTextbox log widget with auto-scroll."""
         try:
-            self._log_textbox.configure(state="normal")
-            self._log_textbox.insert("end", msg + "\n")
-            self._log_textbox.configure(state="disabled")
-            self._log_textbox.see("end")
+            textbox.configure(state="normal")
+            textbox.insert("end", msg + "\n")
+            textbox.configure(state="disabled")
+            textbox.see("end")
         except Exception:  # noqa: BLE001
-            pass  # log textbox may not exist yet during startup
+            pass
+
+    def _get_tab_work_dir(
+        self,
+        input_var: "ctk.StringVar",
+        fallback_vars: "list[ctk.StringVar] | None" = None,
+    ) -> "Path | None":
+        """Return work-dir path derived from *input_var*, or first non-empty fallback.
+
+        Fallback chain (D-05): tab's own input → _input_var (Tab 1 video) → _extract_input_var (Tab 3 audio).
+        """
+        val = input_var.get().strip()
+        if val:
+            return Path(val).parent
+        if fallback_vars:
+            for fv in fallback_vars:
+                fv_val = fv.get().strip()
+                if fv_val:
+                    return Path(fv_val).parent
+        return None
+
+    def _log(self, msg: str) -> None:
+        """Append a message to the Tab 1 activity log textbox with auto-scroll."""
+        self._log_to(self._log_textbox, msg)
 
     def _get_effective_work_dir(self) -> "Path | None":
         """Return the effective work_dir path for the current state.
@@ -1962,11 +2001,27 @@ class GenSubtitlesApp(ctk.CTk):
         internal tab-name structures and segmented-button values.
         """
         tab_name_map = {
-            "Generate Subtitles": s("generate_tab"),
-            "Translate Subtitles": s("translate_tab"),
-            # Include localized names as sources so re-applying works
-            s_lang("generate_tab", "es"): s("generate_tab"),
-            s_lang("translate_tab", "es"): s("translate_tab"),
+            "Generate Subtitles":    s("generate_tab"),
+            "Translate Subtitles":   s("translate_tab"),
+            # Phase 999.30 — new tabs
+            "Extract Audio":         s("extract_tab"),
+            "Transcribe":            s("transcribe_tab"),
+            "Translate":             s("translate_step_tab"),
+            "Write Subtitle":        s("write_tab"),
+            # Localized sources — EN
+            s_lang("generate_tab",       "en"): s("generate_tab"),
+            s_lang("translate_tab",      "en"): s("translate_tab"),
+            s_lang("extract_tab",        "en"): s("extract_tab"),
+            s_lang("transcribe_tab",     "en"): s("transcribe_tab"),
+            s_lang("translate_step_tab", "en"): s("translate_step_tab"),
+            s_lang("write_tab",          "en"): s("write_tab"),
+            # Localized sources — ES
+            s_lang("generate_tab",       "es"): s("generate_tab"),
+            s_lang("translate_tab",      "es"): s("translate_tab"),
+            s_lang("extract_tab",        "es"): s("extract_tab"),
+            s_lang("transcribe_tab",     "es"): s("transcribe_tab"),
+            s_lang("translate_step_tab", "es"): s("translate_step_tab"),
+            s_lang("write_tab",          "es"): s("write_tab"),
         }
 
         for widget in self.__dict__.values():
