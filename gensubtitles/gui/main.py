@@ -203,6 +203,7 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._files_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 4), pady=0)
         self._files_frame.columnconfigure(0, weight=1)
+        self._files_frame.rowconfigure(6, weight=1)
 
         self._config_frame = ctk.CTkFrame(
             self._panels_frame, corner_radius=12, fg_color=p("surface")
@@ -252,6 +253,80 @@ class GenSubtitlesApp(ctk.CTk):
         )
         apply_secondary_btn_style(self._btn_browse_output)
         self._btn_browse_output.grid(row=0, column=1, padx=(8, 0))
+
+        # Buttons row (D-08): Generate + Clear side-by-side in _files_frame
+        _btns_row = ctk.CTkFrame(self._files_frame, fg_color="transparent")
+        _btns_row.grid(row=4, column=0, sticky="ew", padx=12, pady=(8, 4))
+        _btns_row.columnconfigure(0, weight=1)
+        _btns_row.columnconfigure(1, weight=1)
+
+        self._btn_generate = ctk.CTkButton(
+            _btns_row,
+            text=s("generate_btn"),
+            command=self._on_generate,
+            state="disabled",
+            height=BTN_HEIGHT_PRIMARY,
+            text_color_disabled=("#757575", "#9E9E9E"),
+        )
+        apply_accent_btn_style(self._btn_generate)
+        self._btn_generate.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+
+        self._btn_clear = ctk.CTkButton(
+            _btns_row,
+            text=s("generate_clear_btn"),
+            command=self._on_clear,
+            state="disabled",
+            height=BTN_HEIGHT_PRIMARY,
+            text_color_disabled=("#757575", "#9E9E9E"),
+        )
+        apply_secondary_btn_style(self._btn_clear)
+        self._btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+
+        # Reactive enable/disable for Clear button
+        for var in (self._input_var, self._output_var, self._target_lang_var):
+            var.trace_add("write", lambda *_: self._update_clear_state())
+
+        # Stage label (row 5 of _files_frame)
+        stage_text = s("starting_server")
+        self._stage_label = ctk.CTkLabel(self._files_frame, text=stage_text)
+        apply_stage_label_style(self._stage_label)
+        self._stage_label.grid(row=5, column=0, pady=4)
+
+        # Log textbox (row 6 of _files_frame, nsew, expands)
+        self._log_textbox = ctk.CTkTextbox(
+            self._files_frame,
+            state="disabled",
+            height=120,
+            fg_color=p("input_bg"),
+            font=font("mono"),
+            activate_scrollbars=True,
+        )
+        self._log_textbox.grid(row=6, column=0, sticky="nsew", padx=12, pady=(0, 4))
+
+        # Elapsed label (hidden until generate runs)
+        self._elapsed_label = ctk.CTkLabel(self._files_frame, text="00:00:00")
+        self._elapsed_label.grid(row=7, column=0, pady=(4, 0))
+        self._elapsed_label.grid_remove()
+
+        # Progress bar (hidden until generate runs)
+        self._progress_bar = ctk.CTkProgressBar(
+            self._files_frame, height=PROGRESS_BAR_HEIGHT,
+        )
+        apply_progress_bar_style(self._progress_bar)
+        self._progress_bar.grid(row=8, column=0, sticky="ew", padx=12, pady=(4, 4))
+        self._progress_bar.grid_remove()
+
+        # Cancel button (hidden until generate runs)
+        self._btn_cancel = ctk.CTkButton(
+            self._files_frame,
+            text="Cancel",
+            command=self._on_cancel,
+            height=BTN_HEIGHT_CANCEL,
+            text_color_disabled=("#757575", "#9E9E9E"),
+        )
+        apply_cancel_btn_style(self._btn_cancel)
+        self._btn_cancel.grid(row=9, column=0, sticky="ew", padx=12, pady=(4, 0))
+        self._btn_cancel.grid_remove()
 
         # ── config_frame: "Configuration" ────────────────────────────────────────
         self._lbl_config_title = ctk.CTkLabel(
@@ -318,75 +393,8 @@ class GenSubtitlesApp(ctk.CTk):
         )
         self._option_output_format.grid(row=8, column=0, sticky="ew", padx=12, pady=(0, 8))
 
-        # Generate button (accent)
-        self._btn_generate = ctk.CTkButton(
-            self._config_frame,
-            text=s("generate_btn"),
-            command=self._on_generate,
-            state="disabled",
-            height=BTN_HEIGHT_PRIMARY,
-            text_color_disabled=("#757575", "#9E9E9E"),
-        )
-        apply_accent_btn_style(self._btn_generate)
-        self._btn_generate.grid(row=9, column=0, sticky="ew", padx=12, pady=(4, 4))
-
-        # Clear fields button (secondary)
-        self._btn_clear = ctk.CTkButton(
-            self._config_frame,
-            text=s("generate_clear_btn"),
-            command=self._on_clear,
-            state="disabled",
-            height=BTN_HEIGHT_PRIMARY,
-            text_color_disabled=("#757575", "#9E9E9E"),
-        )
-        apply_secondary_btn_style(self._btn_clear)
-        self._btn_clear.grid(row=10, column=0, sticky="ew", padx=12, pady=(0, 8))
-
-        # Reactive enable/disable for Clear button
-        for var in (self._input_var, self._output_var, self._target_lang_var):
-            var.trace_add("write", lambda *_: self._update_clear_state())
-
-        # Stage label (status feedback)
-        stage_text = s("starting_server")
-        self._stage_label = ctk.CTkLabel(self._config_frame, text=stage_text)
-        apply_stage_label_style(self._stage_label)
-        self._stage_label.grid(row=11, column=0, pady=4)
-
-        # Log textbox (D-03)
-        self._log_textbox = ctk.CTkTextbox(
-            self._config_frame,
-            state="disabled",
-            height=120,
-            fg_color=p("input_bg"),
-            font=font("mono"),
-            activate_scrollbars=True,
-        )
-        self._log_textbox.grid(row=12, column=0, sticky="ew", padx=12, pady=(0, 4))
-
-        # Elapsed label (hidden until generate runs)
-        self._elapsed_label = ctk.CTkLabel(self._config_frame, text="00:00:00")
-        self._elapsed_label.grid(row=13, column=0, pady=(4, 0))
-        self._elapsed_label.grid_remove()
-
-        # Progress bar (hidden until generate runs)
-        self._progress_bar = ctk.CTkProgressBar(
-            self._config_frame, height=PROGRESS_BAR_HEIGHT,
-        )
-        apply_progress_bar_style(self._progress_bar)
-        self._progress_bar.grid(row=14, column=0, sticky="ew", padx=12, pady=(4, 4))
-        self._progress_bar.grid_remove()
-
-        # Cancel button (hidden until generate runs)
-        self._btn_cancel = ctk.CTkButton(
-            self._config_frame,
-            text="Cancel",
-            command=self._on_cancel,
-            height=BTN_HEIGHT_CANCEL,
-            text_color_disabled=("#757575", "#9E9E9E"),
-        )
-        apply_cancel_btn_style(self._btn_cancel)
-        self._btn_cancel.grid(row=15, column=0, sticky="ew", padx=12, pady=(4, 0))
-        self._btn_cancel.grid_remove()
+        # Empty filler row — pushes content to top when window is taller
+        self._config_frame.rowconfigure(9, weight=1)
 
         # Build remaining tabs and panels — unchanged
         self._build_translate_tab()
@@ -1972,12 +1980,12 @@ class GenSubtitlesApp(ctk.CTk):
 
         if not hasattr(self, "_btn_open_folder"):
             self._btn_open_folder = ctk.CTkButton(
-                self._config_frame, text=s("open_folder_btn"), command=_open_folder
+                self._files_frame, text=s("open_folder_btn"), command=_open_folder
             )
-            self._btn_open_folder.grid(row=16, column=0, padx=12, pady=(4, 0), sticky="ew")
+            self._btn_open_folder.grid(row=10, column=0, padx=12, pady=(4, 0), sticky="ew")
         else:
             self._btn_open_folder.configure(text=s("open_folder_btn"), command=_open_folder)
-            self._btn_open_folder.grid(row=16, column=0, padx=12, pady=(4, 0), sticky="ew")
+            self._btn_open_folder.grid(row=10, column=0, padx=12, pady=(4, 0), sticky="ew")
 
     # ------------------------------------------------------------------
     # Theme / colour palette
