@@ -15,7 +15,7 @@ import platform
 import subprocess
 import threading
 import time
-from hashlib import sha1
+from hashlib import sha256
 from pathlib import Path
 
 import customtkinter as ctk
@@ -667,6 +667,15 @@ class GenSubtitlesApp(ctk.CTk):
         for v in vars:
             v.set("")
 
+    def _step_workspace(self, source_path: Path, prefix: str, fallback_stem: str) -> Path:
+        """Build deterministic per-input workspace path for step-tab staging."""
+        token = sha256(str(source_path.resolve()).encode("utf-8")).hexdigest()[:32]
+        safe_stem = "".join(
+            ch if ch.isalnum() or ch in ("-", "_") else "-"
+            for ch in source_path.stem
+        ).strip("-_") or fallback_stem
+        return source_path.parent / f".gensubtitles-{prefix}-{safe_stem}-{token}"
+
     def _on_translate_step_target_change(self, value: str) -> None:
         """Show/hide engine dropdown in Tab 5 based on target language selection."""
         if value and value not in ("No target", ""):
@@ -733,7 +742,7 @@ class GenSubtitlesApp(ctk.CTk):
                         requested_out.parent.mkdir(parents=True, exist_ok=True)
                         extracted.replace(requested_out)
                         extracted = requested_out
-                    except Exception as exc:  # noqa: BLE001
+                    except OSError as exc:
                         self._log_to(self._extract_log_textbox, f"\u26a0\ufe0f Could not apply custom output name: {exc}")
                 self._extract_output_var.set(str(extracted))
                 self._transcribe_input_var.set(str(extracted))
@@ -765,9 +774,7 @@ class GenSubtitlesApp(ctk.CTk):
         if audio_path.suffix.lower() != ".wav":
             self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Transcribe step requires a .wav file.")
             return
-        token = sha1(str(audio_path.resolve()).encode("utf-8")).hexdigest()[:8]
-        safe_stem = "".join(ch if ch.isalnum() or ch in ("-", "_") else "-" for ch in audio_path.stem).strip("-_") or "audio"
-        work = audio_path.parent / f".gensubtitles-transcribe-{safe_stem}-{token}"
+        work = self._step_workspace(audio_path, "transcribe", "audio")
         work.mkdir(parents=True, exist_ok=True)
         staged_audio = work / "audio.wav"
         for old_wav in work.glob("*.wav"):
@@ -813,9 +820,7 @@ class GenSubtitlesApp(ctk.CTk):
         if tgt in ("No target", ""):
             self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Please select a target language.")
             return
-        token = sha1(str(trans_path.resolve()).encode("utf-8")).hexdigest()[:8]
-        safe_stem = "".join(ch if ch.isalnum() or ch in ("-", "_") else "-" for ch in trans_path.stem).strip("-_") or "transcription"
-        work = trans_path.parent / f".gensubtitles-translate-{safe_stem}-{token}"
+        work = self._step_workspace(trans_path, "translate", "transcription")
         work.mkdir(parents=True, exist_ok=True)
         shutil.copy2(trans_path, work / "transcription.json")
         tgt_code = _label_to_code(tgt)
@@ -854,9 +859,7 @@ class GenSubtitlesApp(ctk.CTk):
         if not trans_path.is_file():
             self._log_to(self._write_log_textbox, "\u26a0\ufe0f Selected input file was not found.")
             return
-        token = sha1(str(trans_path.resolve()).encode("utf-8")).hexdigest()[:8]
-        safe_stem = "".join(ch if ch.isalnum() or ch in ("-", "_") else "-" for ch in trans_path.stem).strip("-_") or "segments"
-        work = trans_path.parent / f".gensubtitles-write-{safe_stem}-{token}"
+        work = self._step_workspace(trans_path, "write", "segments")
         work.mkdir(parents=True, exist_ok=True)
         shutil.copy2(trans_path, work / "translation.json")
 
@@ -874,6 +877,7 @@ class GenSubtitlesApp(ctk.CTk):
 
         def _on_success() -> None:
             if fmt == "SSA":
+                tmp_path = work / SRT_FILENAME
                 try:
                     style = None
                     if self._current_settings is not None:
@@ -883,12 +887,13 @@ class GenSubtitlesApp(ctk.CTk):
                             "primarycolor": self._current_settings.subtitle_text_color,
                             "outlinecolor": self._current_settings.subtitle_outline_color,
                         }
-                    convert_srt_to_ssa(work / SRT_FILENAME, output_obj, style=style)
-                    (work / SRT_FILENAME).unlink(missing_ok=True)
+                    convert_srt_to_ssa(tmp_path, output_obj, style=style)
                     self._log_to(self._write_log_textbox, f"\u2713 Subtitle written: {output_obj}")
-                except Exception as exc:  # noqa: BLE001
+                except (OSError, ValueError) as exc:
                     self._log_to(self._write_log_textbox, f"\u2717 Write failed: {str(exc)[:200]}")
                     return
+                finally:
+                    tmp_path.unlink(missing_ok=True)
             else:
                 self._log_to(self._write_log_textbox, f"\u2713 Subtitle written: {output_obj}")
 
