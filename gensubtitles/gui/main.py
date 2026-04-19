@@ -676,16 +676,47 @@ class GenSubtitlesApp(ctk.CTk):
             self._translate_step_lbl_engine.grid_remove()
             self._translate_step_option_engine.grid_remove()
 
+    def _on_translate_step_source_change(self, selection: str) -> None:
+        """Filter Tab 5 target dropdown to valid destinations for selected source."""
+        all_labels = sorted(_CODE_TO_LABEL.values())
+        if not self._language_pairs:
+            targets = all_labels
+        elif selection == "Auto-detect":
+            targets = sorted({_CODE_TO_LABEL.get(p["to"], p["to"]) for p in self._language_pairs})
+            targets = targets or all_labels
+        else:
+            src_code = _label_to_code(selection)
+            targets = [
+                _CODE_TO_LABEL.get(p["to"], p["to"])
+                for p in self._language_pairs if p["from"] == src_code
+            ]
+            targets = sorted(set(targets)) or all_labels
+        targets = ["No target"] + [t for t in targets if t != "No target"]
+        self._translate_step_option_target.configure(values=targets)
+        current = self._translate_step_target_var.get()
+        if current not in targets:
+            self._translate_step_target_var.set(targets[0])
+        self._on_translate_step_target_change(self._translate_step_target_var.get())
+
     def _on_tab3_extract(self) -> None:
         """Tab 3: Extract Audio button handler."""
         video = self._extract_input_var.get().strip()
         if not video:
             self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Please select an input video file.")
             return
-        work = self._get_tab_work_dir(
-            self._extract_input_var,
-            fallback_vars=[self._input_var],
-        )
+        output_audio = self._extract_output_var.get().strip()
+        if output_audio:
+            requested_out = Path(output_audio)
+            if requested_out.suffix.lower() != ".wav":
+                self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Output audio file must use .wav extension.")
+                return
+            work = requested_out.parent
+        else:
+            requested_out = None
+            work = self._get_tab_work_dir(
+                self._extract_input_var,
+                fallback_vars=[self._input_var],
+            )
         if work is None:
             self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Cannot determine output directory.")
             return
@@ -694,11 +725,19 @@ class GenSubtitlesApp(ctk.CTk):
 
         def _on_success() -> None:
             self._log_to(self._extract_log_textbox, "\u2713 Audio extracted successfully.")
-            # Pre-fill Tab 4 input (D-04)
-            wavs = sorted(work.glob("*.wav"))
+            wavs = sorted(work.glob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True)
             if wavs:
-                self._transcribe_input_var.set(str(wavs[0]))
-                self._log_to(self._extract_log_textbox, f"\u2192 Pre-filled Tab 4 input: {wavs[0].name}")
+                extracted = wavs[0]
+                if requested_out is not None and extracted != requested_out:
+                    try:
+                        requested_out.parent.mkdir(parents=True, exist_ok=True)
+                        extracted.replace(requested_out)
+                        extracted = requested_out
+                    except Exception as exc:  # noqa: BLE001
+                        self._log_to(self._extract_log_textbox, f"\u26a0\ufe0f Could not apply custom output name: {exc}")
+                self._extract_output_var.set(str(extracted))
+                self._transcribe_input_var.set(str(extracted))
+                self._log_to(self._extract_log_textbox, f"\u2192 Pre-filled Tab 4 input: {extracted.name}")
 
         def _on_error(detail: str) -> None:
             self._log_to(self._extract_log_textbox, f"\u2717 Extract failed: {detail[:200]}")
@@ -713,17 +752,28 @@ class GenSubtitlesApp(ctk.CTk):
     def _on_tab4_transcribe(self) -> None:
         """Tab 4: Transcribe button handler."""
         from gensubtitles.core.steps import TRANSCRIPTION_FILENAME  # noqa: PLC0415
+        import shutil  # noqa: PLC0415
+
         audio = self._transcribe_input_var.get().strip()
         if not audio:
             self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Please select an input audio file.")
             return
-        work = self._get_tab_work_dir(
-            self._transcribe_input_var,
-            fallback_vars=[self._extract_input_var, self._input_var],
-        )
-        if work is None:
-            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Cannot determine work directory.")
+        audio_path = Path(audio)
+        if not audio_path.is_file():
+            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Selected audio file was not found.")
             return
+        if audio_path.suffix.lower() != ".wav":
+            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Transcribe step requires a .wav file.")
+            return
+        token = sha1(str(audio_path.resolve()).encode("utf-8")).hexdigest()[:8]
+        safe_stem = "".join(ch if ch.isalnum() or ch in ("-", "_") else "-" for ch in audio_path.stem).strip("-_") or "audio"
+        work = audio_path.parent / f".gensubtitles-transcribe-{safe_stem}-{token}"
+        work.mkdir(parents=True, exist_ok=True)
+        staged_audio = work / "audio.wav"
+        for old_wav in work.glob("*.wav"):
+            if old_wav != staged_audio:
+                old_wav.unlink(missing_ok=True)
+        shutil.copy2(audio_path, staged_audio)
         src = self._source_lang_var.get()
         src_code = None if src in ("Auto-detect", "") else _label_to_code(src)
         payload = {"work_dir": str(work), "source_lang": src_code, "device": "auto"}
@@ -749,21 +799,25 @@ class GenSubtitlesApp(ctk.CTk):
     def _on_tab5_translate(self) -> None:
         """Tab 5: Translate step button handler."""
         from gensubtitles.core.steps import TRANSLATION_FILENAME  # noqa: PLC0415
+        import shutil  # noqa: PLC0415
+
         trans_file = self._translate_step_input_var.get().strip()
         if not trans_file:
             self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Please select a transcription file.")
+            return
+        trans_path = Path(trans_file)
+        if not trans_path.is_file():
+            self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Selected transcription file was not found.")
             return
         tgt = self._translate_step_target_var.get()
         if tgt in ("No target", ""):
             self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Please select a target language.")
             return
-        work = self._get_tab_work_dir(
-            self._translate_step_input_var,
-            fallback_vars=[self._transcribe_input_var, self._input_var],
-        )
-        if work is None:
-            self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Cannot determine work directory.")
-            return
+        token = sha1(str(trans_path.resolve()).encode("utf-8")).hexdigest()[:8]
+        safe_stem = "".join(ch if ch.isalnum() or ch in ("-", "_") else "-" for ch in trans_path.stem).strip("-_") or "transcription"
+        work = trans_path.parent / f".gensubtitles-translate-{safe_stem}-{token}"
+        work.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(trans_path, work / "transcription.json")
         tgt_code = _label_to_code(tgt)
         eng = self._translate_step_engine_var.get().lower()
         payload = {"work_dir": str(work), "target_lang": tgt_code, "engine": eng}
@@ -788,25 +842,55 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _on_tab6_write(self) -> None:
         """Tab 6: Write Subtitle button handler."""
+        from gensubtitles.core.steps import SRT_FILENAME  # noqa: PLC0415
+        from gensubtitles.core.srt_writer import convert_srt_to_ssa  # noqa: PLC0415
+        import shutil  # noqa: PLC0415
+
         trans_file = self._write_input_var.get().strip()
         if not trans_file:
             self._log_to(self._write_log_textbox, "\u26a0\ufe0f Please select an input file.")
             return
-        work = self._get_tab_work_dir(
-            self._write_input_var,
-            fallback_vars=[self._translate_step_input_var, self._input_var],
-        )
-        if work is None:
-            self._log_to(self._write_log_textbox, "\u26a0\ufe0f Cannot determine work directory.")
+        trans_path = Path(trans_file)
+        if not trans_path.is_file():
+            self._log_to(self._write_log_textbox, "\u26a0\ufe0f Selected input file was not found.")
             return
+        token = sha1(str(trans_path.resolve()).encode("utf-8")).hexdigest()[:8]
+        safe_stem = "".join(ch if ch.isalnum() or ch in ("-", "_") else "-" for ch in trans_path.stem).strip("-_") or "segments"
+        work = trans_path.parent / f".gensubtitles-write-{safe_stem}-{token}"
+        work.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(trans_path, work / "translation.json")
+
+        fmt = self._write_format_var.get().upper()
         output_path = self._write_output_var.get().strip()
         if not output_path:
-            from gensubtitles.core.steps import SRT_FILENAME  # noqa: PLC0415
-            output_path = str(work / SRT_FILENAME)
-        payload = {"work_dir": str(work), "output_path": output_path}
+            default_name = SRT_FILENAME if fmt == "SRT" else "subtitles.ssa"
+            output_path = str(work / default_name)
+        output_obj = Path(output_path)
+        if fmt == "SSA":
+            tmp_srt = work / SRT_FILENAME
+            payload = {"work_dir": str(work), "output_path": str(tmp_srt)}
+        else:
+            payload = {"work_dir": str(work), "output_path": str(output_obj)}
 
         def _on_success() -> None:
-            self._log_to(self._write_log_textbox, f"\u2713 Subtitle written: {output_path}")
+            if fmt == "SSA":
+                try:
+                    style = None
+                    if self._current_settings is not None:
+                        style = {
+                            "fontname": self._current_settings.subtitle_font_family,
+                            "fontsize": self._current_settings.subtitle_font_size,
+                            "primarycolor": self._current_settings.subtitle_text_color,
+                            "outlinecolor": self._current_settings.subtitle_outline_color,
+                        }
+                    convert_srt_to_ssa(work / SRT_FILENAME, output_obj, style=style)
+                    (work / SRT_FILENAME).unlink(missing_ok=True)
+                    self._log_to(self._write_log_textbox, f"\u2713 Subtitle written: {output_obj}")
+                except Exception as exc:  # noqa: BLE001
+                    self._log_to(self._write_log_textbox, f"\u2717 Write failed: {str(exc)[:200]}")
+                    return
+            else:
+                self._log_to(self._write_log_textbox, f"\u2713 Subtitle written: {output_obj}")
 
         def _on_error(detail: str) -> None:
             self._log_to(self._write_log_textbox, f"\u2717 Write failed: {detail[:200]}")
@@ -1250,7 +1334,10 @@ class GenSubtitlesApp(ctk.CTk):
         self._translate_step_lbl_source = ctk.CTkLabel(frame, text=s("source_lang_lbl"), anchor="w")
         self._translate_step_lbl_source.grid(row=2, column=0, sticky="w", padx=12, pady=(0, 2))
         self._translate_step_option_source = ctk.CTkOptionMenu(
-            frame, values=["Auto-detect"], variable=self._translate_step_source_var,
+            frame,
+            values=["Auto-detect"],
+            variable=self._translate_step_source_var,
+            command=self._on_translate_step_source_change,
         )
         self._translate_step_option_source.grid(row=3, column=0, sticky="ew", padx=12, pady=(0, 8))
 
@@ -1605,8 +1692,12 @@ class GenSubtitlesApp(ctk.CTk):
             else:
                 sources = ["Auto-detect"] + sorted(_CODE_TO_LABEL.values())
             self._option_source_lang.configure(values=sources)
+            self._transcribe_option_source.configure(values=sources)
+            self._translate_step_option_source.configure(values=sources)
             self._source_lang_var.set("Auto-detect")
             self._on_source_lang_change("Auto-detect")
+            self._translate_step_source_var.set("Auto-detect")
+            self._on_translate_step_source_change("Auto-detect")
             # Also populate Translate tab dropdowns
             non_auto = [s for s in sources if s != "Auto-detect"]
             if non_auto:
