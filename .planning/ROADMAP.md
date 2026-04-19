@@ -814,5 +814,25 @@ Plans:
 
 ---
 
+### Phase 999.30: REFACTOR — GUI con Tabs por Funcionalidad (BACKLOG)
+
+**Goal:** Rediseñar la GUI usando un CTkTabview con 6 pestañas: (1) Generar Subtítulos (flujo completo: entrada, salida, config, botones, log), (2) Traducción de Subtítulos (sin cambios), (3) Extraer Audio (entrada, salida, botones, log), (4) Transcribir (entrada, salida, botones, log), (5) Traducción (entrada, idiomas, motor, botones, log), (6) Escribir Subtítulo (entrada, formato, botones, log). Cada tab lleva su propia consola de logs. El working directory se sugiere automáticamente usando la lógica actual.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+**Notes:**
+- Tab 1 "Generar Subtítulos": video entrada + archivo salida + sección "Configuración" (idioma origen, idioma destino, motor traducción, formato salida) + botones Generar/Limpiar + consola logs (errores en consola, no en popup)
+- Tab 2 "Traducción de Subtítulos": sin cambios respecto al diseño actual
+- Tab 3 "Extraer Audio": video entrada + archivo salida + botones Extraer/Limpiar + consola logs
+- Tab 4 "Transcribir": archivo entrada + archivo salida + botones Transcribir/Limpiar + consola logs
+- Tab 5 "Traducción": archivo entrada + idioma origen + idioma destino + motor traducción + botones Traducir/Limpiar + consola logs
+- Tab 6 "Escribir Subtítulo": archivo entrada + formato salida (srt, ssa) + botones Escribir/Limpiar + consola logs
+- Working directory se sugiere en cada tab usando la lógica existente
+
+---
+
 *Roadmap created: 2026-04-02*  
 *Last updated: 2026-04-18 — Phase 999.29 completed (GUI rediseño layout tres paneles verticales)*
