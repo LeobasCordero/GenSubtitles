@@ -100,6 +100,29 @@ _STRINGS: dict[str, dict[str, str]] = {
         "dlg_about_title":      "About GenSubtitles",
         "dlg_about_github":     "GitHub Project",
         "dlg_about_close":      "Close",
+        # Phase 999.30 — 6-tab refactor
+        # Tab names
+        "extract_tab":              "Extract Audio",
+        "transcribe_tab":           "Transcribe",
+        "translate_step_tab":       "Translate",
+        "write_tab":                "Write Subtitle",
+        # Tab 1 new elements
+        "panel_config_title":       "Configuration",
+        "generate_clear_btn":       "Clear fields",
+        # Tab 3 — Extract Audio
+        "extract_input_lbl":        "Input video *:",
+        "extract_output_lbl":       "Output audio file:",
+        "extract_run_btn":          "Extract Audio",
+        # Tab 4 — Transcribe
+        "transcribe_input_lbl":     "Input audio *:",
+        "transcribe_run_btn":       "Transcribe",
+        # Tab 5 — Translate (step)
+        "translate_step_input_lbl": "Input transcription *:",
+        "translate_step_run_btn":   "Translate",
+        # Tab 6 — Write Subtitle
+        "write_input_lbl":          "Input transcription *:",
+        "write_output_lbl":         "Output subtitle *:",
+        "write_run_btn":            "Write Subtitle",
         "dlg_tutorial_text": (
             "GenSubtitles \u2014 Usage Guide\n"
             "==========================\n\n"
@@ -228,6 +251,29 @@ _STRINGS: dict[str, dict[str, str]] = {
         "dlg_about_title":      "Acerca de GenSubtitles",
         "dlg_about_github":     "Proyecto en GitHub",
         "dlg_about_close":      "Cerrar",
+        # Phase 999.30 — 6-tab refactor
+        # Nombres de tabs
+        "extract_tab":              "Extraer Audio",
+        "transcribe_tab":           "Transcribir",
+        "translate_step_tab":       "Traducci\u00f3n",
+        "write_tab":                "Escribir Subt\u00edtulo",
+        # Tab 1 nuevos elementos
+        "panel_config_title":       "Configuraci\u00f3n",
+        "generate_clear_btn":       "Limpiar campos",
+        # Tab 3 — Extraer Audio
+        "extract_input_lbl":        "Video de entrada *:",
+        "extract_output_lbl":       "Archivo de audio de salida:",
+        "extract_run_btn":          "Extraer Audio",
+        # Tab 4 — Transcribir
+        "transcribe_input_lbl":     "Audio de entrada *:",
+        "transcribe_run_btn":       "Transcribir",
+        # Tab 5 — Traducci\u00f3n (paso)
+        "translate_step_input_lbl": "Transcripci\u00f3n de entrada *:",
+        "translate_step_run_btn":   "Traducir",
+        # Tab 6 — Escribir Subt\u00edtulo
+        "write_input_lbl":          "Transcripci\u00f3n de entrada *:",
+        "write_output_lbl":         "Subt\u00edtulo de salida *:",
+        "write_run_btn":            "Escribir Subt\u00edtulo",
         "dlg_tutorial_text": (
             "GenSubtitles \u2014 Gu\u00eda de uso\n"
             "==========================\n\n"

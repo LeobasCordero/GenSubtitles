@@ -15,7 +15,7 @@ import platform
 import subprocess
 import threading
 import time
-from hashlib import sha1
+from hashlib import sha256
 from pathlib import Path
 
 import customtkinter as ctk
@@ -124,7 +124,7 @@ class GenSubtitlesApp(ctk.CTk):
         super().__init__()
 
         self.title("GenSubtitles")
-        self.minsize(1100, 600)
+        self.minsize(900, 560)
         self.configure(fg_color=p("bg"))
 
         # String variables for entry widgets
@@ -134,6 +134,18 @@ class GenSubtitlesApp(ctk.CTk):
         self._target_lang_var = ctk.StringVar(value="No target")
         self._output_format_var = ctk.StringVar(value="SRT")
         self._engine_var = ctk.StringVar(value="Argos")
+
+        # Phase 999.30 — per-tab StringVars for step tabs 3-6
+        self._extract_input_var = ctk.StringVar()
+        self._extract_output_var = ctk.StringVar()
+        self._transcribe_input_var = ctk.StringVar()
+        self._translate_step_input_var = ctk.StringVar()
+        self._translate_step_source_var = ctk.StringVar()
+        self._translate_step_target_var = ctk.StringVar(value="No target")
+        self._translate_step_engine_var = ctk.StringVar(value="Argos")
+        self._write_input_var = ctk.StringVar()
+        self._write_output_var = ctk.StringVar()
+        self._write_format_var = ctk.StringVar(value="SRT")
 
         # Dynamic language pairs loaded from API
         self._language_pairs: list[dict] = []
@@ -153,19 +165,6 @@ class GenSubtitlesApp(ctk.CTk):
         self._server_ready = False
         self._os_listener_active = False  # guard for the darkdetect listener thread
 
-        # Stepper mode state
-        self._work_dir_var = ctk.StringVar()
-        self._stepper_switch_var = ctk.BooleanVar(value=False)
-        self._step_states: dict[str, str] = {
-            "extract": "pending",
-            "transcribe": "pending",
-            "translate": "pending",
-            "write": "pending",
-        }
-        self._stepper_refresh_id: str | None = None  # after() cancel token
-        self._work_dir_from_browse: bool = False   # True when work_dir was set via Browse dialog
-        self._work_dir_browse_just_set: bool = False  # sentinel to prevent trace resetting the flag
-
         self._apply_startup_settings()
         self._build_ui()
         self._apply_startup_theme()
@@ -184,56 +183,48 @@ class GenSubtitlesApp(ctk.CTk):
         self._tabview.pack(fill="both", expand=True, padx=16, pady=16)
         self._tabview.add("Generate Subtitles")
         self._tabview.add("Translate Subtitles")
+        self._tabview.add("Extract Audio")    # Tab 3 — built by Plan 03
+        self._tabview.add("Transcribe")       # Tab 4 — built by Plan 03
+        self._tabview.add("Translate")        # Tab 5 — built by Plan 03
+        self._tabview.add("Write Subtitle")   # Tab 6 — built by Plan 03
 
         _tab_gen = self._tabview.tab("Generate Subtitles")
 
-        # ── Three-panel container ─────────────────────────────────────────
+        # ── Two-panel container (D-02) ────────────────────────────────────────────
         self._panels_frame = ctk.CTkFrame(_tab_gen, fg_color="transparent")
         self._panels_frame.pack(fill="both", expand=True, padx=16, pady=(8, 16))
         self._panels_frame.columnconfigure(0, weight=1)
         self._panels_frame.columnconfigure(1, weight=1)
-        self._panels_frame.columnconfigure(2, weight=1)
         self._panels_frame.rowconfigure(0, weight=1)
 
-        # ── Panel frames ──────────────────────────────────────────────────
+        # ── Panel frames ─────────────────────────────────────────────────────────
         self._files_frame = ctk.CTkFrame(
             self._panels_frame, corner_radius=12, fg_color=p("surface")
         )
         self._files_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 4), pady=0)
         self._files_frame.columnconfigure(0, weight=1)
+        self._files_frame.rowconfigure(6, weight=1)
 
-        self._process_frame = ctk.CTkFrame(
+        self._config_frame = ctk.CTkFrame(
             self._panels_frame, corner_radius=12, fg_color=p("surface")
         )
-        self._process_frame.grid(row=0, column=1, sticky="nsew", padx=4, pady=0)
-        self._process_frame.columnconfigure(0, weight=1)
+        self._config_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 0), pady=0)
+        self._config_frame.columnconfigure(0, weight=1)
 
-        self._status_frame = ctk.CTkFrame(
-            self._panels_frame, corner_radius=12, fg_color=p("surface")
-        )
-        self._status_frame.grid(row=0, column=2, sticky="nsew", padx=(4, 0), pady=0)
-        self._status_frame.columnconfigure(0, weight=1)
-
-        # ── files_frame: "Pasos iniciales" ───────────────────────────────
+        # ── files_frame: video + output ──────────────────────────────────────────
         _startup_lang = (
             getattr(self._current_settings, "ui_language", "en")
             if self._current_settings else "en"
         )
         set_language(_startup_lang)
 
-        self._lbl_files_title = ctk.CTkLabel(
-            self._files_frame, text=s("panel_files_title"), font=font("subheader"),
-            anchor="w",
-        )
-        self._lbl_files_title.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 8))
-
         # Input video group
         self._lbl_input_video = ctk.CTkLabel(
             self._files_frame, text=s("input_video_lbl"), anchor="w"
         )
-        self._lbl_input_video.grid(row=1, column=0, sticky="w", padx=12, pady=(0, 2))
+        self._lbl_input_video.grid(row=0, column=0, sticky="w", padx=12, pady=(12, 2))
         _input_row = ctk.CTkFrame(self._files_frame, fg_color="transparent")
-        _input_row.grid(row=2, column=0, sticky="ew", padx=12, pady=(0, 8))
+        _input_row.grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 8))
         _input_row.columnconfigure(0, weight=1)
         self._entry_input = ctk.CTkEntry(_input_row, textvariable=self._input_var)
         apply_entry_style(self._entry_input)
@@ -249,9 +240,9 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_output_file = ctk.CTkLabel(
             self._files_frame, text=s("output_file_lbl"), anchor="w"
         )
-        self._lbl_output_file.grid(row=3, column=0, sticky="w", padx=12, pady=(0, 2))
+        self._lbl_output_file.grid(row=2, column=0, sticky="w", padx=12, pady=(0, 2))
         _output_row = ctk.CTkFrame(self._files_frame, fg_color="transparent")
-        _output_row.grid(row=4, column=0, sticky="ew", padx=12, pady=(0, 8))
+        _output_row.grid(row=3, column=0, sticky="ew", padx=12, pady=(0, 8))
         _output_row.columnconfigure(0, weight=1)
         self._entry_output = ctk.CTkEntry(_output_row, textvariable=self._output_var)
         apply_entry_style(self._entry_output)
@@ -263,36 +254,94 @@ class GenSubtitlesApp(ctk.CTk):
         apply_secondary_btn_style(self._btn_browse_output)
         self._btn_browse_output.grid(row=0, column=1, padx=(8, 0))
 
-        # Clear (input/output) button
+        # Buttons row (D-08): Generate + Clear side-by-side in _files_frame
+        _btns_row = ctk.CTkFrame(self._files_frame, fg_color="transparent")
+        _btns_row.grid(row=4, column=0, sticky="ew", padx=12, pady=(8, 4))
+        _btns_row.columnconfigure(0, weight=1)
+        _btns_row.columnconfigure(1, weight=1)
+
+        self._btn_generate = ctk.CTkButton(
+            _btns_row,
+            text=s("generate_btn"),
+            command=self._on_generate,
+            state="disabled",
+            height=BTN_HEIGHT_PRIMARY,
+            text_color_disabled=("#757575", "#9E9E9E"),
+        )
+        apply_accent_btn_style(self._btn_generate)
+        self._btn_generate.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+
         self._btn_clear = ctk.CTkButton(
-            self._files_frame,
-            text=s("clear_btn"),
+            _btns_row,
+            text=s("generate_clear_btn"),
             command=self._on_clear,
             state="disabled",
             height=BTN_HEIGHT_PRIMARY,
             text_color_disabled=("#757575", "#9E9E9E"),
         )
         apply_secondary_btn_style(self._btn_clear)
-        self._btn_clear.grid(row=5, column=0, sticky="ew", padx=12, pady=(8, 12))
+        self._btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
         # Reactive enable/disable for Clear button
         for var in (self._input_var, self._output_var, self._target_lang_var):
             var.trace_add("write", lambda *_: self._update_clear_state())
 
-        # ── process_frame: "Configuración" ───────────────────────────────
-        self._lbl_process_title = ctk.CTkLabel(
-            self._process_frame, text=s("panel_process_title"), font=font("subheader"),
+        # Stage label (row 5 of _files_frame)
+        stage_text = s("starting_server")
+        self._stage_label = ctk.CTkLabel(self._files_frame, text=stage_text)
+        apply_stage_label_style(self._stage_label)
+        self._stage_label.grid(row=5, column=0, pady=4)
+
+        # Log textbox (row 6 of _files_frame, nsew, expands)
+        self._log_textbox = ctk.CTkTextbox(
+            self._files_frame,
+            state="disabled",
+            height=120,
+            fg_color=p("input_bg"),
+            font=font("mono"),
+            activate_scrollbars=True,
+        )
+        self._log_textbox.grid(row=6, column=0, sticky="nsew", padx=12, pady=(0, 4))
+
+        # Elapsed label (hidden until generate runs)
+        self._elapsed_label = ctk.CTkLabel(self._files_frame, text="00:00:00")
+        self._elapsed_label.grid(row=7, column=0, pady=(4, 0))
+        self._elapsed_label.grid_remove()
+
+        # Progress bar (hidden until generate runs)
+        self._progress_bar = ctk.CTkProgressBar(
+            self._files_frame, height=PROGRESS_BAR_HEIGHT,
+        )
+        apply_progress_bar_style(self._progress_bar)
+        self._progress_bar.grid(row=8, column=0, sticky="ew", padx=12, pady=(4, 4))
+        self._progress_bar.grid_remove()
+
+        # Cancel button (hidden until generate runs)
+        self._btn_cancel = ctk.CTkButton(
+            self._files_frame,
+            text="Cancel",
+            command=self._on_cancel,
+            height=BTN_HEIGHT_CANCEL,
+            text_color_disabled=("#757575", "#9E9E9E"),
+        )
+        apply_cancel_btn_style(self._btn_cancel)
+        self._btn_cancel.grid(row=9, column=0, sticky="ew", padx=12, pady=(4, 0))
+        self._btn_cancel.grid_remove()
+
+        # ── config_frame: "Configuration" ────────────────────────────────────────
+        self._lbl_config_title = ctk.CTkLabel(
+            self._config_frame, text=s("panel_config_title"), font=font("subheader"),
             anchor="w",
         )
-        self._lbl_process_title.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 8))
+        self._lbl_config_title.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 8))
 
         # Source language
         self._lbl_source_lang = ctk.CTkLabel(
-            self._process_frame, text=s("source_lang_lbl"), anchor="w"
+            self._config_frame, text=s("source_lang_lbl"), anchor="w"
         )
         self._lbl_source_lang.grid(row=1, column=0, sticky="w", padx=12, pady=(0, 2))
         self._option_source_lang = ctk.CTkOptionMenu(
-            self._process_frame,
+            self._config_frame,
             values=["Auto-detect"],
             variable=self._source_lang_var,
             command=self._on_source_lang_change,
@@ -301,11 +350,11 @@ class GenSubtitlesApp(ctk.CTk):
 
         # Target language
         self._lbl_target_lang = ctk.CTkLabel(
-            self._process_frame, text=s("target_lang_lbl"), anchor="w"
+            self._config_frame, text=s("target_lang_lbl"), anchor="w"
         )
         self._lbl_target_lang.grid(row=3, column=0, sticky="w", padx=12, pady=(0, 2))
         self._option_target_lang = ctk.CTkOptionMenu(
-            self._process_frame,
+            self._config_frame,
             values=["No target"],
             variable=self._target_lang_var,
             command=self._on_target_lang_change,
@@ -319,11 +368,11 @@ class GenSubtitlesApp(ctk.CTk):
         if self._current_settings and self._current_settings.libretranslate_url:
             _engine_values.append("LibreTranslate")
         self._lbl_engine = ctk.CTkLabel(
-            self._process_frame, text=s("engine_lbl"), anchor="w"
+            self._config_frame, text=s("engine_lbl"), anchor="w"
         )
         self._lbl_engine.grid(row=5, column=0, sticky="w", padx=12, pady=(0, 2))
         self._option_engine = ctk.CTkOptionMenu(
-            self._process_frame,
+            self._config_frame,
             values=_engine_values,
             variable=self._engine_var,
         )
@@ -333,48 +382,30 @@ class GenSubtitlesApp(ctk.CTk):
 
         # Output format
         self._lbl_output_format = ctk.CTkLabel(
-            self._process_frame, text=s("output_format_lbl"), anchor="w"
+            self._config_frame, text=s("output_format_lbl"), anchor="w"
         )
         self._lbl_output_format.grid(row=7, column=0, sticky="w", padx=12, pady=(0, 2))
         self._option_output_format = ctk.CTkOptionMenu(
-            self._process_frame,
+            self._config_frame,
             values=["SRT", "SSA"],
             variable=self._output_format_var,
             command=self._on_output_format_change,
         )
         self._option_output_format.grid(row=8, column=0, sticky="ew", padx=12, pady=(0, 8))
 
-        # ── status_frame: "Control y Progreso" ───────────────────────────
-        # Title only — rest is built by _build_stepper_section()
-        self._lbl_status_title = ctk.CTkLabel(
-            self._status_frame, text=s("panel_status_title"), font=font("subheader"),
-            anchor="w",
-        )
-        self._lbl_status_title.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 8))
-
-        self._build_stepper_section()
+        # Empty filler row — pushes content to top when window is taller
+        self._config_frame.rowconfigure(9, weight=1)
 
         # Build remaining tabs and panels — unchanged
         self._build_translate_tab()
+        self._build_extract_tab()
+        self._build_transcribe_tab()
+        self._build_translate_step_tab()
+        self._build_write_tab()
         self._build_settings_panel()
         self._build_menu_bar()
 
-    def _build_stepper_section(self) -> None:
-        """Populate self._status_frame — rows 1..N (row 0 is the title)."""
-
-        sf = self._status_frame
-        _row = 1  # next row counter
-
-        # ── CTkSwitch: Modo paso a paso ───────────────────────────────────
-        self._switch_stepper = ctk.CTkSwitch(
-            sf,
-            text=s("stepper_switch_lbl"),
-            variable=self._stepper_switch_var,
-            command=self._on_stepper_switch_changed,
-            onvalue=True,
-            offvalue=False,
-            font=font("body"),
-        )
+    def _log_to(self, textbox: "ctk.CTkTextbox", msg: str) -> None:
         self._switch_stepper.grid(row=_row, column=0, sticky="w", padx=12, pady=(0, 8))
         _row += 1
 
@@ -522,246 +553,359 @@ class GenSubtitlesApp(ctk.CTk):
         self._work_dir_var.trace_add("write", self._on_work_dir_changed)
         self._schedule_stepper_refresh()
 
-    # ------------------------------------------------------------------
-    # Stepper mode — browse, polling, step execution
-    # ------------------------------------------------------------------
+    def _log_to(self, textbox: "ctk.CTkTextbox", msg: str) -> None:
+        """Append *msg* to any CTkTextbox log widget with auto-scroll."""
+        try:
+            textbox.configure(state="normal")
+            textbox.insert("end", msg + "\n")
+            textbox.configure(state="disabled")
+            textbox.see("end")
+        except Exception:  # noqa: BLE001
+            pass
 
-    def _browse_work_dir(self) -> None:
-        from tkinter import filedialog  # noqa: PLC0415
-        path = filedialog.askdirectory(title="Select work directory")
-        if path:
-            self._work_dir_from_browse = True    # mark: set by Browse
-            self._work_dir_browse_just_set = True  # prevent trace from clearing flag
-            self._work_dir_var.set(path)          # fires trace (consuming sentinel)
+    def _get_tab_work_dir(
+        self,
+        input_var: "ctk.StringVar",
+        fallback_vars: "list[ctk.StringVar] | None" = None,
+    ) -> "Path | None":
+        """Return work-dir path derived from *input_var*, or first non-empty fallback.
 
-    def _on_work_dir_changed(self, *_) -> None:
-        """Handle work-dir StringVar write.
-
-        When the change came from _browse_work_dir(), _work_dir_browse_just_set
-        is True — consume the sentinel and keep _work_dir_from_browse=True.
-        When the user edits the entry manually, both flags are False and stay
-        False, so power-user paths are used as-is (per D-05).
+        Fallback chain (D-05): tab's own input → _input_var (Tab 1 video) → _extract_input_var (Tab 3 audio).
         """
-        if self._work_dir_browse_just_set:
-            self._work_dir_browse_just_set = False  # consume sentinel
-            # _work_dir_from_browse already set to True in _browse_work_dir()
-        else:
-            # Manual edit — reset browse flag
-            self._work_dir_from_browse = False
-        self._refresh_stepper_state()
-
-    def _on_stepper_switch_changed(self) -> None:
-        """Handle CTkSwitch toggle for step-by-step mode."""
-        step_mode = self._stepper_switch_var.get()
-        if step_mode:
-            # Switch ON: show work_dir row, set button to step-by-step text
-            self._work_dir_row_frame.grid()
-            self._btn_generate.configure(text=s("generate_step_start_btn"))
-        else:
-            # Switch OFF: hide work_dir row, reset button text
-            self._work_dir_row_frame.grid_remove()
-            self._btn_generate.configure(text=s("generate_btn"))
-        # Refresh stepper button availability
-        self._refresh_stepper_state()
+        val = input_var.get().strip()
+        if val:
+            return Path(val).parent
+        if fallback_vars:
+            for fv in fallback_vars:
+                fv_val = fv.get().strip()
+                if fv_val:
+                    return Path(fv_val).parent
+        return None
 
     def _log(self, msg: str) -> None:
-        """Append a message to the activity log textbox with auto-scroll."""
-        try:
-            self._log_textbox.configure(state="normal")
-            self._log_textbox.insert("end", msg + "\n")
-            self._log_textbox.configure(state="disabled")
-            self._log_textbox.see("end")
-        except Exception:  # noqa: BLE001
-            pass  # log textbox may not exist yet during startup
+        """Append a message to the Tab 1 activity log textbox with auto-scroll."""
+        self._log_to(self._log_textbox, msg)
 
-    def _get_effective_work_dir(self) -> "Path | None":
-        """Return the effective work_dir path for the current state.
+    def _run_step_in_bg(
+        self,
+        step_key: str,
+        api_endpoint: str,
+        payload: dict,
+        *,
+        log_textbox: "ctk.CTkTextbox | None" = None,
+        on_success: "Callable[[], None] | None" = None,
+        on_error: "Callable[[str], None] | None" = None,
+    ) -> None:
+        """Execute a step API call in a background thread.
 
-        When the user selected a parent folder via Browse AND a video is loaded,
-        returns parent / subfolder (the folder that will hold this video's
-        artifacts). The subfolder uses the video's sanitized stem, or a
-        deterministic hash-based fallback when sanitization is empty.
-        If the user typed a path manually, returns that path as-is (power-user
-        mode, per D-05).
-
-        Returns None if the work-dir entry is empty.
+        Routes log messages to *log_textbox* (defaults to Tab 1 _log_textbox).
+        Calls *on_success* or *on_error* on the main thread when done.
         """
-        from gensubtitles.core.steps import sanitize_stem  # noqa: PLC0415
-
-        work_str = self._work_dir_var.get().strip()
-        if not work_str:
-            return None
-        work = Path(work_str)
-        if self._work_dir_from_browse:
-            video_str = self._input_var.get().strip()
-            if video_str:
-                raw_stem = Path(video_str).stem
-                stem = sanitize_stem(raw_stem) or f"video-{sha1(raw_stem.encode('utf-8')).hexdigest()[:8]}"
-                return work / stem
-        return work
-
-    def _schedule_stepper_refresh(self) -> None:
-        """Schedule periodic stepper state refresh every 2 seconds."""
-        if not self._closing:
-            self._stepper_refresh_id = self.after(2000, self._do_stepper_refresh)
-
-    def _do_stepper_refresh(self) -> None:
-        if self._closing:
-            return
-        self._refresh_stepper_state()
-        self._schedule_stepper_refresh()
-
-    def _refresh_stepper_state(self) -> None:
-        """Check work_dir artifact existence and update step button/label states."""
-        from gensubtitles.core.steps import (  # noqa: PLC0415
-            TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME,
-        )
-        step_mode = self._stepper_switch_var.get()
-        # Step buttons only active in step mode
-        if not step_mode:
-            for key in ("extract", "transcribe", "translate", "write"):
-                self._step_buttons[key].configure(state="disabled")
-                if self._step_states[key] not in ("running", "done", "error"):
-                    self._step_status_labels[key].configure(text="—")
-            self._btn_clear_work.configure(state="disabled")
-            return
-
-        work_dir = self._get_effective_work_dir()
-        if work_dir is None:
-            for key in ("extract", "transcribe", "translate", "write"):
-                self._step_buttons[key].configure(state="disabled")
-                if self._step_states[key] not in ("running", "done", "error"):
-                    self._step_status_labels[key].configure(text="—")
-            self._btn_clear_work.configure(state="disabled")
-            return
-
-        has_video = bool(self._input_var.get().strip())
-        has_audio = any(p.is_file() for p in work_dir.glob("*.wav")) if work_dir.is_dir() else False
-        has_transcription = (work_dir / TRANSCRIPTION_FILENAME).is_file()
-        has_translation = (work_dir / TRANSLATION_FILENAME).is_file()
-        has_target_lang = self._target_lang_var.get() not in ("No target", "")
-
-        def _btn_state(step_key: str, prerequisite: bool) -> str:
-            if self._step_states[step_key] == "running":
-                return "disabled"
-            return "normal" if prerequisite else "disabled"
-
-        self._step_buttons["extract"].configure(state=_btn_state("extract", has_video and self._server_ready))
-        self._step_buttons["transcribe"].configure(state=_btn_state("transcribe", has_audio))
-        self._step_buttons["translate"].configure(state=_btn_state("translate", has_transcription and has_target_lang))
-        self._step_buttons["write"].configure(state=_btn_state("write", has_transcription or has_translation))
-
-        if self._step_states["translate"] == "pending" and not has_target_lang:
-            self._step_status_labels["translate"].configure(text="\u2298 Skipped")
-        elif self._step_states["translate"] == "pending":
-            self._step_status_labels["translate"].configure(text="\u2014")
-
-        any_artifact = has_audio or has_transcription or has_translation
-        self._btn_clear_work.configure(state="normal" if any_artifact else "disabled")
-
-    def _run_step_in_bg(self, step_key: str, api_endpoint: str, payload: dict) -> None:
-        """Execute a step API call in a background thread; update stepper state on completion."""
-        self._step_states[step_key] = "running"
-        self._step_status_labels[step_key].configure(text="\u23f3 Running\u2026")
-        self._log(f"\u23f3 Running step: {step_key}")
-        self._step_buttons[step_key].configure(state="disabled")
+        _tb = log_textbox if log_textbox is not None else self._log_textbox
+        self._log_to(_tb, f"\u23f3 Running step: {step_key}")
 
         def _worker() -> None:
             try:
                 import requests as req  # noqa: PLC0415
                 resp = req.post(f"{server.BASE_URL}{api_endpoint}", json=payload, timeout=600)
                 if resp.status_code == 200:
-                    self.after(0, self._on_step_success, step_key)
+                    if on_success:
+                        self.after(0, on_success)
                 else:
                     try:
                         detail = resp.json().get("detail", f"HTTP {resp.status_code}")
                     except Exception:  # noqa: BLE001
                         detail = f"HTTP {resp.status_code}"
-                    self.after(0, self._on_step_error, step_key, detail)
+                    if on_error:
+                        self.after(0, on_error, detail)
+                    else:
+                        self.after(0, lambda d=detail: self._log_to(_tb, f"\u2717 Error: {d}"))
             except Exception as exc:  # noqa: BLE001
-                self.after(0, self._on_step_error, step_key, str(exc))
+                if on_error:
+                    self.after(0, on_error, str(exc))
+                else:
+                    self.after(0, lambda e=exc: self._log_to(_tb, f"\u2717 Error: {e}"))
 
         threading.Thread(target=_worker, daemon=True).start()
 
     def _on_step_success(self, step_key: str) -> None:
-        self._step_states[step_key] = "done"
-        self._step_status_labels[step_key].configure(text="\u2713 Done")
-        self._log(f"\u2713 Step {step_key} completed successfully")
-        self._refresh_stepper_state()
+        """Legacy callback — kept for compatibility. Step tabs use per-tab on_success callbacks."""
+        self._log(f"\u2713 Step {step_key} completed")
 
     def _on_step_error(self, step_key: str, detail: str) -> None:
-        self._step_states[step_key] = "error"
-        self._step_status_labels[step_key].configure(text="\u2717 Error")
-        self._stage_label.configure(text=f"Step error ({step_key}): {str(detail)[:120]}")
-        self._log(f"Step error ({step_key}): {str(detail)[:120]}")
-        self._refresh_stepper_state()
+        """Legacy callback — kept for compatibility. Step tabs use per-tab on_error callbacks."""
+        self._log(f"\u2717 Step error ({step_key}): {str(detail)[:120]}")
 
-    def _on_step_extract(self) -> None:
-        video = self._input_var.get().strip()
-        if not video:
-            return
-        effective = self._get_effective_work_dir()
-        if effective is None:
-            return
-        # Create the subfolder now so it exists when the API call arrives
-        effective.mkdir(parents=True, exist_ok=True)
-        self._run_step_in_bg("extract", "/steps/extract", {
-            "video_path": video,
-            "work_dir": str(effective),
-        })
+    def _browse_file_to_var(
+        self,
+        var: "ctk.StringVar",
+        filetypes: "list[tuple[str, str]] | None" = None,
+    ) -> None:
+        """Open file-open dialog and set *var* to the selected path."""
+        from tkinter import filedialog  # noqa: PLC0415
+        path = filedialog.askopenfilename(filetypes=filetypes or [("All files", "*.*")])
+        if path:
+            var.set(path)
 
-    def _on_step_transcribe(self) -> None:
-        work = self._get_effective_work_dir()
-        if work is None:
-            return
-        src = self._source_lang_var.get()
-        src_code = None if src == "Auto-detect" else _label_to_code(src)
-        self._run_step_in_bg("transcribe", "/steps/transcribe", {
-            "work_dir": str(work),
-            "source_lang": src_code,
-            "device": "auto",
-        })
-
-    def _on_step_translate(self) -> None:
-        work = self._get_effective_work_dir()
-        tgt = self._target_lang_var.get()
-        if work is None or tgt in ("No target", ""):
-            return
-        tgt_code = _label_to_code(tgt)
-        eng = self._engine_var.get().lower()
-        self._run_step_in_bg("translate", "/steps/translate", {
-            "work_dir": str(work),
-            "target_lang": tgt_code,
-            "engine": eng,
-        })
-
-    def _on_step_write(self) -> None:
-        work = self._get_effective_work_dir()
-        if work is None:
-            return
-        from gensubtitles.core.steps import SRT_FILENAME  # noqa: PLC0415
-        output = self._output_var.get().strip()
-        srt_out = output if output else str(work / SRT_FILENAME)
-        self._run_step_in_bg("write", "/steps/write", {"work_dir": str(work), "output_path": srt_out})
-
-    def _on_clear_work(self) -> None:
-        """Delete intermediate artifacts from work_dir; reset stepper state."""
-        from gensubtitles.core.steps import (  # noqa: PLC0415
-            TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME,
+    def _save_file_to_var(
+        self,
+        var: "ctk.StringVar",
+        defaultextension: str = ".srt",
+        filetypes: "list[tuple[str, str]] | None" = None,
+    ) -> None:
+        """Open file-save dialog and set *var* to the chosen path."""
+        from tkinter import filedialog  # noqa: PLC0415
+        path = filedialog.asksaveasfilename(
+            defaultextension=defaultextension,
+            filetypes=filetypes or [("All files", "*.*")],
         )
-        work_dir = self._get_effective_work_dir()
-        if work_dir is None:
+        if path:
+            var.set(path)
+
+    def _clear_tab_vars(self, *vars: "ctk.StringVar") -> None:
+        """Clear one or more StringVars (used by step tab Clear buttons)."""
+        for v in vars:
+            v.set("")
+
+    def _step_workspace(self, source_path: Path, prefix: str, fallback_stem: str) -> Path:
+        """Build deterministic per-input workspace path for step-tab staging."""
+        token = sha256(str(source_path.resolve()).encode("utf-8")).hexdigest()[:32]
+        safe_stem = "".join(
+            ch if ch.isalnum() or ch in ("-", "_") else "-"
+            for ch in source_path.stem
+        ).strip("-_") or fallback_stem
+        return source_path.parent / f".gensubtitles-{prefix}-{safe_stem}-{token}"
+
+    def _on_translate_step_target_change(self, value: str) -> None:
+        """Show/hide engine dropdown in Tab 5 based on target language selection."""
+        if value and value not in ("No target", ""):
+            self._translate_step_lbl_engine.grid()
+            self._translate_step_option_engine.grid()
+        else:
+            self._translate_step_lbl_engine.grid_remove()
+            self._translate_step_option_engine.grid_remove()
+
+    def _on_translate_step_source_change(self, selection: str) -> None:
+        """Filter Tab 5 target dropdown to valid destinations for selected source."""
+        all_labels = sorted(_CODE_TO_LABEL.values())
+        if not self._language_pairs:
+            targets = all_labels
+        elif selection == "Auto-detect":
+            targets = sorted({_CODE_TO_LABEL.get(p["to"], p["to"]) for p in self._language_pairs})
+            targets = targets or all_labels
+        else:
+            src_code = _label_to_code(selection)
+            targets = [
+                _CODE_TO_LABEL.get(p["to"], p["to"])
+                for p in self._language_pairs if p["from"] == src_code
+            ]
+            targets = sorted(set(targets)) or all_labels
+        targets = ["No target"] + [t for t in targets if t != "No target"]
+        self._translate_step_option_target.configure(values=targets)
+        current = self._translate_step_target_var.get()
+        if current not in targets:
+            self._translate_step_target_var.set(targets[0])
+        self._on_translate_step_target_change(self._translate_step_target_var.get())
+
+    def _on_tab3_extract(self) -> None:
+        """Tab 3: Extract Audio button handler."""
+        video = self._extract_input_var.get().strip()
+        if not video:
+            self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Please select an input video file.")
             return
-        # Delete stem-named WAV (name is variable — glob all *.wav)
-        for wav in work_dir.glob("*.wav"):
-            if wav.is_file():
-                wav.unlink(missing_ok=True)
-        for fname in (TRANSCRIPTION_FILENAME, TRANSLATION_FILENAME):
-            (work_dir / fname).unlink(missing_ok=True)
-        for key in self._step_states:
-            self._step_states[key] = "pending"
-            self._step_status_labels[key].configure(text="\u2014")
-        self._refresh_stepper_state()
+        output_audio = self._extract_output_var.get().strip()
+        if output_audio:
+            requested_out = Path(output_audio)
+            if requested_out.suffix.lower() != ".wav":
+                self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Output audio file must use .wav extension.")
+                return
+            work = requested_out.parent
+        else:
+            requested_out = None
+            work = self._get_tab_work_dir(
+                self._extract_input_var,
+                fallback_vars=[self._input_var],
+            )
+        if work is None:
+            self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Cannot determine output directory.")
+            return
+        work.mkdir(parents=True, exist_ok=True)
+        payload: dict = {"video_path": video, "work_dir": str(work)}
+
+        def _on_success() -> None:
+            self._log_to(self._extract_log_textbox, "\u2713 Audio extracted successfully.")
+            wavs = sorted(work.glob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True)
+            if wavs:
+                extracted = wavs[0]
+                if requested_out is not None and extracted != requested_out:
+                    try:
+                        requested_out.parent.mkdir(parents=True, exist_ok=True)
+                        extracted.replace(requested_out)
+                        extracted = requested_out
+                    except OSError as exc:
+                        self._log_to(self._extract_log_textbox, f"\u26a0\ufe0f Could not apply custom output name: {exc}")
+                self._extract_output_var.set(str(extracted))
+                self._transcribe_input_var.set(str(extracted))
+                self._log_to(self._extract_log_textbox, f"\u2192 Pre-filled Tab 4 input: {extracted.name}")
+
+        def _on_error(detail: str) -> None:
+            self._log_to(self._extract_log_textbox, f"\u2717 Extract failed: {detail[:200]}")
+
+        self._run_step_in_bg(
+            "extract", "/steps/extract", payload,
+            log_textbox=self._extract_log_textbox,
+            on_success=_on_success,
+            on_error=_on_error,
+        )
+
+    def _on_tab4_transcribe(self) -> None:
+        """Tab 4: Transcribe button handler."""
+        from gensubtitles.core.steps import TRANSCRIPTION_FILENAME  # noqa: PLC0415
+        import shutil  # noqa: PLC0415
+
+        audio = self._transcribe_input_var.get().strip()
+        if not audio:
+            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Please select an input audio file.")
+            return
+        audio_path = Path(audio)
+        if not audio_path.is_file():
+            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Selected audio file was not found.")
+            return
+        if audio_path.suffix.lower() != ".wav":
+            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Transcribe step requires a .wav file.")
+            return
+        work = self._step_workspace(audio_path, "transcribe", "audio")
+        work.mkdir(parents=True, exist_ok=True)
+        staged_audio = work / "audio.wav"
+        for old_wav in work.glob("*.wav"):
+            if old_wav != staged_audio:
+                old_wav.unlink(missing_ok=True)
+        shutil.copy2(audio_path, staged_audio)
+        src = self._source_lang_var.get()
+        src_code = None if src in ("Auto-detect", "") else _label_to_code(src)
+        payload = {"work_dir": str(work), "source_lang": src_code, "device": "auto"}
+
+        def _on_success() -> None:
+            self._log_to(self._transcribe_log_textbox, "\u2713 Transcription complete.")
+            # Pre-fill Tab 5 input (D-04)
+            transcription_path = work / TRANSCRIPTION_FILENAME
+            if transcription_path.exists():
+                self._translate_step_input_var.set(str(transcription_path))
+                self._log_to(self._transcribe_log_textbox, f"\u2192 Pre-filled Tab 5 input: {TRANSCRIPTION_FILENAME}")
+
+        def _on_error(detail: str) -> None:
+            self._log_to(self._transcribe_log_textbox, f"\u2717 Transcription failed: {detail[:200]}")
+
+        self._run_step_in_bg(
+            "transcribe", "/steps/transcribe", payload,
+            log_textbox=self._transcribe_log_textbox,
+            on_success=_on_success,
+            on_error=_on_error,
+        )
+
+    def _on_tab5_translate(self) -> None:
+        """Tab 5: Translate step button handler."""
+        from gensubtitles.core.steps import TRANSLATION_FILENAME  # noqa: PLC0415
+        import shutil  # noqa: PLC0415
+
+        trans_file = self._translate_step_input_var.get().strip()
+        if not trans_file:
+            self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Please select a transcription file.")
+            return
+        trans_path = Path(trans_file)
+        if not trans_path.is_file():
+            self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Selected transcription file was not found.")
+            return
+        tgt = self._translate_step_target_var.get()
+        if tgt in ("No target", ""):
+            self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Please select a target language.")
+            return
+        work = self._step_workspace(trans_path, "translate", "transcription")
+        work.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(trans_path, work / "transcription.json")
+        tgt_code = _label_to_code(tgt)
+        eng = self._translate_step_engine_var.get().lower()
+        payload = {"work_dir": str(work), "target_lang": tgt_code, "engine": eng}
+
+        def _on_success() -> None:
+            self._log_to(self._translate_step_log_textbox, "\u2713 Translation complete.")
+            # Pre-fill Tab 6 input (D-04)
+            translation_path = work / TRANSLATION_FILENAME
+            if translation_path.exists():
+                self._write_input_var.set(str(translation_path))
+                self._log_to(self._translate_step_log_textbox, f"\u2192 Pre-filled Tab 6 input: {TRANSLATION_FILENAME}")
+
+        def _on_error(detail: str) -> None:
+            self._log_to(self._translate_step_log_textbox, f"\u2717 Translation failed: {detail[:200]}")
+
+        self._run_step_in_bg(
+            "translate", "/steps/translate", payload,
+            log_textbox=self._translate_step_log_textbox,
+            on_success=_on_success,
+            on_error=_on_error,
+        )
+
+    def _on_tab6_write(self) -> None:
+        """Tab 6: Write Subtitle button handler."""
+        from gensubtitles.core.steps import SRT_FILENAME  # noqa: PLC0415
+        from gensubtitles.core.srt_writer import convert_srt_to_ssa  # noqa: PLC0415
+        import shutil  # noqa: PLC0415
+
+        trans_file = self._write_input_var.get().strip()
+        if not trans_file:
+            self._log_to(self._write_log_textbox, "\u26a0\ufe0f Please select an input file.")
+            return
+        trans_path = Path(trans_file)
+        if not trans_path.is_file():
+            self._log_to(self._write_log_textbox, "\u26a0\ufe0f Selected input file was not found.")
+            return
+        work = self._step_workspace(trans_path, "write", "segments")
+        work.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(trans_path, work / "translation.json")
+
+        fmt = self._write_format_var.get().upper()
+        output_path = self._write_output_var.get().strip()
+        if not output_path:
+            default_name = SRT_FILENAME if fmt == "SRT" else "subtitles.ssa"
+            output_path = str(work / default_name)
+        output_obj = Path(output_path)
+        if fmt == "SSA":
+            tmp_srt = work / SRT_FILENAME
+            payload = {"work_dir": str(work), "output_path": str(tmp_srt)}
+        else:
+            payload = {"work_dir": str(work), "output_path": str(output_obj)}
+
+        def _on_success() -> None:
+            if fmt == "SSA":
+                tmp_path = work / SRT_FILENAME
+                try:
+                    style = None
+                    if self._current_settings is not None:
+                        style = {
+                            "fontname": self._current_settings.subtitle_font_family,
+                            "fontsize": self._current_settings.subtitle_font_size,
+                            "primarycolor": self._current_settings.subtitle_text_color,
+                            "outlinecolor": self._current_settings.subtitle_outline_color,
+                        }
+                    convert_srt_to_ssa(tmp_path, output_obj, style=style)
+                    self._log_to(self._write_log_textbox, f"\u2713 Subtitle written: {output_obj}")
+                except (OSError, ValueError) as exc:
+                    self._log_to(self._write_log_textbox, f"\u2717 Write failed: {str(exc)[:200]}")
+                    return
+                finally:
+                    tmp_path.unlink(missing_ok=True)
+            else:
+                self._log_to(self._write_log_textbox, f"\u2713 Subtitle written: {output_obj}")
+
+        def _on_error(detail: str) -> None:
+            self._log_to(self._write_log_textbox, f"\u2717 Write failed: {detail[:200]}")
+
+        self._run_step_in_bg(
+            "write", "/steps/write", payload,
+            log_textbox=self._write_log_textbox,
+            on_success=_on_success,
+            on_error=_on_error,
+        )
 
     def _build_menu_bar(self) -> None:
         import tkinter as tk  # noqa: PLC0415
@@ -1025,6 +1169,321 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_stage_label = ctk.CTkLabel(tf, text="")
         self._tl_stage_label.grid(row=8, column=0, columnspan=3, pady=4)
 
+    def _build_extract_tab(self) -> None:
+        """Build Tab 3 — Extract Audio (D-01, D-03)."""
+        tab = self._tabview.tab("Extract Audio")
+        frame = ctk.CTkFrame(tab, fg_color=p("surface"), corner_radius=12)
+        frame.pack(fill="both", expand=True, padx=16, pady=(8, 16))
+        frame.columnconfigure(0, weight=1)
+
+        # Input video
+        self._extract_lbl_input = ctk.CTkLabel(frame, text=s("extract_input_lbl"), anchor="w")
+        self._extract_lbl_input.grid(row=0, column=0, sticky="w", padx=12, pady=(12, 2))
+        _in_row = ctk.CTkFrame(frame, fg_color="transparent")
+        _in_row.grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 8))
+        _in_row.columnconfigure(0, weight=1)
+        self._extract_entry_input = ctk.CTkEntry(_in_row, textvariable=self._extract_input_var)
+        apply_entry_style(self._extract_entry_input)
+        self._extract_entry_input.grid(row=0, column=0, sticky="ew")
+        self._extract_btn_browse_input = ctk.CTkButton(
+            _in_row, text=s("browse_btn"), width=BTN_WIDTH_BROWSE,
+            command=lambda: self._browse_file_to_var(
+                self._extract_input_var,
+                filetypes=[("Video files", "*.mp4 *.mkv *.avi *.mov *.webm"), ("All files", "*.*")],
+            ),
+        )
+        apply_secondary_btn_style(self._extract_btn_browse_input)
+        self._extract_btn_browse_input.grid(row=0, column=1, padx=(8, 0))
+
+        # Output audio
+        self._extract_lbl_output = ctk.CTkLabel(frame, text=s("extract_output_lbl"), anchor="w")
+        self._extract_lbl_output.grid(row=2, column=0, sticky="w", padx=12, pady=(0, 2))
+        _out_row = ctk.CTkFrame(frame, fg_color="transparent")
+        _out_row.grid(row=3, column=0, sticky="ew", padx=12, pady=(0, 8))
+        _out_row.columnconfigure(0, weight=1)
+        self._extract_entry_output = ctk.CTkEntry(_out_row, textvariable=self._extract_output_var)
+        apply_entry_style(self._extract_entry_output)
+        self._extract_entry_output.grid(row=0, column=0, sticky="ew")
+        self._extract_btn_browse_output = ctk.CTkButton(
+            _out_row, text=s("save_as_btn"), width=BTN_WIDTH_BROWSE,
+            command=lambda: self._save_file_to_var(
+                self._extract_output_var,
+                defaultextension=".wav",
+                filetypes=[("WAV audio", "*.wav"), ("All files", "*.*")],
+            ),
+        )
+        apply_secondary_btn_style(self._extract_btn_browse_output)
+        self._extract_btn_browse_output.grid(row=0, column=1, padx=(8, 0))
+
+        # Action + clear buttons
+        _btn_row = ctk.CTkFrame(frame, fg_color="transparent")
+        _btn_row.grid(row=4, column=0, sticky="ew", padx=12, pady=(4, 4))
+        _btn_row.columnconfigure(0, weight=1)
+        _btn_row.columnconfigure(1, weight=1)
+        self._extract_btn_run = ctk.CTkButton(
+            _btn_row, text=s("extract_run_btn"),
+            command=self._on_tab3_extract,
+            state="disabled",
+            height=BTN_HEIGHT_PRIMARY,
+            text_color_disabled=("#757575", "#9E9E9E"),
+        )
+        apply_accent_btn_style(self._extract_btn_run)
+        self._extract_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        _extract_btn_clear = ctk.CTkButton(
+            _btn_row, text=s("clear_btn"),
+            command=lambda: self._clear_tab_vars(self._extract_input_var, self._extract_output_var),
+            height=BTN_HEIGHT_PRIMARY,
+        )
+        apply_secondary_btn_style(_extract_btn_clear)
+        _extract_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+
+        # Log textbox (D-03)
+        self._extract_log_textbox = ctk.CTkTextbox(
+            frame, state="disabled", height=140,
+            fg_color=p("input_bg"), font=font("mono"), activate_scrollbars=True,
+        )
+        self._extract_log_textbox.grid(row=5, column=0, sticky="nsew", padx=12, pady=(4, 12))
+        frame.rowconfigure(5, weight=1)
+
+    def _build_transcribe_tab(self) -> None:
+        """Build Tab 4 — Transcribe (D-01, D-03)."""
+        tab = self._tabview.tab("Transcribe")
+        frame = ctk.CTkFrame(tab, fg_color=p("surface"), corner_radius=12)
+        frame.pack(fill="both", expand=True, padx=16, pady=(8, 16))
+        frame.columnconfigure(0, weight=1)
+
+        # Input audio
+        self._transcribe_lbl_input = ctk.CTkLabel(frame, text=s("transcribe_input_lbl"), anchor="w")
+        self._transcribe_lbl_input.grid(row=0, column=0, sticky="w", padx=12, pady=(12, 2))
+        _in_row = ctk.CTkFrame(frame, fg_color="transparent")
+        _in_row.grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 8))
+        _in_row.columnconfigure(0, weight=1)
+        self._transcribe_entry_input = ctk.CTkEntry(_in_row, textvariable=self._transcribe_input_var)
+        apply_entry_style(self._transcribe_entry_input)
+        self._transcribe_entry_input.grid(row=0, column=0, sticky="ew")
+        self._transcribe_btn_browse = ctk.CTkButton(
+            _in_row, text=s("browse_btn"), width=BTN_WIDTH_BROWSE,
+            command=lambda: self._browse_file_to_var(
+                self._transcribe_input_var,
+                filetypes=[("Audio files", "*.wav *.mp3 *.m4a *.flac"), ("All files", "*.*")],
+            ),
+        )
+        apply_secondary_btn_style(self._transcribe_btn_browse)
+        self._transcribe_btn_browse.grid(row=0, column=1, padx=(8, 0))
+
+        # Source language dropdown (reuses existing _source_lang_var)
+        self._transcribe_lbl_source = ctk.CTkLabel(frame, text=s("source_lang_lbl"), anchor="w")
+        self._transcribe_lbl_source.grid(row=2, column=0, sticky="w", padx=12, pady=(0, 2))
+        self._transcribe_option_source = ctk.CTkOptionMenu(
+            frame, values=["Auto-detect"], variable=self._source_lang_var,
+        )
+        self._transcribe_option_source.grid(row=3, column=0, sticky="ew", padx=12, pady=(0, 8))
+
+        # Action + clear buttons
+        _btn_row = ctk.CTkFrame(frame, fg_color="transparent")
+        _btn_row.grid(row=4, column=0, sticky="ew", padx=12, pady=(4, 4))
+        _btn_row.columnconfigure(0, weight=1)
+        _btn_row.columnconfigure(1, weight=1)
+        self._transcribe_btn_run = ctk.CTkButton(
+            _btn_row, text=s("transcribe_run_btn"),
+            command=self._on_tab4_transcribe,
+            state="disabled",
+            height=BTN_HEIGHT_PRIMARY,
+            text_color_disabled=("#757575", "#9E9E9E"),
+        )
+        apply_accent_btn_style(self._transcribe_btn_run)
+        self._transcribe_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        _transcribe_btn_clear = ctk.CTkButton(
+            _btn_row, text=s("clear_btn"),
+            command=lambda: self._clear_tab_vars(self._transcribe_input_var),
+            height=BTN_HEIGHT_PRIMARY,
+        )
+        apply_secondary_btn_style(_transcribe_btn_clear)
+        _transcribe_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+
+        # Log textbox
+        self._transcribe_log_textbox = ctk.CTkTextbox(
+            frame, state="disabled", height=140,
+            fg_color=p("input_bg"), font=font("mono"), activate_scrollbars=True,
+        )
+        self._transcribe_log_textbox.grid(row=5, column=0, sticky="nsew", padx=12, pady=(4, 12))
+        frame.rowconfigure(5, weight=1)
+
+    def _build_translate_step_tab(self) -> None:
+        """Build Tab 5 — Translate step (D-01, D-03)."""
+        tab = self._tabview.tab("Translate")
+        frame = ctk.CTkFrame(tab, fg_color=p("surface"), corner_radius=12)
+        frame.pack(fill="both", expand=True, padx=16, pady=(8, 16))
+        frame.columnconfigure(0, weight=1)
+
+        # Input transcription
+        self._translate_step_lbl_input = ctk.CTkLabel(frame, text=s("translate_step_input_lbl"), anchor="w")
+        self._translate_step_lbl_input.grid(row=0, column=0, sticky="w", padx=12, pady=(12, 2))
+        _in_row = ctk.CTkFrame(frame, fg_color="transparent")
+        _in_row.grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 8))
+        _in_row.columnconfigure(0, weight=1)
+        self._translate_step_entry_input = ctk.CTkEntry(_in_row, textvariable=self._translate_step_input_var)
+        apply_entry_style(self._translate_step_entry_input)
+        self._translate_step_entry_input.grid(row=0, column=0, sticky="ew")
+        self._translate_step_btn_browse = ctk.CTkButton(
+            _in_row, text=s("browse_btn"), width=BTN_WIDTH_BROWSE,
+            command=lambda: self._browse_file_to_var(
+                self._translate_step_input_var,
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            ),
+        )
+        apply_secondary_btn_style(self._translate_step_btn_browse)
+        self._translate_step_btn_browse.grid(row=0, column=1, padx=(8, 0))
+
+        # Source language
+        self._translate_step_lbl_source = ctk.CTkLabel(frame, text=s("source_lang_lbl"), anchor="w")
+        self._translate_step_lbl_source.grid(row=2, column=0, sticky="w", padx=12, pady=(0, 2))
+        self._translate_step_option_source = ctk.CTkOptionMenu(
+            frame,
+            values=["Auto-detect"],
+            variable=self._translate_step_source_var,
+            command=self._on_translate_step_source_change,
+        )
+        self._translate_step_option_source.grid(row=3, column=0, sticky="ew", padx=12, pady=(0, 8))
+
+        # Target language
+        self._translate_step_lbl_target = ctk.CTkLabel(frame, text=s("target_lang_lbl"), anchor="w")
+        self._translate_step_lbl_target.grid(row=4, column=0, sticky="w", padx=12, pady=(0, 2))
+        self._translate_step_option_target = ctk.CTkOptionMenu(
+            frame, values=["No target"], variable=self._translate_step_target_var,
+            command=self._on_translate_step_target_change,
+        )
+        self._translate_step_option_target.grid(row=5, column=0, sticky="ew", padx=12, pady=(0, 8))
+
+        # Engine dropdown (hidden initially)
+        _engine_values = ["Argos"]
+        if self._current_settings and self._current_settings.deepl_api_key:
+            _engine_values.append("DeepL")
+        if self._current_settings and self._current_settings.libretranslate_url:
+            _engine_values.append("LibreTranslate")
+        self._translate_step_lbl_engine = ctk.CTkLabel(frame, text=s("engine_lbl"), anchor="w")
+        self._translate_step_lbl_engine.grid(row=6, column=0, sticky="w", padx=12, pady=(0, 2))
+        self._translate_step_option_engine = ctk.CTkOptionMenu(
+            frame, values=_engine_values, variable=self._translate_step_engine_var,
+        )
+        self._translate_step_option_engine.grid(row=7, column=0, sticky="ew", padx=12, pady=(0, 8))
+        self._translate_step_lbl_engine.grid_remove()
+        self._translate_step_option_engine.grid_remove()
+
+        # Action + clear buttons
+        _btn_row = ctk.CTkFrame(frame, fg_color="transparent")
+        _btn_row.grid(row=8, column=0, sticky="ew", padx=12, pady=(4, 4))
+        _btn_row.columnconfigure(0, weight=1)
+        _btn_row.columnconfigure(1, weight=1)
+        self._translate_step_btn_run = ctk.CTkButton(
+            _btn_row, text=s("translate_step_run_btn"),
+            command=self._on_tab5_translate,
+            state="disabled",
+            height=BTN_HEIGHT_PRIMARY,
+            text_color_disabled=("#757575", "#9E9E9E"),
+        )
+        apply_accent_btn_style(self._translate_step_btn_run)
+        self._translate_step_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        _translate_step_btn_clear = ctk.CTkButton(
+            _btn_row, text=s("clear_btn"),
+            command=lambda: self._clear_tab_vars(self._translate_step_input_var),
+            height=BTN_HEIGHT_PRIMARY,
+        )
+        apply_secondary_btn_style(_translate_step_btn_clear)
+        _translate_step_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+
+        # Log textbox
+        self._translate_step_log_textbox = ctk.CTkTextbox(
+            frame, state="disabled", height=140,
+            fg_color=p("input_bg"), font=font("mono"), activate_scrollbars=True,
+        )
+        self._translate_step_log_textbox.grid(row=9, column=0, sticky="nsew", padx=12, pady=(4, 12))
+        frame.rowconfigure(9, weight=1)
+
+    def _build_write_tab(self) -> None:
+        """Build Tab 6 — Write Subtitle (D-01, D-03)."""
+        tab = self._tabview.tab("Write Subtitle")
+        frame = ctk.CTkFrame(tab, fg_color=p("surface"), corner_radius=12)
+        frame.pack(fill="both", expand=True, padx=16, pady=(8, 16))
+        frame.columnconfigure(0, weight=1)
+
+        # Input transcription/translation
+        self._write_lbl_input = ctk.CTkLabel(frame, text=s("write_input_lbl"), anchor="w")
+        self._write_lbl_input.grid(row=0, column=0, sticky="w", padx=12, pady=(12, 2))
+        _in_row = ctk.CTkFrame(frame, fg_color="transparent")
+        _in_row.grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 8))
+        _in_row.columnconfigure(0, weight=1)
+        self._write_entry_input = ctk.CTkEntry(_in_row, textvariable=self._write_input_var)
+        apply_entry_style(self._write_entry_input)
+        self._write_entry_input.grid(row=0, column=0, sticky="ew")
+        self._write_btn_browse_input = ctk.CTkButton(
+            _in_row, text=s("browse_btn"), width=BTN_WIDTH_BROWSE,
+            command=lambda: self._browse_file_to_var(
+                self._write_input_var,
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            ),
+        )
+        apply_secondary_btn_style(self._write_btn_browse_input)
+        self._write_btn_browse_input.grid(row=0, column=1, padx=(8, 0))
+
+        # Output subtitle path
+        self._write_lbl_output = ctk.CTkLabel(frame, text=s("write_output_lbl"), anchor="w")
+        self._write_lbl_output.grid(row=2, column=0, sticky="w", padx=12, pady=(0, 2))
+        _out_row = ctk.CTkFrame(frame, fg_color="transparent")
+        _out_row.grid(row=3, column=0, sticky="ew", padx=12, pady=(0, 8))
+        _out_row.columnconfigure(0, weight=1)
+        self._write_entry_output = ctk.CTkEntry(_out_row, textvariable=self._write_output_var)
+        apply_entry_style(self._write_entry_output)
+        self._write_entry_output.grid(row=0, column=0, sticky="ew")
+        self._write_btn_browse_output = ctk.CTkButton(
+            _out_row, text=s("save_as_btn"), width=BTN_WIDTH_BROWSE,
+            command=lambda: self._save_file_to_var(
+                self._write_output_var,
+                defaultextension=".srt",
+                filetypes=[("SRT", "*.srt"), ("SSA", "*.ssa"), ("All files", "*.*")],
+            ),
+        )
+        apply_secondary_btn_style(self._write_btn_browse_output)
+        self._write_btn_browse_output.grid(row=0, column=1, padx=(8, 0))
+
+        # Output format dropdown
+        self._write_lbl_format = ctk.CTkLabel(frame, text=s("output_format_lbl"), anchor="w")
+        self._write_lbl_format.grid(row=4, column=0, sticky="w", padx=12, pady=(0, 2))
+        self._write_option_format = ctk.CTkOptionMenu(
+            frame, values=["SRT", "SSA"], variable=self._write_format_var,
+        )
+        self._write_option_format.grid(row=5, column=0, sticky="ew", padx=12, pady=(0, 8))
+
+        # Action + clear buttons
+        _btn_row = ctk.CTkFrame(frame, fg_color="transparent")
+        _btn_row.grid(row=6, column=0, sticky="ew", padx=12, pady=(4, 4))
+        _btn_row.columnconfigure(0, weight=1)
+        _btn_row.columnconfigure(1, weight=1)
+        self._write_btn_run = ctk.CTkButton(
+            _btn_row, text=s("write_run_btn"),
+            command=self._on_tab6_write,
+            state="disabled",
+            height=BTN_HEIGHT_PRIMARY,
+            text_color_disabled=("#757575", "#9E9E9E"),
+        )
+        apply_accent_btn_style(self._write_btn_run)
+        self._write_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        _write_btn_clear = ctk.CTkButton(
+            _btn_row, text=s("clear_btn"),
+            command=lambda: self._clear_tab_vars(self._write_input_var, self._write_output_var),
+            height=BTN_HEIGHT_PRIMARY,
+        )
+        apply_secondary_btn_style(_write_btn_clear)
+        _write_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+
+        # Log textbox
+        self._write_log_textbox = ctk.CTkTextbox(
+            frame, state="disabled", height=140,
+            fg_color=p("input_bg"), font=font("mono"), activate_scrollbars=True,
+        )
+        self._write_log_textbox.grid(row=7, column=0, sticky="nsew", padx=12, pady=(4, 12))
+        frame.rowconfigure(7, weight=1)
+
     def _tl_browse_input(self) -> None:
         from tkinter import filedialog  # noqa: PLC0415
 
@@ -1238,8 +1697,12 @@ class GenSubtitlesApp(ctk.CTk):
             else:
                 sources = ["Auto-detect"] + sorted(_CODE_TO_LABEL.values())
             self._option_source_lang.configure(values=sources)
+            self._transcribe_option_source.configure(values=sources)
+            self._translate_step_option_source.configure(values=sources)
             self._source_lang_var.set("Auto-detect")
             self._on_source_lang_change("Auto-detect")
+            self._translate_step_source_var.set("Auto-detect")
+            self._on_translate_step_source_change("Auto-detect")
             # Also populate Translate tab dropdowns
             non_auto = [s for s in sources if s != "Auto-detect"]
             if non_auto:
@@ -1613,12 +2076,12 @@ class GenSubtitlesApp(ctk.CTk):
 
         if not hasattr(self, "_btn_open_folder"):
             self._btn_open_folder = ctk.CTkButton(
-                self._status_frame, text=s("open_folder_btn"), command=_open_folder
+                self._files_frame, text=s("open_folder_btn"), command=_open_folder
             )
-            self._btn_open_folder.grid(row=11, column=0, padx=12, pady=(4, 0), sticky="ew")
+            self._btn_open_folder.grid(row=10, column=0, padx=12, pady=(4, 0), sticky="ew")
         else:
             self._btn_open_folder.configure(text=s("open_folder_btn"), command=_open_folder)
-            self._btn_open_folder.grid(row=11, column=0, padx=12, pady=(4, 0), sticky="ew")
+            self._btn_open_folder.grid(row=10, column=0, padx=12, pady=(4, 0), sticky="ew")
 
     # ------------------------------------------------------------------
     # Theme / colour palette
@@ -1646,6 +2109,13 @@ class GenSubtitlesApp(ctk.CTk):
 
         # Secondary buttons
         apply_secondary_btn_style(self._btn_clear)
+
+        # Log textboxes — apply fg_color for theme switch
+        for _tb_attr in ("_log_textbox", "_extract_log_textbox", "_transcribe_log_textbox",
+                         "_translate_step_log_textbox", "_write_log_textbox"):
+            _tb = getattr(self, _tb_attr, None)
+            if _tb is not None:
+                _tb.configure(fg_color=p("input_bg"))
 
         # Cancel button
         apply_cancel_btn_style(self._btn_cancel)
@@ -1962,11 +2432,27 @@ class GenSubtitlesApp(ctk.CTk):
         internal tab-name structures and segmented-button values.
         """
         tab_name_map = {
-            "Generate Subtitles": s("generate_tab"),
-            "Translate Subtitles": s("translate_tab"),
-            # Include localized names as sources so re-applying works
-            s_lang("generate_tab", "es"): s("generate_tab"),
-            s_lang("translate_tab", "es"): s("translate_tab"),
+            "Generate Subtitles":    s("generate_tab"),
+            "Translate Subtitles":   s("translate_tab"),
+            # Phase 999.30 — new tabs
+            "Extract Audio":         s("extract_tab"),
+            "Transcribe":            s("transcribe_tab"),
+            "Translate":             s("translate_step_tab"),
+            "Write Subtitle":        s("write_tab"),
+            # Localized sources — EN
+            s_lang("generate_tab",       "en"): s("generate_tab"),
+            s_lang("translate_tab",      "en"): s("translate_tab"),
+            s_lang("extract_tab",        "en"): s("extract_tab"),
+            s_lang("transcribe_tab",     "en"): s("transcribe_tab"),
+            s_lang("translate_step_tab", "en"): s("translate_step_tab"),
+            s_lang("write_tab",          "en"): s("write_tab"),
+            # Localized sources — ES
+            s_lang("generate_tab",       "es"): s("generate_tab"),
+            s_lang("translate_tab",      "es"): s("translate_tab"),
+            s_lang("extract_tab",        "es"): s("extract_tab"),
+            s_lang("transcribe_tab",     "es"): s("transcribe_tab"),
+            s_lang("translate_step_tab", "es"): s("translate_step_tab"),
+            s_lang("write_tab",          "es"): s("write_tab"),
         }
 
         for widget in self.__dict__.values():
@@ -2027,22 +2513,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_target_lang.configure(text=s("target_lang_lbl"))
         self._lbl_engine.configure(text=s("engine_lbl"))
         self._lbl_output_format.configure(text=s("output_format_lbl"))
-        if self._stepper_switch_var.get():
-            self._btn_generate.configure(text=s("generate_step_start_btn"))
-        else:
-            self._btn_generate.configure(text=s("generate_btn"))
-        self._btn_clear.configure(text=s("clear_btn"))
+        self._btn_generate.configure(text=s("generate_btn"))
+        self._btn_clear.configure(text=s("generate_clear_btn"))
+        self._lbl_config_title.configure(text=s("panel_config_title"))
         self._btn_browse_input.configure(text=s("browse_btn"))
         self._btn_browse_output.configure(text=s("save_as_btn"))
-        # Three-panel titles and new widgets
-        self._lbl_files_title.configure(text=s("panel_files_title"))
-        self._lbl_process_title.configure(text=s("panel_process_title"))
-        self._lbl_status_title.configure(text=s("panel_status_title"))
-        self._switch_stepper.configure(text=s("stepper_switch_lbl"))
-        self._lbl_work_dir.configure(text=s("work_dir_lbl"))
-        self._btn_clear_work.configure(text=s("clear_work_btn"))
-        if hasattr(self, "_btn_open_folder"):
-            self._btn_open_folder.configure(text=s("open_folder_btn"))
         # Stage label — update if currently showing a known status string
         _known_statuses = {s_lang(key, lang_code) for lang_code in LANGUAGES for key in ("starting_server", "status_done")}
         current_stage_text = self._stage_label.cget("text")
@@ -2098,6 +2573,33 @@ class GenSubtitlesApp(ctk.CTk):
         self._help_menu.entryconfigure(0, label=s("menu_tutorial"))
         self._help_menu.entryconfigure(1, label=s("menu_languages"))
         self._help_menu.entryconfigure(3, label=s("menu_about"))
+
+        # Step tabs (Phase 999.30)
+        if hasattr(self, "_extract_lbl_input"):
+            self._extract_lbl_input.configure(text=s("extract_input_lbl"))
+            self._extract_lbl_output.configure(text=s("extract_output_lbl"))
+            self._extract_btn_run.configure(text=s("extract_run_btn"))
+            self._extract_btn_browse_input.configure(text=s("browse_btn"))
+            self._extract_btn_browse_output.configure(text=s("save_as_btn"))
+        if hasattr(self, "_transcribe_lbl_input"):
+            self._transcribe_lbl_input.configure(text=s("transcribe_input_lbl"))
+            self._transcribe_lbl_source.configure(text=s("source_lang_lbl"))
+            self._transcribe_btn_run.configure(text=s("transcribe_run_btn"))
+            self._transcribe_btn_browse.configure(text=s("browse_btn"))
+        if hasattr(self, "_translate_step_lbl_input"):
+            self._translate_step_lbl_input.configure(text=s("translate_step_input_lbl"))
+            self._translate_step_lbl_source.configure(text=s("source_lang_lbl"))
+            self._translate_step_lbl_target.configure(text=s("target_lang_lbl"))
+            self._translate_step_lbl_engine.configure(text=s("engine_lbl"))
+            self._translate_step_btn_run.configure(text=s("translate_step_run_btn"))
+            self._translate_step_btn_browse.configure(text=s("browse_btn"))
+        if hasattr(self, "_write_lbl_input"):
+            self._write_lbl_input.configure(text=s("write_input_lbl"))
+            self._write_lbl_output.configure(text=s("write_output_lbl"))
+            self._write_lbl_format.configure(text=s("output_format_lbl"))
+            self._write_btn_run.configure(text=s("write_run_btn"))
+            self._write_btn_browse_input.configure(text=s("browse_btn"))
+            self._write_btn_browse_output.configure(text=s("save_as_btn"))
 
     # ------------------------------------------------------------------
     # Help stubs (implemented in Plan 06)
@@ -2391,6 +2893,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._log("")
         # Run in background — list_installed_pairs() can be slow on first Argos load
         threading.Thread(target=self._populate_language_dropdowns, daemon=True).start()
+        # Enable step tab action buttons (D-06 / D-03)
+        for btn_attr in ("_extract_btn_run", "_transcribe_btn_run", "_translate_step_btn_run", "_write_btn_run"):
+            btn = getattr(self, btn_attr, None)
+            if btn is not None:
+                btn.configure(state="normal")
 
     def _on_server_failed(self, detail: str = "") -> None:
         """Called on main thread if the server never became reachable."""
@@ -2406,9 +2913,6 @@ class GenSubtitlesApp(ctk.CTk):
 
     def on_closing(self) -> None:
         self._closing = True
-        if self._stepper_refresh_id is not None:
-            self.after_cancel(self._stepper_refresh_id)
-            self._stepper_refresh_id = None
         self._stop_os_theme_listener()
         server.stop()
         self.destroy()

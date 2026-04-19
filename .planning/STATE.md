@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 999.29 Complete
-last_updated: "2026-04-18T23:30:00.000Z"
+status: Phase 999.30 Complete
+last_updated: "2026-04-19T03:00:00.000Z"
 progress:
-  total_phases: 39
-  completed_phases: 33
-  total_plans: 69
-  completed_plans: 69
+  total_phases: 40
+  completed_phases: 34
+  total_plans: 72
+  completed_plans: 72
 ---
 
 # GenSubtitles — Project State
@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1.0
-- **Active Phase:** 999.29 — GUI Redesign Three-Panel Vertical Layout — COMPLETE
-- **Last action:** Phase 999.29 complete — GUI rewritten with 3 side-by-side panels (Files / Process / Status), CTkSwitch stepper mode, activity log textbox with 15 routing sites, and all panel labels localised in EN+ES.
+- **Active Phase:** 999.30 — Refactor GUI — Redesign Tabs — COMPLETE
+- **Last action:** Phase 999.30 complete — Tab 1 redistributed per D-08: Generate/Clear buttons, stage label, log textbox, and status widgets moved to _files_frame (left panel); _config_frame retains only title + 4 dropdowns. Log textbox now expands with window resize (rowconfigure weight=1). 4 step tabs (Extract Audio, Transcribe, Translate, Write Subtitle) built with per-tab execution, pre-fill chain, and isolated log textboxes.
 
 ## Milestone Progress
 
@@ -44,6 +44,7 @@ progress:
 | 999.27 | Stepper Mode for Pipeline Steps | ✅ Complete (5/5 plans, completed 2026-04-15) |
 | 999.28 | Stepper Work-Dir Auto-Subfolder and Named Audio Output | ✅ Complete (2/2 plans, completed 2026-04-16) |
 | 999.29 | GUI Redesign Three-Panel Vertical Layout | ✅ Complete (3/3 plans, completed 2026-04-18) |
+| 999.30 | Refactor GUI — Redesign Tabs (Generate, Translate, Audio, Transcribe, Write) | ✅ Complete (4/4 plans, completed 2026-04-19) |
 
 ## Key Decisions Log
 
