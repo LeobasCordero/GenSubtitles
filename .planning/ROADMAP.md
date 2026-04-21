@@ -21,7 +21,7 @@
 - [x] **Phase 9: FastAPI Extensions & Docs** — Languages endpoint, Uvicorn serve, OpenAPI docs (completed 2026-04-07)
 - [x] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test
  (completed 2026-04-10)
-- [ ] **Phase 11: Retroactive Verification — Core Modules** — Formal VERIFICATION.md for phases 2–5 (Audio, Transcription, Translation, SRT)
+- [x] **Phase 11: Retroactive Verification — Core Modules** — Formal VERIFICATION.md for phases 2–5 (Audio, Transcription, Translation, SRT) (completed 2026-04-21)
 - [ ] **Phase 12: Retroactive Verification + Pipeline Refactor** — Formal VERIFICATION.md for phases 6–7 + wire API router through run_pipeline()
 - [ ] **Phase 13: Nyquist Compliance — All Phases** — Create/complete VALIDATION.md for all 10 phases
 
@@ -290,7 +290,7 @@ Plans:
 | 8. FastAPI REST API Core | 3/3 | Complete | 2026-04-07 |
 | 9. FastAPI Extensions & Docs | 2/2 | Complete | 2026-04-07 |
 | 10. Documentation & End-to-End Validation | 3/3 | Complete | 2026-04-10 |
-| 11. Retroactive Verification — Core Modules | 0/0 | Pending | — |
+| 11. Retroactive Verification — Core Modules | 0/0 | Complete    | 2026-04-21 |
 | 12. Retroactive Verification + Pipeline Refactor | 0/0 | Pending | — |
 | 13. Nyquist Compliance — All Phases | 0/0 | Pending | — |
 
@@ -349,7 +349,7 @@ Plans:
 **Estimated complexity:** Low
 **Depends on:** Phase 10 (milestone audit complete)
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 11-01-PLAN.md — Write 02-VERIFICATION.md (AUD-01..04) and 03-VERIFICATION.md (TRN-01..06); archive 02-VALIDATION.md
