@@ -349,7 +349,11 @@ Plans:
 **Estimated complexity:** Low
 **Depends on:** Phase 10 (milestone audit complete)
 
-**Plans:** 0 plans
+**Plans:** 2 plans
+
+Plans:
+- [ ] 11-01-PLAN.md — Write 02-VERIFICATION.md (AUD-01..04) and 03-VERIFICATION.md (TRN-01..06); archive 02-VALIDATION.md
+- [ ] 11-02-PLAN.md — Write 04-VERIFICATION.md (TRANS-01..05) and 05-VERIFICATION.md (SRT-01..04); archive 05-VALIDATION.md
 
 ### UAT Criteria
 
