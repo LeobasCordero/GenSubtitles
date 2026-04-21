@@ -21,7 +21,8 @@
 - [x] **Phase 9: FastAPI Extensions & Docs** — Languages endpoint, Uvicorn serve, OpenAPI docs (completed 2026-04-07)
 - [x] **Phase 10: Documentation & End-to-End Validation** — README, examples, full pipeline test
  (completed 2026-04-10)
-- [ ] **Phase 11: Retroactive Verification — Core Modules** — Formal VERIFICATION.md for phases 2–5 (Audio, Transcription, Translation, SRT)
+- [x] **Phase 11: Retroactive Verification — Core Modules** — Formal VERIFICATION.md for phases 2–5 (Audio, Transcription, Translation, SRT)
+ (completed 2026-04-21)
 - [ ] **Phase 12: Retroactive Verification + Pipeline Refactor** — Formal VERIFICATION.md for phases 6–7 + wire API router through run_pipeline()
 - [ ] **Phase 13: Nyquist Compliance — All Phases** — Create/complete VALIDATION.md for all 10 phases
 
@@ -59,12 +60,12 @@ Plans:
 **Estimated complexity:** Medium  
 **Depends on:** Phase 1
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 02-01-PLAN.md — Exceptions module (gensubtitles/exceptions.py) + test fixture infrastructure (tests/conftest.py)
-- [ ] 02-02-PLAN.md — Implement gensubtitles/core/audio.py (extract_audio, audio_temp_context, SUPPORTED_EXTENSIONS)
-- [ ] 02-03-PLAN.md — Write tests/test_audio.py (5 tests covering AUD-01–04)
+- [x] 02-01-PLAN.md — Exceptions module (gensubtitles/exceptions.py) + test fixture infrastructure (tests/conftest.py)
+- [x] 02-02-PLAN.md — Implement gensubtitles/core/audio.py (extract_audio, audio_temp_context, SUPPORTED_EXTENSIONS)
+- [x] 02-03-PLAN.md — Write tests/test_audio.py (5 tests covering AUD-01–04)
 
 ### UAT Criteria
 
@@ -290,7 +291,7 @@ Plans:
 | 8. FastAPI REST API Core | 3/3 | Complete | 2026-04-07 |
 | 9. FastAPI Extensions & Docs | 2/2 | Complete | 2026-04-07 |
 | 10. Documentation & End-to-End Validation | 3/3 | Complete | 2026-04-10 |
-| 11. Retroactive Verification — Core Modules | 0/0 | Pending | — |
+| 11. Retroactive Verification — Core Modules | 2/2 | Complete    | 2026-04-21 |
 | 12. Retroactive Verification + Pipeline Refactor | 0/0 | Pending | — |
 | 13. Nyquist Compliance — All Phases | 0/0 | Pending | — |
 
@@ -349,7 +350,11 @@ Plans:
 **Estimated complexity:** Low
 **Depends on:** Phase 10 (milestone audit complete)
 
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
+
+Plans:
+- [x] 11-01-PLAN.md — Write 02-VERIFICATION.md (AUD-01..04) and 03-VERIFICATION.md (TRN-01..06); archive 02-VALIDATION.md
+- [x] 11-02-PLAN.md — Write 04-VERIFICATION.md (TRANS-01..05) and 05-VERIFICATION.md (SRT-01..04); archive 05-VALIDATION.md
 
 ### UAT Criteria
 
