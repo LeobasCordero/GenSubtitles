@@ -404,6 +404,43 @@ class TestSSEJobPattern:
         # BackgroundTask cleanup should have deleted srt_path
         assert not srt_path.exists(), "srt_path should be deleted after /result serves it"
 
+    def test_run_pipeline_job_late_cancel_keeps_success_result(self, tmp_path, monkeypatch):
+        """Late cancellation after successful pipeline return must not discard completed SRT."""
+        import threading
+        import uuid
+        from queue import Queue
+
+        from gensubtitles.api.routers import subtitles as sub_mod
+
+        video_path = tmp_path / "v.mp4"
+        video_path.write_bytes(b"fake")
+        srt_path = tmp_path / "out.srt"
+        srt_path.write_text("", encoding="utf-8")
+
+        job_id = str(uuid.uuid4())
+        job: dict = {"queue": Queue(), "cancel": threading.Event(), "result": None, "error": None}
+        sub_mod._jobs[job_id] = job
+
+        def _fake_run_pipeline(*args, **kwargs):
+            Path(args[1]).write_text("done", encoding="utf-8")
+            kwargs["cancel_event"].set()  # Simulate user cancel arriving at very end.
+            return SimpleNamespace(
+                srt_path=str(args[1]),
+                detected_language="en",
+                segment_count=1,
+                audio_duration_seconds=1.0,
+            )
+
+        monkeypatch.setattr(sub_mod, "run_pipeline", _fake_run_pipeline)
+
+        try:
+            sub_mod._run_pipeline_job(job_id, video_path, srt_path, None, None, "argos", MagicMock())
+            assert job["result"] == srt_path
+            assert srt_path.exists()
+            assert job_id in sub_mod._jobs
+        finally:
+            sub_mod._jobs.pop(job_id, None)
+
 
 # ── upload/download step endpoint tests ──────────────────────────────────────
 

@@ -15,9 +15,12 @@ import logging
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from gensubtitles.exceptions import PipelineError
+
+if TYPE_CHECKING:
+    from gensubtitles.core.transcriber import WhisperTranscriber
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +46,7 @@ def run_pipeline(
     device: str = "auto",
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
     engine: str = "argos",
-    transcriber=None,  # WhisperTranscriber | None
+    transcriber: WhisperTranscriber | None = None,
     cancel_event: Optional[threading.Event] = None,
 ) -> PipelineResult:
     """

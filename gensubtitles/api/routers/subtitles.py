@@ -118,10 +118,6 @@ def _run_pipeline_job(
             progress_callback=_progress,
         )
 
-        if job["cancel"].is_set():
-            _cancel_job(job_id, video_path, srt_path)
-            return
-
         job["result"] = Path(result.srt_path)
         _set_progress("done", "✓ Done", 0, 0, job=job)
 
