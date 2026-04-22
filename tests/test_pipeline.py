@@ -389,6 +389,7 @@ class TestPipelineCancellation:
         class FakeResult:
             segments = []
             language = "en"
+            duration = 1.0
 
         class FakeTranscriber:
             def transcribe(self, *a, **kw):

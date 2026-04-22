@@ -84,8 +84,6 @@ def run_pipeline(
     # raised without requiring optional runtime dependencies to be available.
     from gensubtitles.core.audio import audio_temp_context, extract_audio  # noqa: PLC0415
     from gensubtitles.core.srt_writer import write_srt  # noqa: PLC0415
-    from gensubtitles.core.transcriber import WhisperTranscriber  # noqa: PLC0415
-    from gensubtitles.core.translator import translate_segments  # noqa: PLC0415
 
     # Default no-op callback
     if progress_callback is None:
@@ -108,6 +106,7 @@ def run_pipeline(
         progress_callback("Transcribing", 2, 4)
         try:
             if transcriber is None:
+                from gensubtitles.core.transcriber import WhisperTranscriber  # noqa: PLC0415
                 transcriber = WhisperTranscriber(model_size=model_size, device=device)
             transcription = transcriber.transcribe(wav_path, language=source_lang)
         except Exception as exc:
@@ -124,6 +123,7 @@ def run_pipeline(
         if target_lang is not None:
             progress_callback("Translating", 3, 4)
             try:
+                from gensubtitles.core.translator import translate_segments  # noqa: PLC0415
                 segments = translate_segments(segments, detected_lang, target_lang, engine=engine)
             except Exception as exc:
                 raise PipelineError(f"[translation] {exc}") from exc

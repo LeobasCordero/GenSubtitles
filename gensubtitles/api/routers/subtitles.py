@@ -32,7 +32,9 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, U
 from fastapi.responses import FileResponse, StreamingResponse
 
 from gensubtitles.api.dependencies import get_transcriber
+from gensubtitles.core.pipeline import run_pipeline
 from gensubtitles.core.transcriber import WhisperTranscriber
+from gensubtitles.exceptions import PipelineError
 
 router = APIRouter(tags=["subtitles"])
 
@@ -87,58 +89,51 @@ def _run_pipeline_job(
     """Sync function executed in a background thread for a single job."""
     job = _jobs[job_id]
     try:
-        from gensubtitles.core.audio import audio_temp_context, extract_audio  # noqa: PLC0415
-        from gensubtitles.core.srt_writer import write_srt  # noqa: PLC0415
+        def _progress(label: str, current: int, total: int) -> None:
+            stage_map = {
+                "Extracting audio": "extracting",
+                "Transcribing": "transcribing",
+                "Translating": "translating",
+                "Translation skipped": "translating",
+                "Writing SRT": "writing",
+            }
+            stage = stage_map.get(label, "processing")
+            display = {
+                "Extracting audio": "[1/4] Extracting audio…",
+                "Transcribing": "[2/4] Transcribing…",
+                "Translating": "[3/4] Translating…",
+                "Translation skipped": "[3/4] Translation skipped",
+                "Writing SRT": "[4/4] Writing SRT…",
+            }.get(label, label)
+            _set_progress(stage, display, current, total, job=job)
 
-        _set_progress("extracting", "[1/4] Extracting audio…", job=job)
-        with audio_temp_context() as wav_path:
-            extract_audio(video_path, wav_path)
-            if job["cancel"].is_set():
-                _cancel_job(job_id, video_path, srt_path)
-                return
-
-            _set_progress("transcribing", "[2/4] Transcribing…", job=job)
-            transcription = transcriber.transcribe(wav_path, language=source_lang)
+        result = run_pipeline(
+            video_path,
+            srt_path,
+            target_lang=target_lang,
+            source_lang=source_lang,
+            engine=engine,
+            transcriber=transcriber,
+            cancel_event=job["cancel"],
+            progress_callback=_progress,
+        )
 
         if job["cancel"].is_set():
             _cancel_job(job_id, video_path, srt_path)
             return
 
-        segments = transcription.segments
-        detected_lang = transcription.language
-
-        if target_lang is not None and target_lang != detected_lang:
-            from gensubtitles.core.translator import translate_segments  # noqa: PLC0415
-
-            _set_progress("translating", "[3/4] Translating…", job=job)
-
-            def _on_seg_progress(current: int, total: int) -> None:
-                _set_progress(
-                    "translating",
-                    f"[3/4] Translating {current}/{total}…",
-                    current,
-                    total,
-                    job=job,
-                )
-
-            segments = translate_segments(
-                segments,
-                detected_lang,
-                target_lang,
-                progress_callback=_on_seg_progress,
-                engine=engine,
-            )
-            if job["cancel"].is_set():
-                _cancel_job(job_id, video_path, srt_path)
-                return
-        else:
-            _set_progress("translating", "[3/4] Translation skipped", 0, 0, job=job)
-
-        _set_progress("writing", "[4/4] Writing SRT…", job=job)
-        write_srt(segments, srt_path)
-        job["result"] = srt_path
+        job["result"] = Path(result.srt_path)
         _set_progress("done", "✓ Done", 0, 0, job=job)
 
+    except PipelineError as exc:
+        label = (type(exc).__name__ + ": " + str(exc))[:200]
+        if "[cancelled]" in str(exc):
+            _cancel_job(job_id, video_path, srt_path)
+        else:
+            srt_path.unlink(missing_ok=True)
+            job["queue"].put({"stage": "error", "label": label})
+            with _jobs_lock:
+                _jobs.pop(job_id, None)
     except Exception as exc:  # noqa: BLE001
         label = (type(exc).__name__ + ": " + str(exc))[:200]
         srt_path.unlink(missing_ok=True)
