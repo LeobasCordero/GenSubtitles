@@ -24,7 +24,8 @@
 - [x] **Phase 11: Retroactive Verification — Core Modules** — Formal VERIFICATION.md for phases 2–5 (Audio, Transcription, Translation, SRT)
  (completed 2026-04-21)
 - [x] **Phase 12: Retroactive Verification + Pipeline Refactor** — Formal VERIFICATION.md for phases 6–7 + wire API router through run_pipeline() (completed 2026-04-22)
-- [x] **Phase 13: Nyquist Compliance — All Phases** — Create/complete VALIDATION.md for all 10 phases (completed 2026-04-22)
+- [x] **Phase 13: Nyquist Compliance — All Phases** — Create/complete VALIDATION.md for all 10 phases
+ (completed 2026-04-22)
 
 **Plans:** 2 plans
 
@@ -801,7 +802,7 @@ Plans:
 
 ### Phase 999.28: Stepper Work-Dir Auto-Subfolder and Named Audio Output (BACKLOG)
 
-**Goal:** Improve stepper mode UX with two related changes: (1) when the user selects a parent working folder in the GUI, automatically create a subfolder named after the video file and use that as the actual `work_dir`; (2) name the extracted audio file after the video file (e.g. `myvideo.wav`) rather than the fixed `audio.wav` constant — so multiple videos can share the same parent folder without overwriting each other's artifacts.
+**Goal:** Improve stepper mode UX with two related changes: (1) when the user selects a parent working folder in the GUI, automatically create a subfolder named after the video file and use that as the actual `work_dir`; (2) name the extracted audio file after the video file (e.g. `myvideo.wav`) rather than the fixed `audio.wav` constant — so multiple videos can share the same parent folder without overwriting each other's artifacts.ok
 **Requirements:** TBD
 **Plans:** 2/2 plans complete
 
