@@ -12,11 +12,15 @@ Provides:
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from gensubtitles.exceptions import PipelineError
+
+if TYPE_CHECKING:
+    from gensubtitles.core.transcriber import WhisperTranscriber
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +46,8 @@ def run_pipeline(
     device: str = "auto",
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
     engine: str = "argos",
+    transcriber: WhisperTranscriber | None = None,
+    cancel_event: Optional[threading.Event] = None,
 ) -> PipelineResult:
     """
     Orchestrate audio extraction → transcription → translation → SRT write.
@@ -81,8 +87,6 @@ def run_pipeline(
     # raised without requiring optional runtime dependencies to be available.
     from gensubtitles.core.audio import audio_temp_context, extract_audio  # noqa: PLC0415
     from gensubtitles.core.srt_writer import write_srt  # noqa: PLC0415
-    from gensubtitles.core.transcriber import WhisperTranscriber  # noqa: PLC0415
-    from gensubtitles.core.translator import translate_segments  # noqa: PLC0415
 
     # Default no-op callback
     if progress_callback is None:
@@ -97,13 +101,23 @@ def run_pipeline(
         except Exception as exc:
             raise PipelineError(f"[audio_extraction] {exc}") from exc
 
+        # ── Cancel check 1: after audio extraction ────────────────────────────
+        if cancel_event is not None and cancel_event.is_set():
+            raise PipelineError("[cancelled]")
+
         # ── Stage 2: Transcribe ───────────────────────────────────────────────
         progress_callback("Transcribing", 2, 4)
         try:
-            transcriber = WhisperTranscriber(model_size=model_size, device=device)
+            if transcriber is None:
+                from gensubtitles.core.transcriber import WhisperTranscriber  # noqa: PLC0415
+                transcriber = WhisperTranscriber(model_size=model_size, device=device)
             transcription = transcriber.transcribe(wav_path, language=source_lang)
         except Exception as exc:
             raise PipelineError(f"[transcription] {exc}") from exc
+
+        # ── Cancel check 2: after transcription ──────────────────────────────
+        if cancel_event is not None and cancel_event.is_set():
+            raise PipelineError("[cancelled]")
 
         detected_lang = transcription.language
         segments = transcription.segments
@@ -112,11 +126,16 @@ def run_pipeline(
         if target_lang is not None:
             progress_callback("Translating", 3, 4)
             try:
+                from gensubtitles.core.translator import translate_segments  # noqa: PLC0415
                 segments = translate_segments(segments, detected_lang, target_lang, engine=engine)
             except Exception as exc:
                 raise PipelineError(f"[translation] {exc}") from exc
         else:
             progress_callback("Translation skipped", 3, 4)
+
+        # ── Cancel check 3: after translation ──────────────────────────────────
+        if cancel_event is not None and cancel_event.is_set():
+            raise PipelineError("[cancelled]")
 
         # ── Stage 4: Write SRT ────────────────────────────────────────────────
         progress_callback("Writing SRT", 4, 4)

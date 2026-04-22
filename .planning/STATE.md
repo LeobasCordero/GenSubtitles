@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-last_updated: "2026-04-21T03:26:00.153Z"
+status: Phase 12 Complete
+last_updated: "2026-04-22T03:30:00.000Z"
 progress:
   total_phases: 40
-  completed_phases: 35
-  total_plans: 75
-  completed_plans: 75
+  completed_phases: 36
+  total_plans: 78
+  completed_plans: 78
 ---
 
 # GenSubtitles — Project State
@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1.0
-- **Active Phase:** 999.30 — Refactor GUI — Redesign Tabs — COMPLETE
-- **Last action:** Phase 999.30 complete — Tab 1 redistributed per D-08: Generate/Clear buttons, stage label, log textbox, and status widgets moved to _files_frame (left panel); _config_frame retains only title + 4 dropdowns. Log textbox now expands with window resize (rowconfigure weight=1). 4 step tabs (Extract Audio, Transcribe, Translate, Write Subtitle) built with per-tab execution, pre-fill chain, and isolated log textboxes.
+- **Active Phase:** 12 — retroactive-verification-pipeline-refactor — COMPLETE
+- **Last action:** Phase 12 complete — Created VERIFICATION.md exit records for phases 6 and 7 (retroactive). Extended `run_pipeline()` with `transcriber=` injection and `cancel_event=` support. Refactored `_run_pipeline_job()` to delegate to `run_pipeline()` (eliminates duplication). 44 API+pipeline+steps tests pass.
 
 ## Milestone Progress
 
@@ -45,6 +45,7 @@ progress:
 | 999.28 | Stepper Work-Dir Auto-Subfolder and Named Audio Output | ✅ Complete (2/2 plans, completed 2026-04-16) |
 | 999.29 | GUI Redesign Three-Panel Vertical Layout | ✅ Complete (3/3 plans, completed 2026-04-18) |
 | 999.30 | Refactor GUI — Redesign Tabs (Generate, Translate, Audio, Transcribe, Write) | ✅ Complete (4/4 plans, completed 2026-04-19) |
+| 12 | Retroactive Verification + Pipeline Refactor | ✅ Complete (3/3 plans, completed 2026-04-22) |
 
 ## Key Decisions Log
 

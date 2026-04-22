@@ -23,7 +23,7 @@
  (completed 2026-04-10)
 - [x] **Phase 11: Retroactive Verification — Core Modules** — Formal VERIFICATION.md for phases 2–5 (Audio, Transcription, Translation, SRT)
  (completed 2026-04-21)
-- [ ] **Phase 12: Retroactive Verification + Pipeline Refactor** — Formal VERIFICATION.md for phases 6–7 + wire API router through run_pipeline()
+- [x] **Phase 12: Retroactive Verification + Pipeline Refactor** — Formal VERIFICATION.md for phases 6–7 + wire API router through run_pipeline() (completed 2026-04-22)
 - [ ] **Phase 13: Nyquist Compliance — All Phases** — Create/complete VALIDATION.md for all 10 phases
 
 ---
@@ -292,7 +292,7 @@ Plans:
 | 9. FastAPI Extensions & Docs | 2/2 | Complete | 2026-04-07 |
 | 10. Documentation & End-to-End Validation | 3/3 | Complete | 2026-04-10 |
 | 11. Retroactive Verification — Core Modules | 2/2 | Complete    | 2026-04-21 |
-| 12. Retroactive Verification + Pipeline Refactor | 0/0 | Pending | — |
+| 12. Retroactive Verification + Pipeline Refactor | 3/3 | Complete | 2026-04-22 |
 | 13. Nyquist Compliance — All Phases | 0/0 | Pending | — |
 
 ---
@@ -373,7 +373,12 @@ Plans:
 **Estimated complexity:** Medium
 **Depends on:** Phase 11
 
-**Plans:** 0 plans
+**Plans:** 3 plans
+
+Plans:
+- [x] 12-01-PLAN.md — Write Phase 06 + 07 VERIFICATION.md files (documentation)
+- [x] 12-02-PLAN.md — Extend run_pipeline() with transcriber= and cancel_event=; refactor API router
+- [x] 12-03-PLAN.md — Write Phase 12 VERIFICATION.md exit record
 
 ### UAT Criteria
 
