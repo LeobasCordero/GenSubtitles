@@ -376,9 +376,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 12-01-PLAN.md — Write Phase 06 + 07 VERIFICATION.md files (documentation)
-- [ ] 12-02-PLAN.md — Extend run_pipeline() with transcriber= and cancel_event=; refactor API router
-- [ ] 12-03-PLAN.md — Write Phase 12 VERIFICATION.md exit record
+- [x] 12-01-PLAN.md — Write Phase 06 + 07 VERIFICATION.md files (documentation)
+- [x] 12-02-PLAN.md — Extend run_pipeline() with transcriber= and cancel_event=; refactor API router
+- [x] 12-03-PLAN.md — Write Phase 12 VERIFICATION.md exit record
 
 ### UAT Criteria
 
