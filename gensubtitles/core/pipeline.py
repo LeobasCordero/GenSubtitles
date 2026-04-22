@@ -12,6 +12,7 @@ Provides:
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
@@ -42,6 +43,8 @@ def run_pipeline(
     device: str = "auto",
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
     engine: str = "argos",
+    transcriber=None,  # WhisperTranscriber | None
+    cancel_event: Optional[threading.Event] = None,
 ) -> PipelineResult:
     """
     Orchestrate audio extraction → transcription → translation → SRT write.
@@ -97,13 +100,22 @@ def run_pipeline(
         except Exception as exc:
             raise PipelineError(f"[audio_extraction] {exc}") from exc
 
+        # ── Cancel check 1: after audio extraction ────────────────────────────
+        if cancel_event is not None and cancel_event.is_set():
+            raise PipelineError("[cancelled]")
+
         # ── Stage 2: Transcribe ───────────────────────────────────────────────
         progress_callback("Transcribing", 2, 4)
         try:
-            transcriber = WhisperTranscriber(model_size=model_size, device=device)
+            if transcriber is None:
+                transcriber = WhisperTranscriber(model_size=model_size, device=device)
             transcription = transcriber.transcribe(wav_path, language=source_lang)
         except Exception as exc:
             raise PipelineError(f"[transcription] {exc}") from exc
+
+        # ── Cancel check 2: after transcription ──────────────────────────────
+        if cancel_event is not None and cancel_event.is_set():
+            raise PipelineError("[cancelled]")
 
         detected_lang = transcription.language
         segments = transcription.segments
@@ -117,6 +129,10 @@ def run_pipeline(
                 raise PipelineError(f"[translation] {exc}") from exc
         else:
             progress_callback("Translation skipped", 3, 4)
+
+        # ── Cancel check 3: after translation ──────────────────────────────────
+        if cancel_event is not None and cancel_event.is_set():
+            raise PipelineError("[cancelled]")
 
         # ── Stage 4: Write SRT ────────────────────────────────────────────────
         progress_callback("Writing SRT", 4, 4)

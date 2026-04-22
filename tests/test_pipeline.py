@@ -409,3 +409,93 @@ class TestPipelineCancellation:
         assert "cancelled" not in stages
 
         sub_mod._jobs.pop(job_id, None)
+
+
+# ── Phase 12 new tests — transcriber= injection and cancel_event= ─────────────
+
+
+def test_transcriber_injection_uses_provided_transcriber(tmp_path):
+    """When transcriber= is passed, it is used and WhisperTranscriber() is NOT constructed."""
+    video = tmp_path / "video.mp4"
+    video.touch()
+    output = tmp_path / "out.srt"
+    mocks = _make_mocks()
+
+    custom_transcriber = MagicMock()
+    mock_transcription = _TR(segments=[_make_segment()], language="en", duration=5.0)
+    custom_transcriber.transcribe.return_value = mock_transcription
+
+    with patch.dict("sys.modules", _sys_modules_patches(mocks)):
+        result = run_pipeline(str(video), str(output), transcriber=custom_transcriber)
+
+    custom_transcriber.transcribe.assert_called_once()
+    mocks["WhisperTranscriber"].assert_not_called()
+    assert isinstance(result, PipelineResult)
+
+
+def test_no_transcriber_creates_whisper_internally(tmp_path):
+    """When transcriber=None (default), WhisperTranscriber() is constructed internally."""
+    video = tmp_path / "video.mp4"
+    video.touch()
+    output = tmp_path / "out.srt"
+    mocks = _make_mocks()
+
+    with patch.dict("sys.modules", _sys_modules_patches(mocks)):
+        run_pipeline(str(video), str(output))
+
+    mocks["WhisperTranscriber"].assert_called_once()
+
+
+def test_cancel_event_set_before_call_raises_pipeline_error(tmp_path):
+    """cancel_event already set → PipelineError('[cancelled]') raised before transcription."""
+    import threading
+
+    video = tmp_path / "video.mp4"
+    video.touch()
+    output = tmp_path / "out.srt"
+    mocks = _make_mocks()
+    cancel = threading.Event()
+    cancel.set()
+
+    with patch.dict("sys.modules", _sys_modules_patches(mocks)):
+        with pytest.raises(PipelineError, match=r"\[cancelled\]"):
+            run_pipeline(str(video), str(output), cancel_event=cancel)
+
+    mocks["transcriber_instance"].transcribe.assert_not_called()
+
+
+def test_cancel_event_set_during_audio_extraction_stops_before_transcription(tmp_path):
+    """cancel_event set inside extract_audio → PipelineError raised; transcription not called."""
+    import threading
+
+    video = tmp_path / "video.mp4"
+    video.touch()
+    output = tmp_path / "out.srt"
+    cancel = threading.Event()
+
+    mocks = _make_mocks()
+
+    def _set_cancel_then_extract(video_path, wav_path):
+        cancel.set()
+
+    mocks["extract_audio"].side_effect = _set_cancel_then_extract
+
+    with patch.dict("sys.modules", _sys_modules_patches(mocks)):
+        with pytest.raises(PipelineError, match=r"\[cancelled\]"):
+            run_pipeline(str(video), str(output), cancel_event=cancel)
+
+    mocks["transcriber_instance"].transcribe.assert_not_called()
+
+
+def test_cancel_event_none_runs_to_completion(tmp_path):
+    """cancel_event=None (default) — pipeline runs to full completion."""
+    video = tmp_path / "video.mp4"
+    video.touch()
+    output = tmp_path / "out.srt"
+    mocks = _make_mocks()
+
+    with patch.dict("sys.modules", _sys_modules_patches(mocks)):
+        result = run_pipeline(str(video), str(output), cancel_event=None)
+
+    assert isinstance(result, PipelineResult)
+    mocks["write_srt"].assert_called_once()
