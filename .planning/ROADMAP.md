@@ -26,6 +26,12 @@
 - [x] **Phase 12: Retroactive Verification + Pipeline Refactor** — Formal VERIFICATION.md for phases 6–7 + wire API router through run_pipeline() (completed 2026-04-22)
 - [ ] **Phase 13: Nyquist Compliance — All Phases** — Create/complete VALIDATION.md for all 10 phases
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — Create/overwrite VALIDATION.md for phases 01–05 (parallel Wave 1)
+- [ ] 13-02-PLAN.md — Create VALIDATION.md for phases 06–10 (parallel Wave 1)
+
 ---
 
 ## Next Milestone
