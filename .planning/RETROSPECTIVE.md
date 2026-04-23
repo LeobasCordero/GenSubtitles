@@ -57,13 +57,69 @@
 
 ---
 
+---
+
+## Milestone: v1.0 — GenSubtitles MVP (Backlog Expansion)
+
+**Shipped:** 2026-04-22  
+**Phases:** 40 total (13 core + 27 backlog 999.x) | **Plans:** 82 | **Timeline:** 2026-04-10 → 2026-04-22 (12 days post-initial-v1.0)
+
+### What Was Built
+
+- SSE-based async job pattern for GUI — `POST /async`, `GET /stream`, `GET /result`, `DELETE /{job_id}` with Cancel button (Phase 999.14)
+- Stepper pipeline mode — per-stage execution (extract → transcribe → translate → write) with artifact persistence and auto-subfolder naming (Phases 999.27–999.28)
+- Translation engine support: DeepL Free API, LibreTranslate, Argos Translate with batched context-aware translation (Phase 999.12)
+- SSA subtitle output format via pysubs2 with configurable font/color styling in Settings (Phase 999.10, 999.13)
+- CustomTkinter 6-tab redesign — each tab has its own log console, replaces 3-panel layout (Phases 999.29–999.30)
+- GUI refactor series: `theme.py` (palette) → `styles.py` → `server.py` → `locale.py` separation (Phases 999.21–999.24)
+- Configurable config file path via `GENSUBTITLES_CONFIG` env var (Phase 999.19)
+- Retroactive VERIFICATION.md + Nyquist VALIDATION.md for all 10 core phases (Phases 11–13)
+- Bilingual documentation update + standalone `docs/cli-tutorial.md` (Phases 999.18, 999.20)
+
+### What Worked
+
+- **Decimal phase numbering** (999.x) — continued to work perfectly for backlog features; no confusion with core phase numbering
+- **Vertical slice phases** — even large features (SSE, stepper, tabbed GUI) were broken into 3–5 focused plans that executed cleanly
+- **Refactor series** — doing the refactors as sequential phases (palette → styles → server → locale) meant each was small enough to complete without regressions
+- **SSE pattern** — replacing blocking HTTP with SSE solved the timeout problem cleanly; Cancel support came for free via `threading.Event`
+- **Per-tab log consoles** — moving logs into each tab eliminated the "silent progress bar" complaint and made the 6-tab redesign feel intentional
+
+### What Was Inefficient
+
+- **Three GUI layout redesigns** — the 3-panel layout (Phase 999.29) was planned and executed, then replaced by the 6-tab layout (Phase 999.30) almost immediately; the 3-panel work was mostly wasted effort
+- **Retroactive verification was large** — Phases 11–13 took 7 plans to close documentation debt that should have been written per-phase during initial execution; each VALIDATION.md adds ~30 min if written at phase close vs 3 hours to retroactively write all of them
+- **Duplicate MILESTONES.md entry** — the `milestone complete` CLI created an incomplete entry at the top of MILESTONES.md that required manual cleanup; accomplishments list was empty because `summary-extract` wasn't called
+
+### Patterns Established
+
+- `threading.Event` as `cancel_event` passed to `run_pipeline()` — clean cancellation contract between GUI and pipeline
+- SSE format: `data: {"type": "progress", "step": N, "label": "..."}` — consistent event shape for GUI streaming
+- Per-tab `_log_textbox` + `_log_to(textbox, msg)` helper — each tab owns its console; no global log routing needed
+- `sanitize_stem()` + auto-subfolder in stepper work dir — prevents multiple videos overwriting each other's artifacts
+- GUI refactor order: theme → styles → server → locale — each layer depends on the previous; doing them out of order would cause circular imports
+
+### Key Lessons
+
+1. **Don't build a layout you'll immediately replace** — the 3-panel redesign should have been skipped in favor of going straight to the 6-tab design; collect more context before a major layout rewrite
+2. **Write VALIDATION.md at phase close, not retroactively** — 5 minutes per phase is far cheaper than Phases 11–13 (7 plans) to catch up
+3. **`milestone complete` CLI needs summary-extract integration** — accomplishments list is always empty because the CLI doesn't call summary-extract; add a manual accomplishments step after CLI runs
+4. **Backlog phases are real work** — the 999.x "backlog" grew to 27 phases and 52 plans; scope it as carefully as core phases
+
+### Cost Observations
+
+- All execution: claude-sonnet (execution), claude-opus (planning)
+- Sessions: ~12 days of execution after initial v1.0
+- Notable: Refactor phases (999.21–999.24) were extremely efficient — clear scope, no ambiguity, 1 plan each
+
+---
+
 ## Cross-Milestone Trends
 
-| Metric | v1.0 |
-|--------|------|
-| Phases | 16 |
-| Plans | 30 |
-| Timeline | 8 days |
-| Tests | 73 |
-| Python LOC | ~1,602 |
-| Test runtime | 2.87s |
+| Metric | v1.0 Core | v1.0 Full |
+|--------|-----------|-----------|
+| Phases | 16 | 40 |
+| Plans | 30 | 82 |
+| Timeline | 8 days | 20 days |
+| Python LOC | ~1,602 | ~5,568 |
+| Test LOC | — | ~3,096 |
+| Git commits | ~147 | 434 |

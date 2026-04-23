@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
-status: Phase 999.20 complete
-last_updated: "2026-04-23T00:00:00.000Z"
+milestone_name: GenSubtitles MVP
+status: v1.0 milestone archived — planning next milestone
+last_updated: "2026-04-22"
 progress:
   total_phases: 40
-  completed_phases: 38
-  total_plans: 84
+  completed_phases: 40
+  total_plans: 82
   completed_plans: 82
 ---
 
@@ -17,9 +17,23 @@ progress:
 
 ## Current Status
 
-- **Milestone:** v1.0
-- **Active Phase:** 999.20 — cli-tutorial-in-help — COMPLETE
-- **Last action:** Phase 999.20 complete — Created standalone `docs/cli-tutorial.md` (8-section step-by-step CLI walkthrough). Added cross-links from README.md, README.es.md, and locale.py (EN + ES help dialog).
+- **Milestone:** v1.0 — ARCHIVED
+- **Active Phase:** None
+- **Last action:** v1.0 milestone archived — 40 phases, 82 plans, ROADMAP collapsed, git tagged v1.0. Ready for `/gsd-new-milestone`.
+
+## Project Reference
+
+See: `.planning/PROJECT.md` (updated 2026-04-22)
+
+**Core value:** Accurate, offline-capable subtitle generation from any video — no external API keys required.  
+**Current focus:** Planning next milestone.
+
+## Decisions
+
+- pysrt → `srt` library (v3.5.3) — actively maintained, no deps, 30% faster
+- SSE async job pattern for GUI (Phase 999.14) — replaces blocking POST /subtitles
+- CTkTabview 6-tab GUI redesign (Phase 999.30) — each tab owns its log console
+- Locale module separation: all strings in `gui/locale.py`, `s()` callable globally
 
 ## Milestone Progress
 

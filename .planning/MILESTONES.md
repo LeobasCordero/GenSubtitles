@@ -1,22 +1,23 @@
 # Milestones
 
-## v1.0 GenSubtitles MVP (Shipped: 2026-04-11)
+## v1.0 GenSubtitles MVP (Shipped: 2026-04-22)
 
-**Phases completed:** 16 phases, 30 plans  
-**Timeline:** 2026-04-02 → 2026-04-10 (8 days)  
-**Python LOC:** ~1,602 (gensubtitles package) | **Git commits:** ~147
+**Phases completed:** 40 phases, 82 plans  
+**Timeline:** 2026-04-02 → 2026-04-22 (20 days)  
+**Python LOC:** ~5,568 (gensubtitles package) | ~3,096 (tests) | **Git commits:** 434
 
 **Key accomplishments:**
 
 - Full offline subtitle pipeline: Video → FFmpeg (16kHz WAV) → faster-whisper → Argos Translate → SRT
-- FastAPI REST API with file-upload endpoint (`POST /subtitles`), language list (`GET /languages`), and OpenAPI docs
-- Typer CLI with `--input`, `--output`, `--model`, `--target-lang` flags, progress printing, and exit codes
-- CustomTkinter desktop GUI with generate workflow, stage progress, elapsed timer, reactive Clear button, and field disable during pipeline
-- 73-test suite with full mock coverage across all core modules (audio, transcription, translation, SRT, pipeline, CLI, API)
-- English + Spanish README with install, CLI usage, and API usage documentation
-
-**Tech debt carried forward:**
-- Human E2E verification for `POST /subtitles` requires real Argos Translate + faster-whisper models (noted in v1.0-MILESTONE-AUDIT.md)
+- FastAPI REST API with SSE-based async job pattern, Cancel button, `POST /subtitles`, `GET /languages`, OpenAPI docs
+- Typer CLI with all flags, progress output, exit codes, and stepper mode (`--step` flag for per-stage execution)
+- CustomTkinter desktop GUI — 6-tab redesign (Generate, Translate Subtitles, Extract, Transcribe, Translate, Write SRT) with per-tab log consoles
+- SSE-based async job pattern replacing blocking HTTP call — long transcription runs no longer timeout
+- Stepper pipeline mode — run each stage independently with artifact persistence between stages
+- Translation engine support: Argos (offline), DeepL, LibreTranslate; SSA output format; translate-only mode
+- GUI refactor series: palette → styles → server module → locale separation (Phases 999.21–999.24)
+- Retroactive verification + Nyquist compliance across all 10 core phases (Phases 11–13)
+- Bilingual documentation (EN + ES) with standalone CLI tutorial at `docs/cli-tutorial.md`
 
 **Archive:** `.planning/milestones/v1.0-ROADMAP.md` | `.planning/milestones/v1.0-REQUIREMENTS.md`
 
