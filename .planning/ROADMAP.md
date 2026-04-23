@@ -647,8 +647,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 999.20-01-PLAN.md — Create docs/cli-tutorial.md (standalone step-by-step tutorial)
-- [ ] 999.20-02-PLAN.md — Add cross-links in README.md, README.es.md, and locale.py GUI dialog
+- [x] 999.20-01-PLAN.md — Create docs/cli-tutorial.md (standalone step-by-step tutorial)
+- [x] 999.20-02-PLAN.md — Add cross-links in README.md, README.es.md, and locale.py GUI dialog
 
 **Context captured:**
 - Current README has short CLI examples but no end-to-end tutorial narrative
