@@ -52,7 +52,7 @@ Expected output:
 ```
 [1/4] Extracting audio...
 [2/4] Transcribing...
-[3/4] Writing SRT...
+[3/4] Translation skipped...
 [4/4] Writing SRT...
 Done: video.srt (42 segments, lang=en)
 ```
@@ -183,24 +183,44 @@ Starting GenSubtitles API on http://127.0.0.1:8000 ...
 
 ### Generating subtitles via the API
 
-Once the server is running, submit a video with `curl`:
+Once the server is running, start an async job with `curl`:
 
 ```bash
-# Basic — returns subtitles.srt
-curl -X POST http://localhost:8000/subtitles \
-  -F "file=@video.mp4" \
-  --output subtitles.srt
+# Basic job (returns {"job_id":"..."})
+curl -X POST "http://localhost:8000/subtitles/async" \
+  -F "file=@video.mp4"
 
 # With translation to Spanish
-curl -X POST "http://localhost:8000/subtitles?target_lang=es" \
+curl -X POST "http://localhost:8000/subtitles/async?target_lang=es" \
   -F "file=@video.mp4" \
-  --output subtitles_es.srt
+  # -> {"job_id":"<job_id>"}
 
-# SSA format + DeepL engine
-curl -X POST "http://localhost:8000/subtitles?target_lang=fr&format=ssa&engine=deepl" \
-  -F "file=@video.mp4" \
-  --output subtitles.ssa
+# With translation to French using DeepL
+curl -X POST "http://localhost:8000/subtitles/async?target_lang=fr&engine=deepl" \
+  -F "file=@video.mp4"
 ```
+
+Then, for a given `<job_id>`:
+
+```bash
+# Stream progress events (SSE)
+curl -N "http://localhost:8000/subtitles/<job_id>/stream"
+
+# Download final subtitles.srt once stage=done
+curl -L "http://localhost:8000/subtitles/<job_id>/result" \
+  --output subtitles.srt
+```
+
+For stateless step endpoints, use:
+
+```bash
+curl -X POST "http://localhost:8000/subtitles/extract" -F "video=@video.mp4" --output audio.wav
+curl -X POST "http://localhost:8000/subtitles/transcribe" -F "audio=@audio.wav" --output transcription.json
+curl -X POST "http://localhost:8000/subtitles/translate?target_lang=es" -F "segments=@transcription.json" --output translation.json
+curl -X POST "http://localhost:8000/subtitles/write" -F "segments=@translation.json" --output subtitles.srt
+```
+
+> Note: Subtitle generation via API currently returns `.srt`. CLI `--format ssa` conversion is CLI-only.
 
 > Interactive API docs are available at `http://localhost:8000/docs` while the server is running.
 
@@ -219,7 +239,7 @@ python main.py --input video.mp4 --step extract --work-dir ./my-job/
 ```
 ```
 [1/4] Extracting audio...
-Done: my-job\audio.wav
+Done: my-job/audio.wav
 ```
 
 **Stage 2 — Transcribe the audio:**
@@ -229,7 +249,7 @@ python main.py --step transcribe --work-dir ./my-job/
 ```
 ```
 [2/4] Transcribing...
-Done: my-job\transcription.json (42 segments, lang=en)
+Done: my-job/transcription.json (42 segments, lang=en)
 ```
 
 **Stage 3 — Translate the transcription:**
@@ -239,7 +259,7 @@ python main.py --step translate --work-dir ./my-job/ --target-lang es
 ```
 ```
 [3/4] Translating...
-Done: my-job\translation.json
+Done: my-job/translation.json
 ```
 
 **Stage 4 — Write the subtitle file:**
@@ -259,7 +279,7 @@ Done: final.srt
 | `extract` | `--input`, `--work-dir` | — |
 | `transcribe` | `--work-dir` | `--model`, `--source-lang`, `--device` |
 | `translate` | `--work-dir`, `--target-lang` | `--engine` |
-| `write` | `--work-dir` | `--output`, `--format` |
+| `write` | `--work-dir` | `--output` |
 
 ## 6. Model Comparison
 
