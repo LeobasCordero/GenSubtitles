@@ -167,7 +167,9 @@ _STRINGS: dict[str, dict[str, str]] = {
             "\u2022 Subtitles are blank \u2014 The default speech model is `medium` (~1.5 GB first-run download). "
             "If this is the first run, make sure the model download completed successfully and that you had internet "
             "access during setup. Also check whether the video has an audio track.\n"
-            "\u2022 API connection refused \u2014 The background server failed to start. Restart the application."
+            "\u2022 API connection refused \u2014 The background server failed to start. Restart the application.\n"
+            "\n"
+            "CLI users: see docs/cli-tutorial.md for a step-by-step terminal walkthrough."
         ),
     },
     "es": {
@@ -318,7 +320,9 @@ _STRINGS: dict[str, dict[str, str]] = {
             "\u2022 Los subt\u00edtulos est\u00e1n en blanco \u2014 El modelo de voz predeterminado es `medium` (~1.5 GB, descarga en el primer uso). "
             "Si es la primera ejecuci\u00f3n, aseg\u00farate de que la descarga del modelo se complet\u00f3 correctamente y que ten\u00edas acceso "
             "a internet durante la configuraci\u00f3n. Tambi\u00e9n verifica si el video tiene pista de audio.\n"
-            "\u2022 Conexi\u00f3n a la API rechazada \u2014 El servidor en segundo plano no se pudo iniciar. Reinicia la aplicaci\u00f3n."
+            "\u2022 Conexi\u00f3n a la API rechazada \u2014 El servidor en segundo plano no se pudo iniciar. Reinicia la aplicaci\u00f3n.\n"
+            "\n"
+            "Usuarios de CLI: consulta docs/cli-tutorial.md para una gu\u00eda paso a paso en terminal."
         ),
     },
 }

@@ -99,6 +99,8 @@ El menú **Help** de la barra de menú ofrece:
 
 ## Uso de CLI
 
+> Para una guía paso a paso completa, consulta el [Tutorial de CLI](docs/cli-tutorial.md).
+
 ### generate (predeterminado)
 
 ```bash

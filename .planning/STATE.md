@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-last_updated: "2026-04-22T14:02:18.931Z"
+status: Phase 999.20 complete
+last_updated: "2026-04-23T00:00:00.000Z"
 progress:
   total_phases: 40
-  completed_phases: 37
-  total_plans: 80
-  completed_plans: 80
+  completed_phases: 38
+  total_plans: 84
+  completed_plans: 82
 ---
 
 # GenSubtitles — Project State
@@ -18,8 +18,8 @@ progress:
 ## Current Status
 
 - **Milestone:** v1.0
-- **Active Phase:** 12 — retroactive-verification-pipeline-refactor — COMPLETE
-- **Last action:** Phase 12 complete — Created VERIFICATION.md exit records for phases 6 and 7 (retroactive). Extended `run_pipeline()` with `transcriber=` injection and `cancel_event=` support. Refactored `_run_pipeline_job()` to delegate to `run_pipeline()` (eliminates duplication). 44 API+pipeline+steps tests pass.
+- **Active Phase:** 999.20 — cli-tutorial-in-help — COMPLETE
+- **Last action:** Phase 999.20 complete — Created standalone `docs/cli-tutorial.md` (8-section step-by-step CLI walkthrough). Added cross-links from README.md, README.es.md, and locale.py (EN + ES help dialog).
 
 ## Milestone Progress
 
@@ -46,6 +46,7 @@ progress:
 | 999.29 | GUI Redesign Three-Panel Vertical Layout | ✅ Complete (3/3 plans, completed 2026-04-18) |
 | 999.30 | Refactor GUI — Redesign Tabs (Generate, Translate, Audio, Transcribe, Write) | ✅ Complete (4/4 plans, completed 2026-04-19) |
 | 12 | Retroactive Verification + Pipeline Refactor | ✅ Complete (3/3 plans, completed 2026-04-22) |
+| 999.20 | Docs — CLI Tutorial | ✅ Complete (2/2 plans, completed 2026-04-23) |
 
 ## Key Decisions Log
 
