@@ -101,6 +101,8 @@ The **Help** menu in the menu bar provides:
 
 ## CLI Usage
 
+> For a full step-by-step walkthrough, see [CLI Tutorial](docs/cli-tutorial.md).
+
 ### generate (default)
 
 ```bash
