@@ -758,22 +758,13 @@ TypeError: 'int' object is not callable
 
 ---
 
-### Phase 999.26: Console Log Display for User Tracking (BACKLOG)
+### Phase 999.26: Console Log Display for User Tracking (COMPLETE)
 
 **Goal:** Display a real-time console/log panel so users can track exactly what the pipeline is doing at each step — model loading, audio extraction, transcription progress, translation, and SRT writing — instead of watching a silent progress bar.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 0 plans (resolved without a dedicated plan — delivered as part of 999.30 tabbed GUI redesign)
 
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-**Context captured:**
-- Users have no visibility into what's happening during long runs (e.g. large model download, slow transcription)
-- Each pipeline stage should emit a timestamped log line (e.g. `[00:03] Transcribing audio...`, `[00:47] Translating 128 segments...`)
-- GUI: scrollable read-only text area or log panel below the progress bar that streams messages in real time
-- CLI: `--verbose` flag (or always-on) that prints stage banners to stdout
-- API: could surface as SSE events (ties into Phase 999.14 async/SSE work)
-- Backend: a logging callback/hook injected into `pipeline.py` stages so the core doesn't depend on any UI layer
+**Resolution:** Implemented during Phase 999.30. Tab 1 (Generate) has `_log_textbox` (CTkTextbox) with `self._log(label)` called on every pipeline progress event. Each stepper tab has its own log textbox. Server startup messages also streamed to log. Verified 2026-04-22.
 
 ---
 
