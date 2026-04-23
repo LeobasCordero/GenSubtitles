@@ -644,10 +644,11 @@ Plans:
 
 **Goal:** Add a dedicated CLI tutorial — either as a new section in README.md or as a standalone `docs/cli-tutorial.md` — that walks through the full CLI workflow step by step: installation, basic transcription, transcription + translation, format options (SRT/SSA), the `serve` subcommand, and the `translate` subcommand for existing subtitle files. Targeted at technical users who don't need the GUI.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] 999.20-01-PLAN.md — Create docs/cli-tutorial.md (standalone step-by-step tutorial)
+- [ ] 999.20-02-PLAN.md — Add cross-links in README.md, README.es.md, and locale.py GUI dialog
 
 **Context captured:**
 - Current README has short CLI examples but no end-to-end tutorial narrative
