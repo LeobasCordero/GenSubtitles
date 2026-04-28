@@ -1,4 +1,4 @@
-# GenSubtitles — Project Roadmap
+﻿# GenSubtitles — Project Roadmap
 
 ## Milestones
 
@@ -61,7 +61,38 @@
 
 _No next milestone defined. Run /gsd-new-milestone to begin planning v1.1._
 
+## Backlog
+
+### Phase 999.31: BUG — GUI Transcription HTTP Timeout (BACKLOG)
+
+**Goal:** Fix `HTTPConnectionPool(host='127.0.0.1', port=8000): Read timed out. (read timeout=600)` raised in the GUI when transcription exceeds the 600-second HTTP read timeout. Long videos (large files, slow models) fail silently from the GUI's perspective. Investigate whether the SSE async job pattern (Phase 999.14) fully covers this — the blocking `POST /subtitles` path may still be active in some code paths, or the SSE stream itself may be timing out.
+**Requirements:** TBD
+**Plans:** 1 plan
+
+Plans:
+- [ ] 999.31-01-PLAN.md — Fix `timeout=600` → `timeout=(5, None)` in `_run_step_in_bg`
+
+---
+
+### Phase 999.32: GUI — Mejoras UX, Paletas de Colores y Accesibilidad (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Scope:
+- Auto-populate filename placeholders (audio, subtitle, etc.) based on selected video filename (e.g. `video1.mkv` → `video1.wav`, `video1.srt`); user can override
+- Disable action buttons (and buttons in other tabs) while a long-running process (transcription, extraction, etc.) is active
+- Emit a visual separator in the console log at the start of each new process (e.g. a line of `---` or `***`)
+- "Clear Fields" button also clears the console — only when the corresponding Settings toggle is enabled
+- Fix secondary button font color to ensure sufficient contrast against the button background
+- Color palette system: new Settings section with predefined palettes + user-customizable colors for primary buttons, secondary buttons, fonts, console background, tab backgrounds, dropdowns
+- Translate console log messages according to the active UI language
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ---
 
 *Roadmap created: 2026-04-02*
-*Last updated: 2026-04-22 -- v1.0 milestone archived (40 phases, 82 plans)*
+*Last updated: 2026-04-28 — added backlog item 999.32 (GUI mejoras UX, paletas de colores y accesibilidad)*
