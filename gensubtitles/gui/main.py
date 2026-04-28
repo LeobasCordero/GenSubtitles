@@ -607,7 +607,7 @@ class GenSubtitlesApp(ctk.CTk):
         def _worker() -> None:
             try:
                 import requests as req  # noqa: PLC0415
-                resp = req.post(f"{server.BASE_URL}{api_endpoint}", json=payload, timeout=600)
+                resp = req.post(f"{server.BASE_URL}{api_endpoint}", json=payload, timeout=(5, None))
                 if resp.status_code == 200:
                     if on_success:
                         self.after(0, on_success)
