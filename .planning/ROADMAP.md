@@ -67,10 +67,10 @@ _No next milestone defined. Run /gsd-new-milestone to begin planning v1.1._
 
 **Goal:** Fix `HTTPConnectionPool(host='127.0.0.1', port=8000): Read timed out. (read timeout=600)` raised in the GUI when transcription exceeds the 600-second HTTP read timeout. Long videos (large files, slow models) fail silently from the GUI's perspective. Investigate whether the SSE async job pattern (Phase 999.14) fully covers this — the blocking `POST /subtitles` path may still be active in some code paths, or the SSE stream itself may be timing out.
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] 999.31-01-PLAN.md — Fix `timeout=600` → `timeout=(5, None)` in `_run_step_in_bg`
 
 ---
 
