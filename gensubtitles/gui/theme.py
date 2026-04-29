@@ -12,7 +12,10 @@ font(role)    — return a CTkFont for the given typographic role
 """
 from __future__ import annotations
 
+import logging
 import customtkinter as ctk
+
+_log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Dual-mode colour palettes
@@ -34,6 +37,7 @@ _PALETTES: dict[str, dict[str, str]] = {
         "accent_hov":     "#42A5F5",
         "secondary":      "#424242",
         "secondary_hov":  "#616161",
+        "btn_secondary_text": "#E0E0E0",
         "progress_idle":  "#757575",
         "progress_proc":  "#2196F3",
         "progress_done":  "#4CAF50",  # Green — stable, readable on dark
@@ -52,6 +56,7 @@ _PALETTES: dict[str, dict[str, str]] = {
         "accent_hov":     "#1565C0",
         "secondary":      "#E0E0E0",
         "secondary_hov":  "#BDBDBD",
+        "btn_secondary_text": "#212121",
         "progress_idle":  "#9E9E9E",
         "progress_proc":  "#1976D2",
         "progress_done":  "#388E3C",  # Slightly desaturated green for light
@@ -60,13 +65,155 @@ _PALETTES: dict[str, dict[str, str]] = {
         "menu_fg":        "#212121",
         "menu_active_bg": "#F5F5F5",
     },
+    "Ocean Dark": {
+        "bg":                 "#0A1628",
+        "surface":            "#112240",
+        "input_bg":           "#1A3050",
+        "text_primary":       "#CCD6F6",
+        "text_secondary":     "#8892B0",
+        "accent":             "#64FFDA",
+        "accent_hov":         "#52E0BE",
+        "secondary":          "#233554",
+        "secondary_hov":      "#2D4470",
+        "btn_secondary_text": "#CCD6F6",
+        "progress_idle":      "#4A5568",
+        "progress_proc":      "#64FFDA",
+        "progress_done":      "#52E0BE",
+        "progress_err":       "#FF6B6B",
+        "menu_bg":            "#061122",
+        "menu_fg":            "#CCD6F6",
+        "menu_active_bg":     "#1A3050",
+    },
+    "Emerald": {
+        "bg":                 "#0D1F12",
+        "surface":            "#1A3020",
+        "input_bg":           "#243D28",
+        "text_primary":       "#E2F4E8",
+        "text_secondary":     "#A8C9B0",
+        "accent":             "#2ECC71",
+        "accent_hov":         "#27AE60",
+        "secondary":          "#2D4A35",
+        "secondary_hov":      "#3A5E44",
+        "btn_secondary_text": "#E2F4E8",
+        "progress_idle":      "#4A7055",
+        "progress_proc":      "#2ECC71",
+        "progress_done":      "#27AE60",
+        "progress_err":       "#E74C3C",
+        "menu_bg":            "#080F0A",
+        "menu_fg":            "#E2F4E8",
+        "menu_active_bg":     "#1A3020",
+    },
+    "Sunset": {
+        "bg":                 "#FFF8F0",
+        "surface":            "#FFFFFF",
+        "input_bg":           "#FDE8D8",
+        "text_primary":       "#2D1810",
+        "text_secondary":     "#7A4030",
+        "accent":             "#E85D04",
+        "accent_hov":         "#C44E00",
+        "secondary":          "#F3C5A5",
+        "secondary_hov":      "#E8A880",
+        "btn_secondary_text": "#2D1810",
+        "progress_idle":      "#C4A080",
+        "progress_proc":      "#E85D04",
+        "progress_done":      "#388E3C",
+        "progress_err":       "#C62828",
+        "menu_bg":            "#FFFFFF",
+        "menu_fg":            "#2D1810",
+        "menu_active_bg":     "#FDE8D8",
+    },
+    "Monochrome": {
+        "bg":                 "#0C0C0C",
+        "surface":            "#1A1A1A",
+        "input_bg":           "#252525",
+        "text_primary":       "#F0F0F0",
+        "text_secondary":     "#A0A0A0",
+        "accent":             "#FFFFFF",
+        "accent_hov":         "#E0E0E0",
+        "secondary":          "#333333",
+        "secondary_hov":      "#444444",
+        "btn_secondary_text": "#F0F0F0",
+        "progress_idle":      "#666666",
+        "progress_proc":      "#FFFFFF",
+        "progress_done":      "#CCCCCC",
+        "progress_err":       "#FF4444",
+        "menu_bg":            "#080808",
+        "menu_fg":            "#F0F0F0",
+        "menu_active_bg":     "#252525",
+    },
 }
+
+# ---------------------------------------------------------------------------
+# Runtime palette override state (Phase 999.32)
+# ---------------------------------------------------------------------------
+# Mutable module-level state so p() resolves the active palette at call time.
+# set_active_palette() is called from GenSubtitlesApp._apply_startup_settings()
+# and from the palette panel Save handler.
+
+_active_palette_tokens: dict[str, str] = {}  # tokens for non-default palette
+_user_overrides: dict[str, str] = {}         # user's per-token customizations
+
+#: Names of palettes that use mode-based fallback (no tokens override needed).
+_DEFAULT_PALETTE_NAMES: frozenset[str] = frozenset({"Default Dark", "Default Light"})
+
+
+def set_active_palette(
+    palette_name: str,
+    user_overrides: "dict[str, str] | None" = None,
+) -> None:
+    """Set the active named palette and optional per-token user overrides.
+
+    Call this after loading settings (in _apply_startup_settings) and after
+    the user saves the palette panel.
+
+    Args:
+        palette_name: A key in _PALETTES, or "Default Dark" / "Default Light"
+                      to use the mode-based fallback.
+        user_overrides: Dict of {token_key: hex_color} for user customizations.
+                        Pass None or {} to clear any previous overrides.
+    """
+    _active_palette_tokens.clear()
+    _user_overrides.clear()
+    if palette_name == "Default Dark":
+        _active_palette_tokens.update(_PALETTES["Dark"])
+    elif palette_name == "Default Light":
+        _active_palette_tokens.update(_PALETTES["Light"])
+    else:
+        tokens = _PALETTES.get(palette_name, {})
+        _active_palette_tokens.update(tokens)
+    if user_overrides:
+        _user_overrides.update(user_overrides)
+
+
+#: Constant listing all palette names in display order.
+PALETTE_NAMES: tuple[str, ...] = (
+    "Default Dark", "Default Light",
+    "Ocean Dark", "Emerald", "Sunset", "Monochrome",
+)
 
 
 def p(key: str) -> str:
-    """Return the colour token for the current effective appearance mode."""
+    """Return the colour token for the current effective appearance mode.
+
+    Resolution order:
+    1. Per-token user overrides (_user_overrides) — highest priority.
+    2. Active named palette tokens (_active_palette_tokens) — non-default palette.
+    3. Mode-based _PALETTES fallback — Default Dark / Default Light.
+    """
+    if key in _user_overrides:
+        return _user_overrides[key]
+    if _active_palette_tokens:
+        val = _active_palette_tokens.get(key)
+        if val is None:
+            _log.warning("theme.p(): unknown token %r; falling back to Dark palette", key)
+            return _PALETTES["Dark"].get(key, "#888888")
+        return val
     mode = ctk.get_appearance_mode()  # resolves "System" → "Dark" or "Light"
-    return _PALETTES.get(mode, _PALETTES["Dark"])[key]
+    val = _PALETTES.get(mode, _PALETTES["Dark"]).get(key)
+    if val is None:
+        _log.warning("theme.p(): unknown token %r; falling back to Dark palette", key)
+        return _PALETTES["Dark"].get(key, "#888888")
+    return val
 
 
 # ---------------------------------------------------------------------------

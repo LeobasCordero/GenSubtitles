@@ -403,6 +403,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._build_translate_step_tab()
         self._build_write_tab()
         self._build_settings_panel()
+        self._build_palette_panel()
         self._build_menu_bar()
 
     def _log_to(self, textbox: "ctk.CTkTextbox", msg: str) -> None:
@@ -563,6 +564,78 @@ class GenSubtitlesApp(ctk.CTk):
         except Exception:  # noqa: BLE001
             pass
 
+    def _log_separator(self, textbox: "ctk.CTkTextbox") -> None:
+        """Append a visual separator line to *textbox* (D-03)."""
+        self._log_to(textbox, s("log_separator"))
+
+    def _clear_console(self, textbox: "ctk.CTkTextbox") -> None:
+        """Erase all text from *textbox* (D-04)."""
+        textbox.configure(state="normal")
+        textbox.delete("1.0", "end")
+        textbox.configure(state="disabled")
+
+    def _get_active_tab_log_textbox(self) -> "ctk.CTkTextbox | None":
+        """Return the log textbox for the currently selected tab, or None (D-04)."""
+        tab_name = self._tabview.get()
+        for attr, tab_key in (
+            ("_log_textbox",                "generate_tab"),
+            ("_extract_log_textbox",        "extract_tab"),
+            ("_transcribe_log_textbox",     "transcribe_tab"),
+            ("_translate_step_log_textbox", "translate_step_tab"),
+            ("_write_log_textbox",          "write_tab"),
+        ):
+            if tab_name == s(tab_key):
+                return getattr(self, attr, None)
+        return None
+
+    def _set_all_action_buttons(self, state: str) -> None:
+        """Enable or disable all action, browse, and clear buttons across all tabs (D-02).
+
+        Args:
+            state: "normal" or "disabled"
+        """
+        buttons = [
+            # Tab 1 — Generate
+            "_btn_clear",
+            "_btn_browse_input",
+            "_btn_browse_output",
+            # Tab 2 — Translate Subtitles
+            "_tl_btn_browse",
+            "_tl_btn_browse_out",
+            # Tab 3 — Extract Audio
+            "_extract_btn_run",
+            "_extract_btn_clear",
+            "_extract_btn_browse_input",
+            "_extract_btn_browse_output",
+            # Tab 4 — Transcribe
+            "_transcribe_btn_run",
+            "_transcribe_btn_clear",
+            "_transcribe_btn_browse",
+            # Tab 5 — Translate Step
+            "_translate_step_btn_run",
+            "_translate_step_btn_clear",
+            "_translate_step_btn_browse",
+            # Tab 6 — Write Subtitle
+            "_write_btn_run",
+            "_write_btn_clear",
+            "_write_btn_browse_input",
+            "_write_btn_browse_output",
+        ]
+        for attr in buttons:
+            btn = getattr(self, attr, None)
+            if btn is not None:
+                btn.configure(state=state)
+
+        # Tab 1 generate / Tab 2 translate — only re-enable when server is ready
+        # and inputs are valid; setting to disabled is always safe.
+        if state == "disabled":
+            for attr in ("_btn_generate", "_tl_btn_translate"):
+                btn = getattr(self, attr, None)
+                if btn is not None:
+                    btn.configure(state="disabled")
+        # Re-enable is NOT done here for _btn_generate/_tl_btn_translate —
+        # their state is managed by _on_server_ready, _run_sse_flow, _finish_translate.
+
     def _get_tab_work_dir(
         self,
         input_var: "ctk.StringVar",
@@ -602,7 +675,9 @@ class GenSubtitlesApp(ctk.CTk):
         Calls *on_success* or *on_error* on the main thread when done.
         """
         _tb = log_textbox if log_textbox is not None else self._log_textbox
-        self._log_to(_tb, f"\u23f3 Running step: {step_key}")
+        self._log_separator(_tb)
+        self._log_to(_tb, f"{s('log_running_step')} {step_key}")
+        self._set_all_action_buttons("disabled")
 
         def _worker() -> None:
             try:
@@ -619,12 +694,14 @@ class GenSubtitlesApp(ctk.CTk):
                     if on_error:
                         self.after(0, on_error, detail)
                     else:
-                        self.after(0, lambda d=detail: self._log_to(_tb, f"\u2717 Error: {d}"))
+                        self.after(0, lambda d=detail: self._log_to(_tb, f"{s('log_error_generic')} {d}"))
             except Exception as exc:  # noqa: BLE001
                 if on_error:
                     self.after(0, on_error, str(exc))
                 else:
-                    self.after(0, lambda e=exc: self._log_to(_tb, f"\u2717 Error: {e}"))
+                    self.after(0, lambda e=exc: self._log_to(_tb, f"{s('log_error_generic')} {e}"))
+            finally:
+                self.after(0, lambda: self._set_all_action_buttons("normal"))
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -635,6 +712,37 @@ class GenSubtitlesApp(ctk.CTk):
     def _on_step_error(self, step_key: str, detail: str) -> None:
         """Legacy callback — kept for compatibility. Step tabs use per-tab on_error callbacks."""
         self._log(f"\u2717 Step error ({step_key}): {str(detail)[:120]}")
+
+    def _on_browse_extract_input(self) -> None:
+        """Browse for video file in Tab 3 and auto-fill downstream tab fields (D-01)."""
+        from tkinter import filedialog  # noqa: PLC0415
+
+        path = filedialog.askopenfilename(
+            filetypes=[
+                ("Video files", "*.mp4 *.mkv *.avi *.mov *.webm"),
+                ("All files", "*.*"),
+            ]
+        )
+        if not path:
+            return
+
+        self._extract_input_var.set(path)
+
+        stem = Path(path).stem
+        # Prefer user's configured output dir; fall back to video's own directory.
+        output_dir = (
+            self._current_settings.default_output_dir
+            if self._current_settings and self._current_settings.default_output_dir
+            else str(Path(path).parent)
+        )
+        base = Path(output_dir)
+
+        # Auto-fill downstream fields (D-01)
+        self._extract_output_var.set(str(base / f"{stem}.wav"))
+        self._transcribe_input_var.set(str(base / f"{stem}.wav"))
+        self._translate_step_input_var.set(str(base / f"{stem}.json"))
+        self._write_input_var.set(str(base / f"{stem}_translated.json"))
+        self._write_output_var.set(str(base / f"{stem}.srt"))
 
     def _browse_file_to_var(
         self,
@@ -711,13 +819,13 @@ class GenSubtitlesApp(ctk.CTk):
         """Tab 3: Extract Audio button handler."""
         video = self._extract_input_var.get().strip()
         if not video:
-            self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Please select an input video file.")
+            self._log_to(self._extract_log_textbox, s("log_warn_no_input_video"))
             return
         output_audio = self._extract_output_var.get().strip()
         if output_audio:
             requested_out = Path(output_audio)
             if requested_out.suffix.lower() != ".wav":
-                self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Output audio file must use .wav extension.")
+                self._log_to(self._extract_log_textbox, s("log_warn_output_not_wav"))
                 return
             work = requested_out.parent
         else:
@@ -727,13 +835,13 @@ class GenSubtitlesApp(ctk.CTk):
                 fallback_vars=[self._input_var],
             )
         if work is None:
-            self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Cannot determine output directory.")
+            self._log_to(self._extract_log_textbox, s("log_warn_no_output_dir"))
             return
         work.mkdir(parents=True, exist_ok=True)
         payload: dict = {"video_path": video, "work_dir": str(work)}
 
         def _on_success() -> None:
-            self._log_to(self._extract_log_textbox, "\u2713 Audio extracted successfully.")
+            self._log_to(self._extract_log_textbox, s("log_step_success_extract"))
             wavs = sorted(work.glob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True)
             if wavs:
                 extracted = wavs[0]
@@ -743,13 +851,13 @@ class GenSubtitlesApp(ctk.CTk):
                         extracted.replace(requested_out)
                         extracted = requested_out
                     except OSError as exc:
-                        self._log_to(self._extract_log_textbox, f"\u26a0\ufe0f Could not apply custom output name: {exc}")
+                        self._log_to(self._extract_log_textbox, f"{s('log_error_cannot_apply_output_name')} {exc}")
                 self._extract_output_var.set(str(extracted))
                 self._transcribe_input_var.set(str(extracted))
-                self._log_to(self._extract_log_textbox, f"\u2192 Pre-filled Tab 4 input: {extracted.name}")
+                self._log_to(self._extract_log_textbox, f"{s('log_prefill_tab4')} {extracted.name}")
 
         def _on_error(detail: str) -> None:
-            self._log_to(self._extract_log_textbox, f"\u2717 Extract failed: {detail[:200]}")
+            self._log_to(self._extract_log_textbox, f"{s('log_error_extract')} {detail[:200]}")
 
         self._run_step_in_bg(
             "extract", "/steps/extract", payload,
@@ -765,14 +873,14 @@ class GenSubtitlesApp(ctk.CTk):
 
         audio = self._transcribe_input_var.get().strip()
         if not audio:
-            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Please select an input audio file.")
+            self._log_to(self._transcribe_log_textbox, s("log_warn_no_input_audio"))
             return
         audio_path = Path(audio)
         if not audio_path.is_file():
-            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Selected audio file was not found.")
+            self._log_to(self._transcribe_log_textbox, s("log_warn_file_not_found"))
             return
         if audio_path.suffix.lower() != ".wav":
-            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Transcribe step requires a .wav file.")
+            self._log_to(self._transcribe_log_textbox, s("log_warn_not_wav"))
             return
         work = self._step_workspace(audio_path, "transcribe", "audio")
         work.mkdir(parents=True, exist_ok=True)
@@ -786,15 +894,15 @@ class GenSubtitlesApp(ctk.CTk):
         payload = {"work_dir": str(work), "source_lang": src_code, "device": "auto"}
 
         def _on_success() -> None:
-            self._log_to(self._transcribe_log_textbox, "\u2713 Transcription complete.")
+            self._log_to(self._transcribe_log_textbox, s("log_step_success_transcribe"))
             # Pre-fill Tab 5 input (D-04)
             transcription_path = work / TRANSCRIPTION_FILENAME
             if transcription_path.exists():
                 self._translate_step_input_var.set(str(transcription_path))
-                self._log_to(self._transcribe_log_textbox, f"\u2192 Pre-filled Tab 5 input: {TRANSCRIPTION_FILENAME}")
+                self._log_to(self._transcribe_log_textbox, f"{s('log_prefill_tab5')} {TRANSCRIPTION_FILENAME}")
 
         def _on_error(detail: str) -> None:
-            self._log_to(self._transcribe_log_textbox, f"\u2717 Transcription failed: {detail[:200]}")
+            self._log_to(self._transcribe_log_textbox, f"{s('log_error_transcribe')} {detail[:200]}")
 
         self._run_step_in_bg(
             "transcribe", "/steps/transcribe", payload,
@@ -810,15 +918,15 @@ class GenSubtitlesApp(ctk.CTk):
 
         trans_file = self._translate_step_input_var.get().strip()
         if not trans_file:
-            self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Please select a transcription file.")
+            self._log_to(self._translate_step_log_textbox, s("log_warn_no_input_transcription"))
             return
         trans_path = Path(trans_file)
         if not trans_path.is_file():
-            self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Selected transcription file was not found.")
+            self._log_to(self._translate_step_log_textbox, s("log_warn_file_not_found"))
             return
         tgt = self._translate_step_target_var.get()
         if tgt in ("No target", ""):
-            self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Please select a target language.")
+            self._log_to(self._translate_step_log_textbox, s("log_warn_no_target_lang"))
             return
         work = self._step_workspace(trans_path, "translate", "transcription")
         work.mkdir(parents=True, exist_ok=True)
@@ -828,15 +936,15 @@ class GenSubtitlesApp(ctk.CTk):
         payload = {"work_dir": str(work), "target_lang": tgt_code, "engine": eng}
 
         def _on_success() -> None:
-            self._log_to(self._translate_step_log_textbox, "\u2713 Translation complete.")
+            self._log_to(self._translate_step_log_textbox, s("log_step_success_translate"))
             # Pre-fill Tab 6 input (D-04)
             translation_path = work / TRANSLATION_FILENAME
             if translation_path.exists():
                 self._write_input_var.set(str(translation_path))
-                self._log_to(self._translate_step_log_textbox, f"\u2192 Pre-filled Tab 6 input: {TRANSLATION_FILENAME}")
+                self._log_to(self._translate_step_log_textbox, f"{s('log_prefill_tab6')} {TRANSLATION_FILENAME}")
 
         def _on_error(detail: str) -> None:
-            self._log_to(self._translate_step_log_textbox, f"\u2717 Translation failed: {detail[:200]}")
+            self._log_to(self._translate_step_log_textbox, f"{s('log_error_translate')} {detail[:200]}")
 
         self._run_step_in_bg(
             "translate", "/steps/translate", payload,
@@ -853,11 +961,11 @@ class GenSubtitlesApp(ctk.CTk):
 
         trans_file = self._write_input_var.get().strip()
         if not trans_file:
-            self._log_to(self._write_log_textbox, "\u26a0\ufe0f Please select an input file.")
+            self._log_to(self._write_log_textbox, s("log_warn_no_input_file"))
             return
         trans_path = Path(trans_file)
         if not trans_path.is_file():
-            self._log_to(self._write_log_textbox, "\u26a0\ufe0f Selected input file was not found.")
+            self._log_to(self._write_log_textbox, s("log_warn_file_not_found"))
             return
         work = self._step_workspace(trans_path, "write", "segments")
         work.mkdir(parents=True, exist_ok=True)
@@ -888,17 +996,17 @@ class GenSubtitlesApp(ctk.CTk):
                             "outlinecolor": self._current_settings.subtitle_outline_color,
                         }
                     convert_srt_to_ssa(tmp_path, output_obj, style=style)
-                    self._log_to(self._write_log_textbox, f"\u2713 Subtitle written: {output_obj}")
+                    self._log_to(self._write_log_textbox, f"{s('log_step_success_write')} {output_obj}")
                 except (OSError, ValueError) as exc:
-                    self._log_to(self._write_log_textbox, f"\u2717 Write failed: {str(exc)[:200]}")
+                    self._log_to(self._write_log_textbox, f"{s('log_error_write')} {str(exc)[:200]}")
                     return
                 finally:
                     tmp_path.unlink(missing_ok=True)
             else:
-                self._log_to(self._write_log_textbox, f"\u2713 Subtitle written: {output_obj}")
+                self._log_to(self._write_log_textbox, f"{s('log_step_success_write')} {output_obj}")
 
         def _on_error(detail: str) -> None:
-            self._log_to(self._write_log_textbox, f"\u2717 Write failed: {detail[:200]}")
+            self._log_to(self._write_log_textbox, f"{s('log_error_write')} {detail[:200]}")
 
         self._run_step_in_bg(
             "write", "/steps/write", payload,
@@ -923,6 +1031,7 @@ class GenSubtitlesApp(ctk.CTk):
         settings_menu = tk.Menu(menubar, **_menu_cfg)
         menubar.add_cascade(label="Settings", menu=settings_menu)
         settings_menu.add_command(label="Preferences\u2026", command=self._show_settings)
+        settings_menu.add_command(label=s("menu_color_palette"), command=self._show_palette_panel)
 
         # Help menu (stubs \u2014 Plan 06 will implement the dialog bodies)
         help_menu = tk.Menu(menubar, **_menu_cfg)
@@ -1067,9 +1176,18 @@ class GenSubtitlesApp(ctk.CTk):
         apply_secondary_btn_style(self._btn_open_config_folder)
         self._btn_open_config_folder.grid(row=9, column=2, padx=(0, 12), pady=6, sticky="e")
 
+        # Clear console toggle (D-04)
+        self._clear_console_var = ctk.BooleanVar(value=False)
+        self._lbl_clear_console = ctk.CTkLabel(sf, text=s("clear_console_on_clear_lbl"), anchor="w")
+        self._lbl_clear_console.grid(row=10, column=0, columnspan=2, sticky="w", padx=(12, 8), pady=(10, 2))
+        self._clear_console_switch = ctk.CTkSwitch(
+            sf, text="", variable=self._clear_console_var, width=48,
+        )
+        self._clear_console_switch.grid(row=10, column=2, sticky="w", padx=(0, 12), pady=(10, 2))
+
         # Save / Back buttons
         btn_frame = ctk.CTkFrame(sf, fg_color="transparent")
-        btn_frame.grid(row=10, column=0, columnspan=3, pady=(16, 12), padx=12, sticky="ew")
+        btn_frame.grid(row=11, column=0, columnspan=3, pady=(16, 12), padx=12, sticky="ew")
         btn_frame.columnconfigure(0, weight=1)
         btn_frame.columnconfigure(1, weight=1)
         btn_frame.columnconfigure(2, weight=1)
@@ -1083,6 +1201,203 @@ class GenSubtitlesApp(ctk.CTk):
         )
         apply_secondary_btn_style(self._btn_settings_back)
         self._btn_settings_back.grid(row=0, column=1, padx=(4, 0), sticky="ew")
+
+    _PALETTE_TOKEN_KEYS: tuple = (
+        "bg", "surface", "input_bg", "text_primary", "text_secondary",
+        "accent", "accent_hov", "secondary", "secondary_hov", "btn_secondary_text",
+        "progress_idle", "progress_proc", "progress_done", "progress_err",
+        "menu_bg", "menu_fg", "menu_active_bg",
+    )
+
+    def _build_palette_panel(self) -> None:
+        """Build the color palette editor panel (D-06)."""
+        from gensubtitles.gui import theme as _theme  # noqa: PLC0415
+
+        self._palette_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        # Not packed yet — shown via _show_palette_panel
+
+        pf = self._palette_frame
+        pf.columnconfigure(0, weight=1)
+
+        # Header
+        self._palette_header_lbl = ctk.CTkLabel(
+            pf, text=s("palette_header"), font=font("header"), anchor="w",
+        )
+        self._palette_header_lbl.grid(row=0, column=0, columnspan=3, sticky="w", padx=12, pady=(12, 4))
+
+        # Active palette label + dropdown
+        self._palette_active_lbl = ctk.CTkLabel(pf, text=s("palette_active_lbl"), anchor="w")
+        self._palette_active_lbl.grid(row=1, column=0, sticky="w", padx=12, pady=(4, 2))
+
+        self._palette_name_var = ctk.StringVar(value=(
+            self._current_settings.active_palette if self._current_settings else "Default Dark"
+        ))
+        self._palette_dropdown = ctk.CTkOptionMenu(
+            pf,
+            values=list(_theme.PALETTE_NAMES),
+            variable=self._palette_name_var,
+            command=self._on_palette_selected,
+        )
+        self._palette_dropdown.grid(row=2, column=0, columnspan=3, sticky="ew", padx=12, pady=(0, 12))
+
+        # Token swatch rows — one per token key
+        self._palette_swatch_btns: dict[str, ctk.CTkButton] = {}
+        for idx, token_key in enumerate(self._PALETTE_TOKEN_KEYS):
+            row_n = 3 + idx
+            lbl = ctk.CTkLabel(pf, text=s(f"token_{token_key}"), anchor="w", width=200)
+            lbl.grid(row=row_n, column=0, sticky="w", padx=12, pady=2)
+            setattr(self, f"_palette_token_lbl_{token_key}", lbl)
+
+            initial_color = p(token_key)
+            swatch = ctk.CTkButton(
+                pf, text="", width=36, height=28,
+                fg_color=initial_color, hover_color=initial_color,
+                command=lambda tk=token_key: self._on_pick_palette_token(tk),
+            )
+            swatch.grid(row=row_n, column=1, padx=(8, 4), pady=2)
+            self._palette_swatch_btns[token_key] = swatch
+
+            hex_lbl = ctk.CTkLabel(
+                pf, text=initial_color, anchor="w", width=90,
+                font=font("mono"),
+            )
+            hex_lbl.grid(row=row_n, column=2, padx=(0, 12), pady=2, sticky="w")
+            setattr(self, f"_palette_hex_lbl_{token_key}", hex_lbl)
+
+        # Bottom buttons row
+        btn_row_n = 3 + len(self._PALETTE_TOKEN_KEYS)
+        btn_row = ctk.CTkFrame(pf, fg_color="transparent")
+        btn_row.grid(row=btn_row_n, column=0, columnspan=3, sticky="ew", padx=12, pady=(12, 12))
+        btn_row.columnconfigure(0, weight=1)
+        btn_row.columnconfigure(1, weight=1)
+        btn_row.columnconfigure(2, weight=1)
+
+        self._btn_palette_reset = ctk.CTkButton(
+            btn_row, text=s("palette_reset_btn"), command=self._on_palette_reset,
+        )
+        apply_secondary_btn_style(self._btn_palette_reset)
+        self._btn_palette_reset.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+
+        self._btn_palette_save = ctk.CTkButton(
+            btn_row, text=s("palette_save_btn"), command=self._on_palette_save,
+        )
+        apply_accent_btn_style(self._btn_palette_save)
+        self._btn_palette_save.grid(row=0, column=1, sticky="ew", padx=4)
+
+        self._btn_palette_back = ctk.CTkButton(
+            btn_row, text=s("palette_back_btn"), command=self._hide_palette_panel,
+        )
+        apply_secondary_btn_style(self._btn_palette_back)
+        self._btn_palette_back.grid(row=0, column=2, sticky="ew", padx=(4, 0))
+
+    def _show_palette_panel(self) -> None:
+        """Show palette editor, hide all other panels (D-06)."""
+        self._refresh_palette_swatches()
+        if hasattr(self, "_settings_frame"):
+            self._settings_frame.pack_forget()
+        self._tabview.pack_forget()
+        self._palette_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+    def _hide_palette_panel(self) -> None:
+        """Hide palette panel, restore tabview (D-06)."""
+        self._palette_frame.pack_forget()
+        self._tabview.pack(fill="both", expand=True, padx=10, pady=10)
+
+    def _refresh_palette_swatches(self) -> None:
+        """Reload all swatch buttons with current palette token colors (D-06)."""
+        from gensubtitles.gui import theme as _theme  # noqa: PLC0415
+
+        palette_name = self._palette_name_var.get()
+        if palette_name in ("Default Dark", "Default Light"):
+            mode = "Dark" if "Dark" in palette_name else "Light"
+            tokens = dict(_theme._PALETTES.get(mode, {}))
+        else:
+            tokens = dict(_theme._PALETTES.get(palette_name, {}))
+
+        # Apply saved overrides for this palette
+        if self._current_settings and self._current_settings.active_palette == palette_name:
+            tokens.update(self._current_settings.palette_overrides or {})
+
+        for token_key, swatch_btn in self._palette_swatch_btns.items():
+            color = tokens.get(token_key, "#888888")
+            swatch_btn.configure(fg_color=color, hover_color=color)
+            hex_lbl = getattr(self, f"_palette_hex_lbl_{token_key}", None)
+            if hex_lbl is not None:
+                hex_lbl.configure(text=color)
+
+    def _on_palette_selected(self, palette_name: str) -> None:
+        """Called when user picks a different palette in the dropdown (D-06)."""
+        self._refresh_palette_swatches()
+
+    def _on_pick_palette_token(self, token_key: str) -> None:
+        """Open OS color picker for a single palette token (D-06)."""
+        import tkinter.colorchooser  # noqa: PLC0415
+
+        swatch_btn = self._palette_swatch_btns.get(token_key)
+        current = swatch_btn.cget("fg_color") if swatch_btn else "#888888"
+        if isinstance(current, (list, tuple)):
+            current = current[0]
+        result = tkinter.colorchooser.askcolor(color=current, title=f"Choose color for {token_key}")
+        if result[1] is not None:
+            hex_color = result[1]
+            if swatch_btn:
+                swatch_btn.configure(fg_color=hex_color, hover_color=hex_color)
+            hex_lbl = getattr(self, f"_palette_hex_lbl_{token_key}", None)
+            if hex_lbl is not None:
+                hex_lbl.configure(text=hex_color)
+
+    def _on_palette_save(self) -> None:
+        """Collect swatch colors, persist to settings, apply palette (D-06)."""
+        from gensubtitles.gui import theme as _theme  # noqa: PLC0415
+        from gensubtitles.core.settings import save_settings  # noqa: PLC0415
+        import dataclasses  # noqa: PLC0415
+
+        palette_name = self._palette_name_var.get()
+        if palette_name in ("Default Dark", "Default Light"):
+            mode = "Dark" if "Dark" in palette_name else "Light"
+            base_tokens = _theme._PALETTES.get(mode, {})
+        else:
+            base_tokens = _theme._PALETTES.get(palette_name, {})
+
+        palette_overrides: dict = {}
+        for token_key, swatch_btn in self._palette_swatch_btns.items():
+            swatch_color = swatch_btn.cget("fg_color")
+            if isinstance(swatch_color, (list, tuple)):
+                swatch_color = swatch_color[0]
+            swatch_color = swatch_color.upper()
+            if swatch_color != base_tokens.get(token_key, "").upper():
+                palette_overrides[token_key] = swatch_color
+
+        if self._current_settings is not None:
+            self._current_settings = dataclasses.replace(
+                self._current_settings,
+                active_palette=palette_name,
+                palette_overrides=palette_overrides,
+            )
+            save_settings(self._current_settings)
+
+        _theme.set_active_palette(palette_name, palette_overrides)
+        self._apply_theme()
+        self._hide_palette_panel()
+
+    def _on_palette_reset(self) -> None:
+        """Clear all overrides in the editor for the current palette (D-06)."""
+        from gensubtitles.gui import theme as _theme  # noqa: PLC0415
+
+        palette_name = self._palette_name_var.get()
+        if palette_name in ("Default Dark", "Default Light"):
+            mode = "Dark" if "Dark" in palette_name else "Light"
+            base_tokens = _theme._PALETTES.get(mode, {})
+        else:
+            base_tokens = _theme._PALETTES.get(palette_name, {})
+
+        for token_key, swatch_btn in self._palette_swatch_btns.items():
+            if token_key in base_tokens:
+                color = base_tokens[token_key]
+                swatch_btn.configure(fg_color=color, hover_color=color)
+                hex_lbl = getattr(self, f"_palette_hex_lbl_{token_key}", None)
+                if hex_lbl is not None:
+                    hex_lbl.configure(text=color)
 
     def _build_translate_tab(self) -> None:
         _tab_tl = self._tabview.tab("Translate Subtitles")
@@ -1187,10 +1502,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._extract_entry_input.grid(row=0, column=0, sticky="ew")
         self._extract_btn_browse_input = ctk.CTkButton(
             _in_row, text=s("browse_btn"), width=BTN_WIDTH_BROWSE,
-            command=lambda: self._browse_file_to_var(
-                self._extract_input_var,
-                filetypes=[("Video files", "*.mp4 *.mkv *.avi *.mov *.webm"), ("All files", "*.*")],
-            ),
+            command=self._on_browse_extract_input,
         )
         apply_secondary_btn_style(self._extract_btn_browse_input)
         self._extract_btn_browse_input.grid(row=0, column=1, padx=(8, 0))
@@ -1229,13 +1541,18 @@ class GenSubtitlesApp(ctk.CTk):
         )
         apply_accent_btn_style(self._extract_btn_run)
         self._extract_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
-        _extract_btn_clear = ctk.CTkButton(
+        self._extract_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
-            command=lambda: self._clear_tab_vars(self._extract_input_var, self._extract_output_var),
+            command=lambda: (
+                self._clear_tab_vars(self._extract_input_var, self._extract_output_var),
+                self._clear_console(self._extract_log_textbox)
+                if self._current_settings and self._current_settings.clear_console_on_clear
+                else None,
+            ),
             height=BTN_HEIGHT_PRIMARY,
         )
-        apply_secondary_btn_style(_extract_btn_clear)
-        _extract_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        apply_secondary_btn_style(self._extract_btn_clear)
+        self._extract_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
         # Log textbox (D-03)
         self._extract_log_textbox = ctk.CTkTextbox(
@@ -1293,13 +1610,18 @@ class GenSubtitlesApp(ctk.CTk):
         )
         apply_accent_btn_style(self._transcribe_btn_run)
         self._transcribe_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
-        _transcribe_btn_clear = ctk.CTkButton(
+        self._transcribe_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
-            command=lambda: self._clear_tab_vars(self._transcribe_input_var),
+            command=lambda: (
+                self._clear_tab_vars(self._transcribe_input_var),
+                self._clear_console(self._transcribe_log_textbox)
+                if self._current_settings and self._current_settings.clear_console_on_clear
+                else None,
+            ),
             height=BTN_HEIGHT_PRIMARY,
         )
-        apply_secondary_btn_style(_transcribe_btn_clear)
-        _transcribe_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        apply_secondary_btn_style(self._transcribe_btn_clear)
+        self._transcribe_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
         # Log textbox
         self._transcribe_log_textbox = ctk.CTkTextbox(
@@ -1384,13 +1706,18 @@ class GenSubtitlesApp(ctk.CTk):
         )
         apply_accent_btn_style(self._translate_step_btn_run)
         self._translate_step_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
-        _translate_step_btn_clear = ctk.CTkButton(
+        self._translate_step_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
-            command=lambda: self._clear_tab_vars(self._translate_step_input_var),
+            command=lambda: (
+                self._clear_tab_vars(self._translate_step_input_var),
+                self._clear_console(self._translate_step_log_textbox)
+                if self._current_settings and self._current_settings.clear_console_on_clear
+                else None,
+            ),
             height=BTN_HEIGHT_PRIMARY,
         )
-        apply_secondary_btn_style(_translate_step_btn_clear)
-        _translate_step_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        apply_secondary_btn_style(self._translate_step_btn_clear)
+        self._translate_step_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
         # Log textbox
         self._translate_step_log_textbox = ctk.CTkTextbox(
@@ -1468,13 +1795,18 @@ class GenSubtitlesApp(ctk.CTk):
         )
         apply_accent_btn_style(self._write_btn_run)
         self._write_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
-        _write_btn_clear = ctk.CTkButton(
+        self._write_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
-            command=lambda: self._clear_tab_vars(self._write_input_var, self._write_output_var),
+            command=lambda: (
+                self._clear_tab_vars(self._write_input_var, self._write_output_var),
+                self._clear_console(self._write_log_textbox)
+                if self._current_settings and self._current_settings.clear_console_on_clear
+                else None,
+            ),
             height=BTN_HEIGHT_PRIMARY,
         )
-        apply_secondary_btn_style(_write_btn_clear)
-        _write_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        apply_secondary_btn_style(self._write_btn_clear)
+        self._write_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
         # Log textbox
         self._write_log_textbox = ctk.CTkTextbox(
@@ -1755,6 +2087,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._source_lang_var.set("Auto-detect")
         self._target_lang_var.set("No target")
         self._output_format_var.set("SRT")
+        # D-04: Clear console of active tab if setting enabled
+        if self._current_settings and self._current_settings.clear_console_on_clear:
+            tb = self._get_active_tab_log_textbox()
+            if tb is not None:
+                self._clear_console(tb)
 
     # ------------------------------------------------------------------
     # Progress polling (replaces static stage cycling)
@@ -1849,16 +2186,13 @@ class GenSubtitlesApp(ctk.CTk):
         engine_label = self._engine_var.get()  # "Argos", "DeepL", or "LibreTranslate"
         engine_code = engine_label.lower().replace(" ", "")  # "argos", "deepl", "libretranslate"
 
-        self._btn_generate.configure(state="disabled")
-        self._btn_clear.configure(state="disabled")
+        self._set_all_action_buttons("disabled")
         self._entry_input.configure(state="disabled")
         self._entry_output.configure(state="disabled")
         self._option_source_lang.configure(state="disabled")
         self._option_target_lang.configure(state="disabled")
         self._option_engine.configure(state="disabled")
         self._option_output_format.configure(state="disabled")
-        self._btn_browse_input.configure(state="disabled")
-        self._btn_browse_output.configure(state="disabled")
         self._progress_bar.grid()
         self._progress_bar.configure(mode="indeterminate", progress_color=p("progress_proc"))
         self._progress_bar.start()
@@ -2035,6 +2369,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._progress_bar.set(1.0)
             self._progress_bar.grid()
             self.after(2000, self._hide_generate_progress)
+        self._set_all_action_buttons("normal")
         self._btn_generate.configure(state="normal")
         self._entry_input.configure(state="normal")
         self._entry_output.configure(state="normal")
@@ -2042,8 +2377,6 @@ class GenSubtitlesApp(ctk.CTk):
         self._option_target_lang.configure(state="normal")
         self._option_engine.configure(state="normal")
         self._option_output_format.configure(state="normal")
-        self._btn_browse_input.configure(state="normal")
-        self._btn_browse_output.configure(state="normal")
         self._update_clear_state()
 
         if error:
@@ -2253,6 +2586,12 @@ class GenSubtitlesApp(ctk.CTk):
 
             self._current_settings = load_settings()
             ctk.set_appearance_mode(self._current_settings.appearance_mode)
+            # Apply saved palette BEFORE building UI so p() resolves correctly (D-06)
+            from gensubtitles.gui import theme as _theme  # noqa: PLC0415
+            _theme.set_active_palette(
+                self._current_settings.active_palette,
+                self._current_settings.palette_overrides,
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning("Could not load settings: %s", exc)
             from gensubtitles.core.settings import AppSettings  # noqa: PLC0415
@@ -2336,6 +2675,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._btn_outline_color_swatch.configure(
                 fg_color=outline_col, hover_color=outline_col
             )
+            self._clear_console_var.set(self._current_settings.clear_console_on_clear)
         self._tabview.pack_forget()
         from gensubtitles.core.settings import settings_path  # noqa: PLC0415
         self._lbl_config_path_value.configure(text=str(settings_path()))
@@ -2397,6 +2737,13 @@ class GenSubtitlesApp(ctk.CTk):
                 subtitle_font_size=int(font_size_raw),
                 subtitle_text_color=self._settings_text_color_var.get() or "#FFFFFF",
                 subtitle_outline_color=self._settings_outline_color_var.get() or "#000000",
+                clear_console_on_clear=self._clear_console_var.get(),
+                active_palette=(
+                    self._current_settings.active_palette if self._current_settings else "Default Dark"
+                ),
+                palette_overrides=(
+                    self._current_settings.palette_overrides if self._current_settings else {}
+                ),
             )
             save_settings(new_settings)
             self._current_settings = new_settings
@@ -2570,6 +2917,9 @@ class GenSubtitlesApp(ctk.CTk):
         if len(menubar_cascades) >= 2:
             self._menubar.entryconfigure(menubar_cascades[1], label=s("menu_help"))
         self._settings_menu.entryconfigure(0, label=s("menu_preferences"))
+        self._settings_menu.entryconfigure(1, label=s("menu_color_palette"))
+        if hasattr(self, "_lbl_clear_console"):
+            self._lbl_clear_console.configure(text=s("clear_console_on_clear_lbl"))
         self._help_menu.entryconfigure(0, label=s("menu_tutorial"))
         self._help_menu.entryconfigure(1, label=s("menu_languages"))
         self._help_menu.entryconfigure(3, label=s("menu_about"))
@@ -2600,6 +2950,22 @@ class GenSubtitlesApp(ctk.CTk):
             self._write_btn_run.configure(text=s("write_run_btn"))
             self._write_btn_browse_input.configure(text=s("browse_btn"))
             self._write_btn_browse_output.configure(text=s("save_as_btn"))
+
+        # Palette panel (D-06)
+        if hasattr(self, "_palette_header_lbl"):
+            self._palette_header_lbl.configure(text=s("palette_header"))
+        if hasattr(self, "_palette_active_lbl"):
+            self._palette_active_lbl.configure(text=s("palette_active_lbl"))
+        if hasattr(self, "_btn_palette_reset"):
+            self._btn_palette_reset.configure(text=s("palette_reset_btn"))
+        if hasattr(self, "_btn_palette_save"):
+            self._btn_palette_save.configure(text=s("palette_save_btn"))
+        if hasattr(self, "_btn_palette_back"):
+            self._btn_palette_back.configure(text=s("palette_back_btn"))
+        for token_key in self._PALETTE_TOKEN_KEYS:
+            lbl = getattr(self, f"_palette_token_lbl_{token_key}", None)
+            if lbl is not None:
+                lbl.configure(text=s(f"token_{token_key}"))
 
     # ------------------------------------------------------------------
     # Help stubs (implemented in Plan 06)
@@ -2730,12 +3096,13 @@ class GenSubtitlesApp(ctk.CTk):
         src_lang = _label_to_code(self._tl_source_var.get()) if not convert_only else None
         tgt_lang = _label_to_code(self._tl_target_var.get()) if not convert_only else None
 
-        _widgets = (
-            self._tl_btn_translate, self._tl_btn_browse, self._tl_btn_browse_out,
+        self._set_all_action_buttons("disabled")
+        # Also disable Tab 2-specific widgets not covered by _set_all_action_buttons
+        _tab2_widgets = (
             self._tl_entry_input, self._tl_entry_output,
             self._tl_option_source, self._tl_option_target, self._tl_chk_convert,
         )
-        for w in _widgets:
+        for w in _tab2_widgets:
             w.configure(state="disabled")
 
         self._tl_progress_bar.grid()
@@ -2828,12 +3195,14 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_elapsed_label.grid_remove()
         self._tl_stage_label.configure(text="")
 
-        _widgets = (
-            self._tl_btn_translate, self._tl_btn_browse, self._tl_btn_browse_out,
-            self._tl_entry_input, self._tl_entry_output,
+        self._set_all_action_buttons("normal")
+        # Re-enable Tab 2-specific widgets (including _tl_btn_translate which
+        # _set_all_action_buttons does not re-enable by design)
+        _tab2_widgets = (
+            self._tl_btn_translate, self._tl_entry_input, self._tl_entry_output,
             self._tl_option_source, self._tl_option_target, self._tl_chk_convert,
         )
-        for w in _widgets:
+        for w in _tab2_widgets:
             w.configure(state="normal")
 
         if error:
