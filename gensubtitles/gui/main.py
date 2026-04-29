@@ -636,6 +636,37 @@ class GenSubtitlesApp(ctk.CTk):
         """Legacy callback — kept for compatibility. Step tabs use per-tab on_error callbacks."""
         self._log(f"\u2717 Step error ({step_key}): {str(detail)[:120]}")
 
+    def _on_browse_extract_input(self) -> None:
+        """Browse for video file in Tab 3 and auto-fill downstream tab fields (D-01)."""
+        from tkinter import filedialog  # noqa: PLC0415
+
+        path = filedialog.askopenfilename(
+            filetypes=[
+                ("Video files", "*.mp4 *.mkv *.avi *.mov *.webm"),
+                ("All files", "*.*"),
+            ]
+        )
+        if not path:
+            return
+
+        self._extract_input_var.set(path)
+
+        stem = Path(path).stem
+        # Prefer user's configured output dir; fall back to video's own directory.
+        output_dir = (
+            self._current_settings.default_output_dir
+            if self._current_settings and self._current_settings.default_output_dir
+            else str(Path(path).parent)
+        )
+        base = Path(output_dir)
+
+        # Auto-fill downstream fields (D-01)
+        self._extract_output_var.set(str(base / f"{stem}.wav"))
+        self._transcribe_input_var.set(str(base / f"{stem}.wav"))
+        self._translate_step_input_var.set(str(base / f"{stem}.json"))
+        self._write_input_var.set(str(base / f"{stem}_translated.json"))
+        self._write_output_var.set(str(base / f"{stem}.srt"))
+
     def _browse_file_to_var(
         self,
         var: "ctk.StringVar",
@@ -1187,10 +1218,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._extract_entry_input.grid(row=0, column=0, sticky="ew")
         self._extract_btn_browse_input = ctk.CTkButton(
             _in_row, text=s("browse_btn"), width=BTN_WIDTH_BROWSE,
-            command=lambda: self._browse_file_to_var(
-                self._extract_input_var,
-                filetypes=[("Video files", "*.mp4 *.mkv *.avi *.mov *.webm"), ("All files", "*.*")],
-            ),
+            command=self._on_browse_extract_input,
         )
         apply_secondary_btn_style(self._extract_btn_browse_input)
         self._extract_btn_browse_input.grid(row=0, column=1, padx=(8, 0))
@@ -1229,13 +1257,13 @@ class GenSubtitlesApp(ctk.CTk):
         )
         apply_accent_btn_style(self._extract_btn_run)
         self._extract_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
-        _extract_btn_clear = ctk.CTkButton(
+        self._extract_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
             command=lambda: self._clear_tab_vars(self._extract_input_var, self._extract_output_var),
             height=BTN_HEIGHT_PRIMARY,
         )
-        apply_secondary_btn_style(_extract_btn_clear)
-        _extract_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        apply_secondary_btn_style(self._extract_btn_clear)
+        self._extract_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
         # Log textbox (D-03)
         self._extract_log_textbox = ctk.CTkTextbox(
@@ -1293,13 +1321,13 @@ class GenSubtitlesApp(ctk.CTk):
         )
         apply_accent_btn_style(self._transcribe_btn_run)
         self._transcribe_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
-        _transcribe_btn_clear = ctk.CTkButton(
+        self._transcribe_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
             command=lambda: self._clear_tab_vars(self._transcribe_input_var),
             height=BTN_HEIGHT_PRIMARY,
         )
-        apply_secondary_btn_style(_transcribe_btn_clear)
-        _transcribe_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        apply_secondary_btn_style(self._transcribe_btn_clear)
+        self._transcribe_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
         # Log textbox
         self._transcribe_log_textbox = ctk.CTkTextbox(
@@ -1384,13 +1412,13 @@ class GenSubtitlesApp(ctk.CTk):
         )
         apply_accent_btn_style(self._translate_step_btn_run)
         self._translate_step_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
-        _translate_step_btn_clear = ctk.CTkButton(
+        self._translate_step_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
             command=lambda: self._clear_tab_vars(self._translate_step_input_var),
             height=BTN_HEIGHT_PRIMARY,
         )
-        apply_secondary_btn_style(_translate_step_btn_clear)
-        _translate_step_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        apply_secondary_btn_style(self._translate_step_btn_clear)
+        self._translate_step_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
         # Log textbox
         self._translate_step_log_textbox = ctk.CTkTextbox(
@@ -1468,13 +1496,13 @@ class GenSubtitlesApp(ctk.CTk):
         )
         apply_accent_btn_style(self._write_btn_run)
         self._write_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
-        _write_btn_clear = ctk.CTkButton(
+        self._write_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
             command=lambda: self._clear_tab_vars(self._write_input_var, self._write_output_var),
             height=BTN_HEIGHT_PRIMARY,
         )
-        apply_secondary_btn_style(_write_btn_clear)
-        _write_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        apply_secondary_btn_style(self._write_btn_clear)
+        self._write_btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
         # Log textbox
         self._write_log_textbox = ctk.CTkTextbox(
