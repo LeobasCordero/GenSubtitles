@@ -563,6 +563,58 @@ class GenSubtitlesApp(ctk.CTk):
         except Exception:  # noqa: BLE001
             pass
 
+    def _log_separator(self, textbox: "ctk.CTkTextbox") -> None:
+        """Append a visual separator line to *textbox* (D-03)."""
+        self._log_to(textbox, s("log_separator"))
+
+    def _set_all_action_buttons(self, state: str) -> None:
+        """Enable or disable all action, browse, and clear buttons across all tabs (D-02).
+
+        Args:
+            state: "normal" or "disabled"
+        """
+        buttons = [
+            # Tab 1 — Generate
+            "_btn_clear",
+            "_btn_browse_input",
+            "_btn_browse_output",
+            # Tab 2 — Translate Subtitles
+            "_tl_btn_browse",
+            "_tl_btn_browse_out",
+            # Tab 3 — Extract Audio
+            "_extract_btn_run",
+            "_extract_btn_clear",
+            "_extract_btn_browse_input",
+            "_extract_btn_browse_output",
+            # Tab 4 — Transcribe
+            "_transcribe_btn_run",
+            "_transcribe_btn_clear",
+            "_transcribe_btn_browse",
+            # Tab 5 — Translate Step
+            "_translate_step_btn_run",
+            "_translate_step_btn_clear",
+            "_translate_step_btn_browse",
+            # Tab 6 — Write Subtitle
+            "_write_btn_run",
+            "_write_btn_clear",
+            "_write_btn_browse_input",
+            "_write_btn_browse_output",
+        ]
+        for attr in buttons:
+            btn = getattr(self, attr, None)
+            if btn is not None:
+                btn.configure(state=state)
+
+        # Tab 1 generate / Tab 2 translate — only re-enable when server is ready
+        # and inputs are valid; setting to disabled is always safe.
+        if state == "disabled":
+            for attr in ("_btn_generate", "_tl_btn_translate"):
+                btn = getattr(self, attr, None)
+                if btn is not None:
+                    btn.configure(state="disabled")
+        # Re-enable is NOT done here for _btn_generate/_tl_btn_translate —
+        # their state is managed by _on_server_ready, _run_sse_flow, _finish_translate.
+
     def _get_tab_work_dir(
         self,
         input_var: "ctk.StringVar",
@@ -602,7 +654,9 @@ class GenSubtitlesApp(ctk.CTk):
         Calls *on_success* or *on_error* on the main thread when done.
         """
         _tb = log_textbox if log_textbox is not None else self._log_textbox
+        self._log_separator(_tb)
         self._log_to(_tb, f"\u23f3 Running step: {step_key}")
+        self._set_all_action_buttons("disabled")
 
         def _worker() -> None:
             try:
@@ -625,6 +679,8 @@ class GenSubtitlesApp(ctk.CTk):
                     self.after(0, on_error, str(exc))
                 else:
                     self.after(0, lambda e=exc: self._log_to(_tb, f"\u2717 Error: {e}"))
+            finally:
+                self.after(0, lambda: self._set_all_action_buttons("normal"))
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -742,13 +798,13 @@ class GenSubtitlesApp(ctk.CTk):
         """Tab 3: Extract Audio button handler."""
         video = self._extract_input_var.get().strip()
         if not video:
-            self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Please select an input video file.")
+            self._log_to(self._extract_log_textbox, s("log_warn_no_input_video"))
             return
         output_audio = self._extract_output_var.get().strip()
         if output_audio:
             requested_out = Path(output_audio)
             if requested_out.suffix.lower() != ".wav":
-                self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Output audio file must use .wav extension.")
+                self._log_to(self._extract_log_textbox, s("log_warn_output_not_wav"))
                 return
             work = requested_out.parent
         else:
@@ -758,13 +814,13 @@ class GenSubtitlesApp(ctk.CTk):
                 fallback_vars=[self._input_var],
             )
         if work is None:
-            self._log_to(self._extract_log_textbox, "\u26a0\ufe0f Cannot determine output directory.")
+            self._log_to(self._extract_log_textbox, s("log_warn_no_output_dir"))
             return
         work.mkdir(parents=True, exist_ok=True)
         payload: dict = {"video_path": video, "work_dir": str(work)}
 
         def _on_success() -> None:
-            self._log_to(self._extract_log_textbox, "\u2713 Audio extracted successfully.")
+            self._log_to(self._extract_log_textbox, s("log_step_success_extract"))
             wavs = sorted(work.glob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True)
             if wavs:
                 extracted = wavs[0]
@@ -774,13 +830,13 @@ class GenSubtitlesApp(ctk.CTk):
                         extracted.replace(requested_out)
                         extracted = requested_out
                     except OSError as exc:
-                        self._log_to(self._extract_log_textbox, f"\u26a0\ufe0f Could not apply custom output name: {exc}")
+                        self._log_to(self._extract_log_textbox, f"{s('log_error_cannot_apply_output_name')} {exc}")
                 self._extract_output_var.set(str(extracted))
                 self._transcribe_input_var.set(str(extracted))
-                self._log_to(self._extract_log_textbox, f"\u2192 Pre-filled Tab 4 input: {extracted.name}")
+                self._log_to(self._extract_log_textbox, f"{s('log_prefill_tab4')} {extracted.name}")
 
         def _on_error(detail: str) -> None:
-            self._log_to(self._extract_log_textbox, f"\u2717 Extract failed: {detail[:200]}")
+            self._log_to(self._extract_log_textbox, f"{s('log_error_extract')} {detail[:200]}")
 
         self._run_step_in_bg(
             "extract", "/steps/extract", payload,
@@ -796,14 +852,14 @@ class GenSubtitlesApp(ctk.CTk):
 
         audio = self._transcribe_input_var.get().strip()
         if not audio:
-            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Please select an input audio file.")
+            self._log_to(self._transcribe_log_textbox, s("log_warn_no_input_audio"))
             return
         audio_path = Path(audio)
         if not audio_path.is_file():
-            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Selected audio file was not found.")
+            self._log_to(self._transcribe_log_textbox, s("log_warn_file_not_found"))
             return
         if audio_path.suffix.lower() != ".wav":
-            self._log_to(self._transcribe_log_textbox, "\u26a0\ufe0f Transcribe step requires a .wav file.")
+            self._log_to(self._transcribe_log_textbox, s("log_warn_not_wav"))
             return
         work = self._step_workspace(audio_path, "transcribe", "audio")
         work.mkdir(parents=True, exist_ok=True)
@@ -817,15 +873,15 @@ class GenSubtitlesApp(ctk.CTk):
         payload = {"work_dir": str(work), "source_lang": src_code, "device": "auto"}
 
         def _on_success() -> None:
-            self._log_to(self._transcribe_log_textbox, "\u2713 Transcription complete.")
+            self._log_to(self._transcribe_log_textbox, s("log_step_success_transcribe"))
             # Pre-fill Tab 5 input (D-04)
             transcription_path = work / TRANSCRIPTION_FILENAME
             if transcription_path.exists():
                 self._translate_step_input_var.set(str(transcription_path))
-                self._log_to(self._transcribe_log_textbox, f"\u2192 Pre-filled Tab 5 input: {TRANSCRIPTION_FILENAME}")
+                self._log_to(self._transcribe_log_textbox, f"{s('log_prefill_tab5')} {TRANSCRIPTION_FILENAME}")
 
         def _on_error(detail: str) -> None:
-            self._log_to(self._transcribe_log_textbox, f"\u2717 Transcription failed: {detail[:200]}")
+            self._log_to(self._transcribe_log_textbox, f"{s('log_error_transcribe')} {detail[:200]}")
 
         self._run_step_in_bg(
             "transcribe", "/steps/transcribe", payload,
@@ -841,15 +897,15 @@ class GenSubtitlesApp(ctk.CTk):
 
         trans_file = self._translate_step_input_var.get().strip()
         if not trans_file:
-            self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Please select a transcription file.")
+            self._log_to(self._translate_step_log_textbox, s("log_warn_no_input_transcription"))
             return
         trans_path = Path(trans_file)
         if not trans_path.is_file():
-            self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Selected transcription file was not found.")
+            self._log_to(self._translate_step_log_textbox, s("log_warn_file_not_found"))
             return
         tgt = self._translate_step_target_var.get()
         if tgt in ("No target", ""):
-            self._log_to(self._translate_step_log_textbox, "\u26a0\ufe0f Please select a target language.")
+            self._log_to(self._translate_step_log_textbox, s("log_warn_no_target_lang"))
             return
         work = self._step_workspace(trans_path, "translate", "transcription")
         work.mkdir(parents=True, exist_ok=True)
@@ -859,15 +915,15 @@ class GenSubtitlesApp(ctk.CTk):
         payload = {"work_dir": str(work), "target_lang": tgt_code, "engine": eng}
 
         def _on_success() -> None:
-            self._log_to(self._translate_step_log_textbox, "\u2713 Translation complete.")
+            self._log_to(self._translate_step_log_textbox, s("log_step_success_translate"))
             # Pre-fill Tab 6 input (D-04)
             translation_path = work / TRANSLATION_FILENAME
             if translation_path.exists():
                 self._write_input_var.set(str(translation_path))
-                self._log_to(self._translate_step_log_textbox, f"\u2192 Pre-filled Tab 6 input: {TRANSLATION_FILENAME}")
+                self._log_to(self._translate_step_log_textbox, f"{s('log_prefill_tab6')} {TRANSLATION_FILENAME}")
 
         def _on_error(detail: str) -> None:
-            self._log_to(self._translate_step_log_textbox, f"\u2717 Translation failed: {detail[:200]}")
+            self._log_to(self._translate_step_log_textbox, f"{s('log_error_translate')} {detail[:200]}")
 
         self._run_step_in_bg(
             "translate", "/steps/translate", payload,
@@ -884,11 +940,11 @@ class GenSubtitlesApp(ctk.CTk):
 
         trans_file = self._write_input_var.get().strip()
         if not trans_file:
-            self._log_to(self._write_log_textbox, "\u26a0\ufe0f Please select an input file.")
+            self._log_to(self._write_log_textbox, s("log_warn_no_input_file"))
             return
         trans_path = Path(trans_file)
         if not trans_path.is_file():
-            self._log_to(self._write_log_textbox, "\u26a0\ufe0f Selected input file was not found.")
+            self._log_to(self._write_log_textbox, s("log_warn_file_not_found"))
             return
         work = self._step_workspace(trans_path, "write", "segments")
         work.mkdir(parents=True, exist_ok=True)
@@ -919,17 +975,17 @@ class GenSubtitlesApp(ctk.CTk):
                             "outlinecolor": self._current_settings.subtitle_outline_color,
                         }
                     convert_srt_to_ssa(tmp_path, output_obj, style=style)
-                    self._log_to(self._write_log_textbox, f"\u2713 Subtitle written: {output_obj}")
+                    self._log_to(self._write_log_textbox, f"{s('log_step_success_write')} {output_obj}")
                 except (OSError, ValueError) as exc:
-                    self._log_to(self._write_log_textbox, f"\u2717 Write failed: {str(exc)[:200]}")
+                    self._log_to(self._write_log_textbox, f"{s('log_error_write')} {str(exc)[:200]}")
                     return
                 finally:
                     tmp_path.unlink(missing_ok=True)
             else:
-                self._log_to(self._write_log_textbox, f"\u2713 Subtitle written: {output_obj}")
+                self._log_to(self._write_log_textbox, f"{s('log_step_success_write')} {output_obj}")
 
         def _on_error(detail: str) -> None:
-            self._log_to(self._write_log_textbox, f"\u2717 Write failed: {detail[:200]}")
+            self._log_to(self._write_log_textbox, f"{s('log_error_write')} {detail[:200]}")
 
         self._run_step_in_bg(
             "write", "/steps/write", payload,
