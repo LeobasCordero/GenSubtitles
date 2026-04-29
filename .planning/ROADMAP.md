@@ -76,9 +76,9 @@ Plans:
 
 ### Phase 999.32: GUI — Mejoras UX, Paletas de Colores y Accesibilidad (BACKLOG)
 
-**Goal:** [Captured for future planning]
-**Requirements:** TBD
-**Plans:** 0 plans
+**Goal:** Improve Tab 3-6 UX with smart filename auto-fill, universal button locking during operations, visual log separators, optional console-clear on field-clear, secondary button text contrast fix, a 6-palette color system with per-token customization, and i18n for all console log messages.
+**Requirements:** D-01, D-02, D-03, D-04, D-05, D-06, D-07
+**Plans:** 3 plans
 
 Scope:
 - Auto-populate filename placeholders (audio, subtitle, etc.) based on selected video filename (e.g. `video1.mkv` → `video1.wav`, `video1.srt`); user can override
@@ -90,7 +90,9 @@ Scope:
 - Translate console log messages according to the active UI language
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+- [ ] 999.32-01-PLAN.md — Foundation: theme.py palettes + styles.py contrast fix + settings.py new fields + locale.py all new keys
+- [ ] 999.32-02-PLAN.md — main.py Tab UX: filename chain (D-01), button locking (D-02), log separator (D-03), log i18n tabs 3-6 (D-07)
+- [ ] 999.32-03-PLAN.md — main.py Settings + Palette Panel: clear-console toggle (D-04), palette editor UI (D-06)
 
 ---
 
