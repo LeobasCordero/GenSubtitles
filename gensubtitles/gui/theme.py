@@ -12,7 +12,10 @@ font(role)    — return a CTkFont for the given typographic role
 """
 from __future__ import annotations
 
+import logging
 import customtkinter as ctk
+
+_log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Dual-mode colour palettes
@@ -171,7 +174,11 @@ def set_active_palette(
     """
     _active_palette_tokens.clear()
     _user_overrides.clear()
-    if palette_name not in _DEFAULT_PALETTE_NAMES:
+    if palette_name == "Default Dark":
+        _active_palette_tokens.update(_PALETTES["Dark"])
+    elif palette_name == "Default Light":
+        _active_palette_tokens.update(_PALETTES["Light"])
+    else:
         tokens = _PALETTES.get(palette_name, {})
         _active_palette_tokens.update(tokens)
     if user_overrides:
@@ -196,9 +203,17 @@ def p(key: str) -> str:
     if key in _user_overrides:
         return _user_overrides[key]
     if _active_palette_tokens:
-        return _active_palette_tokens.get(key, "#FF0000")
+        val = _active_palette_tokens.get(key)
+        if val is None:
+            _log.warning("theme.p(): unknown token %r; falling back to Dark palette", key)
+            return _PALETTES["Dark"].get(key, "#888888")
+        return val
     mode = ctk.get_appearance_mode()  # resolves "System" → "Dark" or "Light"
-    return _PALETTES.get(mode, _PALETTES["Dark"]).get(key, "#FF0000")
+    val = _PALETTES.get(mode, _PALETTES["Dark"]).get(key)
+    if val is None:
+        _log.warning("theme.p(): unknown token %r; falling back to Dark palette", key)
+        return _PALETTES["Dark"].get(key, "#888888")
+    return val
 
 
 # ---------------------------------------------------------------------------

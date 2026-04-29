@@ -218,6 +218,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log_prefill_tab5":             "\u2192 Pre-filled Tab 5 input:",
         "log_prefill_tab6":             "\u2192 Pre-filled Tab 6 input:",
         # Log messages — errors (D-07)
+        "log_running_step":             "\u23f3 Running step:",
+        "log_error_generic":            "\u2717 Error:",
         "log_error_extract":            "\u2717 Extract failed:",
         "log_error_transcribe":         "\u2717 Transcription failed:",
         "log_error_translate":          "\u2717 Translation failed:",
@@ -423,6 +425,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log_prefill_tab5":             "\u2192 Pre-llenado Tab 5 entrada:",
         "log_prefill_tab6":             "\u2192 Pre-llenado Tab 6 entrada:",
         # Mensajes de log — errores (D-07)
+        "log_running_step":             "\u23f3 Ejecutando paso:",
+        "log_error_generic":            "\u2717 Error:",
         "log_error_extract":            "\u2717 Extracci\u00f3n fallida:",
         "log_error_transcribe":         "\u2717 Transcripci\u00f3n fallida:",
         "log_error_translate":          "\u2717 Traducci\u00f3n fallida:",

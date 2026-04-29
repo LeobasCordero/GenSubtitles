@@ -676,7 +676,7 @@ class GenSubtitlesApp(ctk.CTk):
         """
         _tb = log_textbox if log_textbox is not None else self._log_textbox
         self._log_separator(_tb)
-        self._log_to(_tb, f"\u23f3 Running step: {step_key}")
+        self._log_to(_tb, f"{s('log_running_step')} {step_key}")
         self._set_all_action_buttons("disabled")
 
         def _worker() -> None:
@@ -694,12 +694,12 @@ class GenSubtitlesApp(ctk.CTk):
                     if on_error:
                         self.after(0, on_error, detail)
                     else:
-                        self.after(0, lambda d=detail: self._log_to(_tb, f"\u2717 Error: {d}"))
+                        self.after(0, lambda d=detail: self._log_to(_tb, f"{s('log_error_generic')} {d}"))
             except Exception as exc:  # noqa: BLE001
                 if on_error:
                     self.after(0, on_error, str(exc))
                 else:
-                    self.after(0, lambda e=exc: self._log_to(_tb, f"\u2717 Error: {e}"))
+                    self.after(0, lambda e=exc: self._log_to(_tb, f"{s('log_error_generic')} {e}"))
             finally:
                 self.after(0, lambda: self._set_all_action_buttons("normal"))
 
@@ -1213,7 +1213,7 @@ class GenSubtitlesApp(ctk.CTk):
         """Build the color palette editor panel (D-06)."""
         from gensubtitles.gui import theme as _theme  # noqa: PLC0415
 
-        self._palette_frame = ctk.CTkScrollableFrame(self, fg_color=p("bg"))
+        self._palette_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
         # Not packed yet — shown via _show_palette_panel
 
         pf = self._palette_frame
@@ -1364,7 +1364,8 @@ class GenSubtitlesApp(ctk.CTk):
             swatch_color = swatch_btn.cget("fg_color")
             if isinstance(swatch_color, (list, tuple)):
                 swatch_color = swatch_color[0]
-            if swatch_color != base_tokens.get(token_key):
+            swatch_color = swatch_color.upper()
+            if swatch_color != base_tokens.get(token_key, "").upper():
                 palette_overrides[token_key] = swatch_color
 
         if self._current_settings is not None:
@@ -1380,14 +1381,23 @@ class GenSubtitlesApp(ctk.CTk):
         self._hide_palette_panel()
 
     def _on_palette_reset(self) -> None:
-        """Clear all overrides for the current palette and reload swatches (D-06)."""
-        if self._current_settings is not None:
-            import dataclasses  # noqa: PLC0415
-            self._current_settings = dataclasses.replace(
-                self._current_settings,
-                palette_overrides={},
-            )
-        self._refresh_palette_swatches()
+        """Clear all overrides in the editor for the current palette (D-06)."""
+        from gensubtitles.gui import theme as _theme  # noqa: PLC0415
+
+        palette_name = self._palette_name_var.get()
+        if palette_name in ("Default Dark", "Default Light"):
+            mode = "Dark" if "Dark" in palette_name else "Light"
+            base_tokens = _theme._PALETTES.get(mode, {})
+        else:
+            base_tokens = _theme._PALETTES.get(palette_name, {})
+
+        for token_key, swatch_btn in self._palette_swatch_btns.items():
+            if token_key in base_tokens:
+                color = base_tokens[token_key]
+                swatch_btn.configure(fg_color=color, hover_color=color)
+                hex_lbl = getattr(self, f"_palette_hex_lbl_{token_key}", None)
+                if hex_lbl is not None:
+                    hex_lbl.configure(text=color)
 
     def _build_translate_tab(self) -> None:
         _tab_tl = self._tabview.tab("Translate Subtitles")
@@ -2176,16 +2186,13 @@ class GenSubtitlesApp(ctk.CTk):
         engine_label = self._engine_var.get()  # "Argos", "DeepL", or "LibreTranslate"
         engine_code = engine_label.lower().replace(" ", "")  # "argos", "deepl", "libretranslate"
 
-        self._btn_generate.configure(state="disabled")
-        self._btn_clear.configure(state="disabled")
+        self._set_all_action_buttons("disabled")
         self._entry_input.configure(state="disabled")
         self._entry_output.configure(state="disabled")
         self._option_source_lang.configure(state="disabled")
         self._option_target_lang.configure(state="disabled")
         self._option_engine.configure(state="disabled")
         self._option_output_format.configure(state="disabled")
-        self._btn_browse_input.configure(state="disabled")
-        self._btn_browse_output.configure(state="disabled")
         self._progress_bar.grid()
         self._progress_bar.configure(mode="indeterminate", progress_color=p("progress_proc"))
         self._progress_bar.start()
@@ -2362,6 +2369,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._progress_bar.set(1.0)
             self._progress_bar.grid()
             self.after(2000, self._hide_generate_progress)
+        self._set_all_action_buttons("normal")
         self._btn_generate.configure(state="normal")
         self._entry_input.configure(state="normal")
         self._entry_output.configure(state="normal")
@@ -2369,8 +2377,6 @@ class GenSubtitlesApp(ctk.CTk):
         self._option_target_lang.configure(state="normal")
         self._option_engine.configure(state="normal")
         self._option_output_format.configure(state="normal")
-        self._btn_browse_input.configure(state="normal")
-        self._btn_browse_output.configure(state="normal")
         self._update_clear_state()
 
         if error:
@@ -3090,8 +3096,8 @@ class GenSubtitlesApp(ctk.CTk):
         src_lang = _label_to_code(self._tl_source_var.get()) if not convert_only else None
         tgt_lang = _label_to_code(self._tl_target_var.get()) if not convert_only else None
 
+        self._set_all_action_buttons("disabled")
         _widgets = (
-            self._tl_btn_translate, self._tl_btn_browse, self._tl_btn_browse_out,
             self._tl_entry_input, self._tl_entry_output,
             self._tl_option_source, self._tl_option_target, self._tl_chk_convert,
         )
@@ -3188,9 +3194,9 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_elapsed_label.grid_remove()
         self._tl_stage_label.configure(text="")
 
+        self._set_all_action_buttons("normal")
         _widgets = (
-            self._tl_btn_translate, self._tl_btn_browse, self._tl_btn_browse_out,
-            self._tl_entry_input, self._tl_entry_output,
+            self._tl_btn_translate, self._tl_entry_input, self._tl_entry_output,
             self._tl_option_source, self._tl_option_target, self._tl_chk_convert,
         )
         for w in _widgets:
