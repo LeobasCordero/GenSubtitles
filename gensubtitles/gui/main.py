@@ -403,6 +403,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._build_translate_step_tab()
         self._build_write_tab()
         self._build_settings_panel()
+        self._build_palette_panel()
         self._build_menu_bar()
 
     def _log_to(self, textbox: "ctk.CTkTextbox", msg: str) -> None:
@@ -566,6 +567,26 @@ class GenSubtitlesApp(ctk.CTk):
     def _log_separator(self, textbox: "ctk.CTkTextbox") -> None:
         """Append a visual separator line to *textbox* (D-03)."""
         self._log_to(textbox, s("log_separator"))
+
+    def _clear_console(self, textbox: "ctk.CTkTextbox") -> None:
+        """Erase all text from *textbox* (D-04)."""
+        textbox.configure(state="normal")
+        textbox.delete("1.0", "end")
+        textbox.configure(state="disabled")
+
+    def _get_active_tab_log_textbox(self) -> "ctk.CTkTextbox | None":
+        """Return the log textbox for the currently selected tab, or None (D-04)."""
+        tab_name = self._tabview.get()
+        for attr, tab_key in (
+            ("_log_textbox",                "generate_tab"),
+            ("_extract_log_textbox",        "extract_tab"),
+            ("_transcribe_log_textbox",     "transcribe_tab"),
+            ("_translate_step_log_textbox", "translate_step_tab"),
+            ("_write_log_textbox",          "write_tab"),
+        ):
+            if tab_name == s(tab_key):
+                return getattr(self, attr, None)
+        return None
 
     def _set_all_action_buttons(self, state: str) -> None:
         """Enable or disable all action, browse, and clear buttons across all tabs (D-02).
@@ -1010,6 +1031,7 @@ class GenSubtitlesApp(ctk.CTk):
         settings_menu = tk.Menu(menubar, **_menu_cfg)
         menubar.add_cascade(label="Settings", menu=settings_menu)
         settings_menu.add_command(label="Preferences\u2026", command=self._show_settings)
+        settings_menu.add_command(label=s("menu_color_palette"), command=self._show_palette_panel)
 
         # Help menu (stubs \u2014 Plan 06 will implement the dialog bodies)
         help_menu = tk.Menu(menubar, **_menu_cfg)
@@ -1154,9 +1176,18 @@ class GenSubtitlesApp(ctk.CTk):
         apply_secondary_btn_style(self._btn_open_config_folder)
         self._btn_open_config_folder.grid(row=9, column=2, padx=(0, 12), pady=6, sticky="e")
 
+        # Clear console toggle (D-04)
+        self._clear_console_var = ctk.BooleanVar(value=False)
+        self._lbl_clear_console = ctk.CTkLabel(sf, text=s("clear_console_on_clear_lbl"), anchor="w")
+        self._lbl_clear_console.grid(row=10, column=0, columnspan=2, sticky="w", padx=(12, 8), pady=(10, 2))
+        self._clear_console_switch = ctk.CTkSwitch(
+            sf, text="", variable=self._clear_console_var, width=48,
+        )
+        self._clear_console_switch.grid(row=10, column=2, sticky="w", padx=(0, 12), pady=(10, 2))
+
         # Save / Back buttons
         btn_frame = ctk.CTkFrame(sf, fg_color="transparent")
-        btn_frame.grid(row=10, column=0, columnspan=3, pady=(16, 12), padx=12, sticky="ew")
+        btn_frame.grid(row=11, column=0, columnspan=3, pady=(16, 12), padx=12, sticky="ew")
         btn_frame.columnconfigure(0, weight=1)
         btn_frame.columnconfigure(1, weight=1)
         btn_frame.columnconfigure(2, weight=1)
@@ -1170,6 +1201,193 @@ class GenSubtitlesApp(ctk.CTk):
         )
         apply_secondary_btn_style(self._btn_settings_back)
         self._btn_settings_back.grid(row=0, column=1, padx=(4, 0), sticky="ew")
+
+    _PALETTE_TOKEN_KEYS: tuple = (
+        "bg", "surface", "input_bg", "text_primary", "text_secondary",
+        "accent", "accent_hov", "secondary", "secondary_hov", "btn_secondary_text",
+        "progress_idle", "progress_proc", "progress_done", "progress_err",
+        "menu_bg", "menu_fg", "menu_active_bg",
+    )
+
+    def _build_palette_panel(self) -> None:
+        """Build the color palette editor panel (D-06)."""
+        from gensubtitles.gui import theme as _theme  # noqa: PLC0415
+
+        self._palette_frame = ctk.CTkScrollableFrame(self, fg_color=p("bg"))
+        # Not packed yet — shown via _show_palette_panel
+
+        pf = self._palette_frame
+        pf.columnconfigure(0, weight=1)
+
+        # Header
+        self._palette_header_lbl = ctk.CTkLabel(
+            pf, text=s("palette_header"), font=font("header"), anchor="w",
+        )
+        self._palette_header_lbl.grid(row=0, column=0, columnspan=3, sticky="w", padx=12, pady=(12, 4))
+
+        # Active palette label + dropdown
+        self._palette_active_lbl = ctk.CTkLabel(pf, text=s("palette_active_lbl"), anchor="w")
+        self._palette_active_lbl.grid(row=1, column=0, sticky="w", padx=12, pady=(4, 2))
+
+        self._palette_name_var = ctk.StringVar(value=(
+            self._current_settings.active_palette if self._current_settings else "Default Dark"
+        ))
+        self._palette_dropdown = ctk.CTkOptionMenu(
+            pf,
+            values=list(_theme.PALETTE_NAMES),
+            variable=self._palette_name_var,
+            command=self._on_palette_selected,
+        )
+        self._palette_dropdown.grid(row=2, column=0, columnspan=3, sticky="ew", padx=12, pady=(0, 12))
+
+        # Token swatch rows — one per token key
+        self._palette_swatch_btns: dict[str, ctk.CTkButton] = {}
+        for idx, token_key in enumerate(self._PALETTE_TOKEN_KEYS):
+            row_n = 3 + idx
+            lbl = ctk.CTkLabel(pf, text=s(f"token_{token_key}"), anchor="w", width=200)
+            lbl.grid(row=row_n, column=0, sticky="w", padx=12, pady=2)
+            setattr(self, f"_palette_token_lbl_{token_key}", lbl)
+
+            initial_color = p(token_key)
+            swatch = ctk.CTkButton(
+                pf, text="", width=36, height=28,
+                fg_color=initial_color, hover_color=initial_color,
+                command=lambda tk=token_key: self._on_pick_palette_token(tk),
+            )
+            swatch.grid(row=row_n, column=1, padx=(8, 4), pady=2)
+            self._palette_swatch_btns[token_key] = swatch
+
+            hex_lbl = ctk.CTkLabel(
+                pf, text=initial_color, anchor="w", width=90,
+                font=font("mono"),
+            )
+            hex_lbl.grid(row=row_n, column=2, padx=(0, 12), pady=2, sticky="w")
+            setattr(self, f"_palette_hex_lbl_{token_key}", hex_lbl)
+
+        # Bottom buttons row
+        btn_row_n = 3 + len(self._PALETTE_TOKEN_KEYS)
+        btn_row = ctk.CTkFrame(pf, fg_color="transparent")
+        btn_row.grid(row=btn_row_n, column=0, columnspan=3, sticky="ew", padx=12, pady=(12, 12))
+        btn_row.columnconfigure(0, weight=1)
+        btn_row.columnconfigure(1, weight=1)
+        btn_row.columnconfigure(2, weight=1)
+
+        self._btn_palette_reset = ctk.CTkButton(
+            btn_row, text=s("palette_reset_btn"), command=self._on_palette_reset,
+        )
+        apply_secondary_btn_style(self._btn_palette_reset)
+        self._btn_palette_reset.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+
+        self._btn_palette_save = ctk.CTkButton(
+            btn_row, text=s("palette_save_btn"), command=self._on_palette_save,
+        )
+        apply_accent_btn_style(self._btn_palette_save)
+        self._btn_palette_save.grid(row=0, column=1, sticky="ew", padx=4)
+
+        self._btn_palette_back = ctk.CTkButton(
+            btn_row, text=s("palette_back_btn"), command=self._hide_palette_panel,
+        )
+        apply_secondary_btn_style(self._btn_palette_back)
+        self._btn_palette_back.grid(row=0, column=2, sticky="ew", padx=(4, 0))
+
+    def _show_palette_panel(self) -> None:
+        """Show palette editor, hide all other panels (D-06)."""
+        self._refresh_palette_swatches()
+        if hasattr(self, "_settings_frame"):
+            self._settings_frame.pack_forget()
+        self._tabview.pack_forget()
+        self._palette_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+    def _hide_palette_panel(self) -> None:
+        """Hide palette panel, restore tabview (D-06)."""
+        self._palette_frame.pack_forget()
+        self._tabview.pack(fill="both", expand=True, padx=10, pady=10)
+
+    def _refresh_palette_swatches(self) -> None:
+        """Reload all swatch buttons with current palette token colors (D-06)."""
+        from gensubtitles.gui import theme as _theme  # noqa: PLC0415
+
+        palette_name = self._palette_name_var.get()
+        if palette_name in ("Default Dark", "Default Light"):
+            mode = "Dark" if "Dark" in palette_name else "Light"
+            tokens = dict(_theme._PALETTES.get(mode, {}))
+        else:
+            tokens = dict(_theme._PALETTES.get(palette_name, {}))
+
+        # Apply saved overrides for this palette
+        if self._current_settings and self._current_settings.active_palette == palette_name:
+            tokens.update(self._current_settings.palette_overrides or {})
+
+        for token_key, swatch_btn in self._palette_swatch_btns.items():
+            color = tokens.get(token_key, "#888888")
+            swatch_btn.configure(fg_color=color, hover_color=color)
+            hex_lbl = getattr(self, f"_palette_hex_lbl_{token_key}", None)
+            if hex_lbl is not None:
+                hex_lbl.configure(text=color)
+
+    def _on_palette_selected(self, palette_name: str) -> None:
+        """Called when user picks a different palette in the dropdown (D-06)."""
+        self._refresh_palette_swatches()
+
+    def _on_pick_palette_token(self, token_key: str) -> None:
+        """Open OS color picker for a single palette token (D-06)."""
+        import tkinter.colorchooser  # noqa: PLC0415
+
+        swatch_btn = self._palette_swatch_btns.get(token_key)
+        current = swatch_btn.cget("fg_color") if swatch_btn else "#888888"
+        if isinstance(current, (list, tuple)):
+            current = current[0]
+        result = tkinter.colorchooser.askcolor(color=current, title=f"Choose color for {token_key}")
+        if result[1] is not None:
+            hex_color = result[1]
+            if swatch_btn:
+                swatch_btn.configure(fg_color=hex_color, hover_color=hex_color)
+            hex_lbl = getattr(self, f"_palette_hex_lbl_{token_key}", None)
+            if hex_lbl is not None:
+                hex_lbl.configure(text=hex_color)
+
+    def _on_palette_save(self) -> None:
+        """Collect swatch colors, persist to settings, apply palette (D-06)."""
+        from gensubtitles.gui import theme as _theme  # noqa: PLC0415
+        from gensubtitles.core.settings import save_settings  # noqa: PLC0415
+        import dataclasses  # noqa: PLC0415
+
+        palette_name = self._palette_name_var.get()
+        if palette_name in ("Default Dark", "Default Light"):
+            mode = "Dark" if "Dark" in palette_name else "Light"
+            base_tokens = _theme._PALETTES.get(mode, {})
+        else:
+            base_tokens = _theme._PALETTES.get(palette_name, {})
+
+        palette_overrides: dict = {}
+        for token_key, swatch_btn in self._palette_swatch_btns.items():
+            swatch_color = swatch_btn.cget("fg_color")
+            if isinstance(swatch_color, (list, tuple)):
+                swatch_color = swatch_color[0]
+            if swatch_color != base_tokens.get(token_key):
+                palette_overrides[token_key] = swatch_color
+
+        if self._current_settings is not None:
+            self._current_settings = dataclasses.replace(
+                self._current_settings,
+                active_palette=palette_name,
+                palette_overrides=palette_overrides,
+            )
+            save_settings(self._current_settings)
+
+        _theme.set_active_palette(palette_name, palette_overrides)
+        self._apply_theme()
+        self._hide_palette_panel()
+
+    def _on_palette_reset(self) -> None:
+        """Clear all overrides for the current palette and reload swatches (D-06)."""
+        if self._current_settings is not None:
+            import dataclasses  # noqa: PLC0415
+            self._current_settings = dataclasses.replace(
+                self._current_settings,
+                palette_overrides={},
+            )
+        self._refresh_palette_swatches()
 
     def _build_translate_tab(self) -> None:
         _tab_tl = self._tabview.tab("Translate Subtitles")
@@ -1315,7 +1533,12 @@ class GenSubtitlesApp(ctk.CTk):
         self._extract_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
         self._extract_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
-            command=lambda: self._clear_tab_vars(self._extract_input_var, self._extract_output_var),
+            command=lambda: (
+                self._clear_tab_vars(self._extract_input_var, self._extract_output_var),
+                self._clear_console(self._extract_log_textbox)
+                if self._current_settings and self._current_settings.clear_console_on_clear
+                else None,
+            ),
             height=BTN_HEIGHT_PRIMARY,
         )
         apply_secondary_btn_style(self._extract_btn_clear)
@@ -1379,7 +1602,12 @@ class GenSubtitlesApp(ctk.CTk):
         self._transcribe_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
         self._transcribe_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
-            command=lambda: self._clear_tab_vars(self._transcribe_input_var),
+            command=lambda: (
+                self._clear_tab_vars(self._transcribe_input_var),
+                self._clear_console(self._transcribe_log_textbox)
+                if self._current_settings and self._current_settings.clear_console_on_clear
+                else None,
+            ),
             height=BTN_HEIGHT_PRIMARY,
         )
         apply_secondary_btn_style(self._transcribe_btn_clear)
@@ -1470,7 +1698,12 @@ class GenSubtitlesApp(ctk.CTk):
         self._translate_step_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
         self._translate_step_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
-            command=lambda: self._clear_tab_vars(self._translate_step_input_var),
+            command=lambda: (
+                self._clear_tab_vars(self._translate_step_input_var),
+                self._clear_console(self._translate_step_log_textbox)
+                if self._current_settings and self._current_settings.clear_console_on_clear
+                else None,
+            ),
             height=BTN_HEIGHT_PRIMARY,
         )
         apply_secondary_btn_style(self._translate_step_btn_clear)
@@ -1554,7 +1787,12 @@ class GenSubtitlesApp(ctk.CTk):
         self._write_btn_run.grid(row=0, column=0, sticky="ew", padx=(0, 4))
         self._write_btn_clear = ctk.CTkButton(
             _btn_row, text=s("clear_btn"),
-            command=lambda: self._clear_tab_vars(self._write_input_var, self._write_output_var),
+            command=lambda: (
+                self._clear_tab_vars(self._write_input_var, self._write_output_var),
+                self._clear_console(self._write_log_textbox)
+                if self._current_settings and self._current_settings.clear_console_on_clear
+                else None,
+            ),
             height=BTN_HEIGHT_PRIMARY,
         )
         apply_secondary_btn_style(self._write_btn_clear)
@@ -1839,6 +2077,11 @@ class GenSubtitlesApp(ctk.CTk):
         self._source_lang_var.set("Auto-detect")
         self._target_lang_var.set("No target")
         self._output_format_var.set("SRT")
+        # D-04: Clear console of active tab if setting enabled
+        if self._current_settings and self._current_settings.clear_console_on_clear:
+            tb = self._get_active_tab_log_textbox()
+            if tb is not None:
+                self._clear_console(tb)
 
     # ------------------------------------------------------------------
     # Progress polling (replaces static stage cycling)
@@ -2337,6 +2580,12 @@ class GenSubtitlesApp(ctk.CTk):
 
             self._current_settings = load_settings()
             ctk.set_appearance_mode(self._current_settings.appearance_mode)
+            # Apply saved palette BEFORE building UI so p() resolves correctly (D-06)
+            from gensubtitles.gui import theme as _theme  # noqa: PLC0415
+            _theme.set_active_palette(
+                self._current_settings.active_palette,
+                self._current_settings.palette_overrides,
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning("Could not load settings: %s", exc)
             from gensubtitles.core.settings import AppSettings  # noqa: PLC0415
@@ -2420,6 +2669,7 @@ class GenSubtitlesApp(ctk.CTk):
             self._btn_outline_color_swatch.configure(
                 fg_color=outline_col, hover_color=outline_col
             )
+            self._clear_console_var.set(self._current_settings.clear_console_on_clear)
         self._tabview.pack_forget()
         from gensubtitles.core.settings import settings_path  # noqa: PLC0415
         self._lbl_config_path_value.configure(text=str(settings_path()))
@@ -2481,6 +2731,13 @@ class GenSubtitlesApp(ctk.CTk):
                 subtitle_font_size=int(font_size_raw),
                 subtitle_text_color=self._settings_text_color_var.get() or "#FFFFFF",
                 subtitle_outline_color=self._settings_outline_color_var.get() or "#000000",
+                clear_console_on_clear=self._clear_console_var.get(),
+                active_palette=(
+                    self._current_settings.active_palette if self._current_settings else "Default Dark"
+                ),
+                palette_overrides=(
+                    self._current_settings.palette_overrides if self._current_settings else {}
+                ),
             )
             save_settings(new_settings)
             self._current_settings = new_settings
@@ -2654,6 +2911,9 @@ class GenSubtitlesApp(ctk.CTk):
         if len(menubar_cascades) >= 2:
             self._menubar.entryconfigure(menubar_cascades[1], label=s("menu_help"))
         self._settings_menu.entryconfigure(0, label=s("menu_preferences"))
+        self._settings_menu.entryconfigure(1, label=s("menu_color_palette"))
+        if hasattr(self, "_lbl_clear_console"):
+            self._lbl_clear_console.configure(text=s("clear_console_on_clear_lbl"))
         self._help_menu.entryconfigure(0, label=s("menu_tutorial"))
         self._help_menu.entryconfigure(1, label=s("menu_languages"))
         self._help_menu.entryconfigure(3, label=s("menu_about"))
@@ -2684,6 +2944,22 @@ class GenSubtitlesApp(ctk.CTk):
             self._write_btn_run.configure(text=s("write_run_btn"))
             self._write_btn_browse_input.configure(text=s("browse_btn"))
             self._write_btn_browse_output.configure(text=s("save_as_btn"))
+
+        # Palette panel (D-06)
+        if hasattr(self, "_palette_header_lbl"):
+            self._palette_header_lbl.configure(text=s("palette_header"))
+        if hasattr(self, "_palette_active_lbl"):
+            self._palette_active_lbl.configure(text=s("palette_active_lbl"))
+        if hasattr(self, "_btn_palette_reset"):
+            self._btn_palette_reset.configure(text=s("palette_reset_btn"))
+        if hasattr(self, "_btn_palette_save"):
+            self._btn_palette_save.configure(text=s("palette_save_btn"))
+        if hasattr(self, "_btn_palette_back"):
+            self._btn_palette_back.configure(text=s("palette_back_btn"))
+        for token_key in self._PALETTE_TOKEN_KEYS:
+            lbl = getattr(self, f"_palette_token_lbl_{token_key}", None)
+            if lbl is not None:
+                lbl.configure(text=s(f"token_{token_key}"))
 
     # ------------------------------------------------------------------
     # Help stubs (implemented in Plan 06)
