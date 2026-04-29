@@ -82,6 +82,7 @@ def apply_secondary_btn_style(widget: object) -> None:
     widget.configure(  # type: ignore[attr-defined]
         fg_color=p("secondary"),
         hover_color=p("secondary_hov"),
+        text_color=p("btn_secondary_text"),
     )
 
 

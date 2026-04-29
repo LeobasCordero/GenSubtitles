@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,10 @@ class AppSettings:
     subtitle_font_size: int = 20             # SSA Default style fontsize
     subtitle_text_color: str = "#FFFFFF"     # SSA Default style primarycolor (hex)
     subtitle_outline_color: str = "#000000"  # SSA Default style outlinecolor (hex)
+    # Phase 999.32 — clear console + palette system
+    clear_console_on_clear: bool = False   # D-04: clear active tab console on "Limpiar campos"
+    active_palette: str = "Default Dark"   # D-06: selected palette name
+    palette_overrides: dict = field(default_factory=dict)  # D-06: {token: hex} user customizations
 
 
 DEFAULT_SETTINGS = AppSettings()
