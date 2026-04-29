@@ -3097,11 +3097,12 @@ class GenSubtitlesApp(ctk.CTk):
         tgt_lang = _label_to_code(self._tl_target_var.get()) if not convert_only else None
 
         self._set_all_action_buttons("disabled")
-        _widgets = (
+        # Also disable Tab 2-specific widgets not covered by _set_all_action_buttons
+        _tab2_widgets = (
             self._tl_entry_input, self._tl_entry_output,
             self._tl_option_source, self._tl_option_target, self._tl_chk_convert,
         )
-        for w in _widgets:
+        for w in _tab2_widgets:
             w.configure(state="disabled")
 
         self._tl_progress_bar.grid()
@@ -3195,11 +3196,13 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_stage_label.configure(text="")
 
         self._set_all_action_buttons("normal")
-        _widgets = (
+        # Re-enable Tab 2-specific widgets (including _tl_btn_translate which
+        # _set_all_action_buttons does not re-enable by design)
+        _tab2_widgets = (
             self._tl_btn_translate, self._tl_entry_input, self._tl_entry_output,
             self._tl_option_source, self._tl_option_target, self._tl_chk_convert,
         )
-        for w in _widgets:
+        for w in _tab2_widgets:
             w.configure(state="normal")
 
         if error:
