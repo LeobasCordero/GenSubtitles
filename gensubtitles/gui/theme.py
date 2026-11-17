@@ -13,6 +13,8 @@ font(role)    — return a CTkFont for the given typographic role
 from __future__ import annotations
 
 import logging
+import sys
+
 import customtkinter as ctk
 
 _log = logging.getLogger(__name__)
@@ -20,50 +22,52 @@ _log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Dual-mode colour palettes
 # ---------------------------------------------------------------------------
-# Dark palette  (default)
-#   BG #121212 · Surface #1E1E1E · Text #E0E0E0
-# Light palette (System/Light)
-#   BG #F5F5F5 · Surface #FFFFFF · Text #212121
-# Accent blue/green are stable but slightly desaturated in Light mode for
-# WCAG contrast.  Error red is darker in Light (#B00020) vs Dark (#CF6679).
+# Work palettes (default Dark / Light): a captioning bench.
+#   Night #161410 · Graphite #2A2724 · Text #F4F1E8 · Time #D6A15A · Fault #C45B52
+# Amber is only the clock and the active progress bar. Primary buttons are a
+# dark fill with an explicit text colour so light accents stay readable.
 _PALETTES: dict[str, dict[str, str]] = {
     "Dark": {
-        "bg":             "#121212",
-        "surface":        "#1E1E1E",
-        "input_bg":       "#2C2C2C",
-        "text_primary":   "#E0E0E0",
-        "text_secondary": "#BDBDBD",
-        "accent":         "#2196F3",  # Blue — stable, readable on dark
-        "accent_hov":     "#42A5F5",
-        "secondary":      "#424242",
-        "secondary_hov":  "#616161",
-        "btn_secondary_text": "#E0E0E0",
-        "progress_idle":  "#757575",
-        "progress_proc":  "#2196F3",
-        "progress_done":  "#4CAF50",  # Green — stable, readable on dark
-        "progress_err":   "#CF6679",
-        "menu_bg":        "#0F0F0F",
-        "menu_fg":        "#E0E0E0",
-        "menu_active_bg": "#2D2D2D",
+        "bg":             "#161410",
+        "surface":        "#2A2724",
+        "input_bg":       "#2A2724",
+        "text_primary":   "#F4F1E8",
+        "text_secondary": "#A39A90",
+        "accent":         "#4A3F34",
+        "accent_hov":     "#5C4E40",
+        "btn_primary_text": "#F4F1E8",
+        "secondary":      "#3A332C",
+        "secondary_hov":  "#4A423A",
+        "btn_secondary_text": "#F4F1E8",
+        "progress_idle":  "#6E665E",
+        "progress_proc":  "#D6A15A",
+        "time":           "#D6A15A",
+        "progress_done":  "#A39A90",
+        "progress_err":   "#C45B52",
+        "menu_bg":        "#100E0C",
+        "menu_fg":        "#F4F1E8",
+        "menu_active_bg": "#2A2724",
     },
     "Light": {
-        "bg":             "#F5F5F5",
-        "surface":        "#FFFFFF",
-        "input_bg":       "#EEEEEE",
-        "text_primary":   "#212121",
-        "text_secondary": "#616161",
-        "accent":         "#1976D2",  # Slightly desaturated blue for light
-        "accent_hov":     "#1565C0",
-        "secondary":      "#E0E0E0",
-        "secondary_hov":  "#BDBDBD",
-        "btn_secondary_text": "#212121",
-        "progress_idle":  "#9E9E9E",
-        "progress_proc":  "#1976D2",
-        "progress_done":  "#388E3C",  # Slightly desaturated green for light
-        "progress_err":   "#B00020",  # Darker red — WCAG AA on white
-        "menu_bg":        "#FFFFFF",
-        "menu_fg":        "#212121",
-        "menu_active_bg": "#F5F5F5",
+        "bg":             "#EDE6DC",
+        "surface":        "#F7F3EC",
+        "input_bg":       "#E4DCD0",
+        "text_primary":   "#1A1612",
+        "text_secondary": "#6E6256",
+        "accent":         "#2A2118",
+        "accent_hov":     "#3D3226",
+        "btn_primary_text": "#F4F1E8",
+        "secondary":      "#D9D0C4",
+        "secondary_hov":  "#C9BEB0",
+        "btn_secondary_text": "#1A1612",
+        "progress_idle":  "#B5AA9C",
+        "progress_proc":  "#D6A15A",
+        "time":           "#D6A15A",
+        "progress_done":  "#6E6256",
+        "progress_err":   "#A33B32",
+        "menu_bg":        "#F7F3EC",
+        "menu_fg":        "#1A1612",
+        "menu_active_bg": "#E4DCD0",
     },
     "Ocean Dark": {
         "bg":                 "#0A1628",
@@ -73,11 +77,13 @@ _PALETTES: dict[str, dict[str, str]] = {
         "text_secondary":     "#8892B0",
         "accent":             "#64FFDA",
         "accent_hov":         "#52E0BE",
+        "btn_primary_text":   "#0A1628",
         "secondary":          "#233554",
         "secondary_hov":      "#2D4470",
         "btn_secondary_text": "#CCD6F6",
         "progress_idle":      "#4A5568",
         "progress_proc":      "#64FFDA",
+        "time":               "#64FFDA",
         "progress_done":      "#52E0BE",
         "progress_err":       "#FF6B6B",
         "menu_bg":            "#061122",
@@ -92,11 +98,13 @@ _PALETTES: dict[str, dict[str, str]] = {
         "text_secondary":     "#A8C9B0",
         "accent":             "#2ECC71",
         "accent_hov":         "#27AE60",
+        "btn_primary_text":   "#0D1F12",
         "secondary":          "#2D4A35",
         "secondary_hov":      "#3A5E44",
         "btn_secondary_text": "#E2F4E8",
         "progress_idle":      "#4A7055",
         "progress_proc":      "#2ECC71",
+        "time":               "#2ECC71",
         "progress_done":      "#27AE60",
         "progress_err":       "#E74C3C",
         "menu_bg":            "#080F0A",
@@ -111,11 +119,13 @@ _PALETTES: dict[str, dict[str, str]] = {
         "text_secondary":     "#7A4030",
         "accent":             "#E85D04",
         "accent_hov":         "#C44E00",
+        "btn_primary_text":   "#FFF8F0",
         "secondary":          "#F3C5A5",
         "secondary_hov":      "#E8A880",
         "btn_secondary_text": "#2D1810",
         "progress_idle":      "#C4A080",
         "progress_proc":      "#E85D04",
+        "time":               "#E85D04",
         "progress_done":      "#388E3C",
         "progress_err":       "#C62828",
         "menu_bg":            "#FFFFFF",
@@ -130,11 +140,13 @@ _PALETTES: dict[str, dict[str, str]] = {
         "text_secondary":     "#A0A0A0",
         "accent":             "#FFFFFF",
         "accent_hov":         "#E0E0E0",
+        "btn_primary_text":   "#0C0C0C",
         "secondary":          "#333333",
         "secondary_hov":      "#444444",
         "btn_secondary_text": "#F0F0F0",
         "progress_idle":      "#666666",
         "progress_proc":      "#FFFFFF",
+        "time":               "#FFFFFF",
         "progress_done":      "#CCCCCC",
         "progress_err":       "#FF4444",
         "menu_bg":            "#080808",
@@ -219,48 +231,42 @@ def p(key: str) -> str:
 # ---------------------------------------------------------------------------
 # Typography scale
 # ---------------------------------------------------------------------------
-# Sizes are identical in both modes (Header 20 px · Body 14 px).
-# Weight is reduced in Dark mode (bold → normal) because light-on-dark
-# rendering makes strokes appear thicker, causing fonts to look "pasted-on".
-#
-# Roles:
-#   "header"     — 20 px · bold (Light) / normal (Dark)
-#   "subheader"  — 16 px · bold (Light) / normal (Dark)
-#   "body_bold"  — 14 px · bold (Light) / normal (Dark)
-#   "body"       — 14 px · normal (both modes)
-#   "mono"       — 12 px Courier · normal (both modes)
+# Clock 28 · section 18 · body 14 · help 13. Bold stays bold in Dark so
+# section titles keep their rank. Courier is only the log role.
+# Segoe UI on Windows; the system face elsewhere.
+
+_UI_FAMILY: str | None = "Segoe UI" if sys.platform == "win32" else None
 
 _FONT_SIZES: dict[str, int] = {
-    "header":    20,
-    "subheader": 16,
+    "clock":     28,
+    "header":    18,
+    "subheader": 18,
     "body_bold": 14,
     "body":      14,
+    "help":      13,
     "mono":      12,
 }
 _FONT_FAMILIES: dict[str, str | None] = {
-    "header":    None,   # system default
-    "subheader": None,
-    "body_bold": None,
-    "body":      None,
+    "clock":     _UI_FAMILY,
+    "header":    _UI_FAMILY,
+    "subheader": _UI_FAMILY,
+    "body_bold": _UI_FAMILY,
+    "body":      _UI_FAMILY,
+    "help":      _UI_FAMILY,
     "mono":      "Courier",
 }
-# Roles that carry bold weight — reduced to "normal" in Dark to avoid heaviness
 _BOLD_ROLES: frozenset[str] = frozenset({"header", "subheader", "body_bold"})
 
 
-def font(role: str = "body") -> ctk.CTkFont:
-    """Return a CTkFont for *role* appropriate for the current appearance mode.
+def font(role: str = "body", family: str | None = None) -> ctk.CTkFont:
+    """Return a CTkFont for *role*.
 
-    In Dark mode bold roles use weight='normal' to counter the heavier
-    optical rendering of light text on a dark background.
+    *family* overrides the role family (used for the subtitle preview).
+    Bold roles stay bold in every appearance mode.
     """
-    mode = ctk.get_appearance_mode()
-    is_dark = (mode == "Dark")
-    weight = "normal" if (is_dark and role in _BOLD_ROLES) else (
-        "bold" if role in _BOLD_ROLES else "normal"
-    )
-    family = _FONT_FAMILIES.get(role)
+    weight = "bold" if role in _BOLD_ROLES else "normal"
+    chosen = family if family is not None else _FONT_FAMILIES.get(role)
     size = _FONT_SIZES.get(role, 14)
-    if family:
-        return ctk.CTkFont(family=family, size=size, weight=weight)
+    if chosen:
+        return ctk.CTkFont(family=chosen, size=size, weight=weight)
     return ctk.CTkFont(size=size, weight=weight)
