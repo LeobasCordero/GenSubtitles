@@ -52,23 +52,27 @@ Elige el modo de uso que mejor se adapte a tus necesidades:
 
 ## Uso de la GUI
 
+La ventana tiene dos pestañas: **Generar** y **Traducir un archivo**.
+
 ### Generar subtítulos
 
 1. Inicia la aplicación: `python main.py gui`
-2. Haz clic en **Browse…** y elige tu archivo de vídeo (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`).
-3. Revisa el campo **Output**. Al elegir el vídeo con **Browse…**, la GUI lo pre-rellena automáticamente con una ruta de salida predeterminada; este campo debe tener siempre un valor. Si lo deseas, puedes cambiarlo por una ruta personalizada.
-4. Establece el **Source Language** (déjalo en blanco para detección automática) y opcionalmente un **Target Language** para activar la traducción.
-5. Haz clic en **Generate** para iniciar. El progreso se muestra en el área de estado.
+2. Haz clic en **Explorar…** y elige el vídeo (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`).
+3. La ruta del subtítulo se completa con el nombre del vídeo. Cámbiala si hace falta.
+4. Deja **Idioma hablado** en **Detectar**, o elige un idioma. Deja **Idioma del subtítulo** en **Dejar el idioma original**, o elige otro.
+5. Haz clic en **Generar subtítulos**. La franja muestra el reloj mientras corre el trabajo y, al terminar, la línea guardada con la fuente del subtítulo.
+
+Activa **Modo paso a paso** para extraer, transcribir, traducir y escribir como cuatro acciones sobre el mismo vídeo y los mismos idiomas. El botón **Generar subtítulos** queda desactivado mientras ese modo está encendido.
 
 > **Primera ejecución:** Whisper descargará el modelo configurado en el primer uso. El valor predeterminado es `turbo` (~810 MB). En el servidor API, el tamaño del modelo se controla mediante la variable de entorno `WHISPER_MODEL_SIZE`; también puedes usar `small` (~470 MB) o `tiny` (~75 MB) para reducir la descarga inicial.
 
 ### Configuración de traducción
 
-Usa los menús desplegables **Source Language** y **Target Language** del formulario principal:
+Usa **Idioma hablado** e **Idioma del subtítulo** en Generar:
 
-- Deja **Source Language** en blanco para que Whisper detecte automáticamente el idioma hablado.
-- Establece **Target Language** con un código ISO 639-1 (p. ej., `es` para español, `fr` para francés) para traducir los subtítulos tras la transcripción.
-- Deja **Target Language** en blanco para omitir la traducción y obtener el subtítulo en el idioma original.
+- **Detectar** deja que Whisper identifique el idioma hablado.
+- Elige un idioma de subtítulo para traducir después de transcribir. **Dejar el idioma original** escribe la transcripción tal cual.
+- **Traducir un archivo** es la otra pestaña: traduce un subtítulo que ya existe, o solo cambia el formato si marcas **Solo cambiar el formato**. El botón pasa de **Traducir subtítulos** a **Convertir formato**.
 
 La traducción en la GUI usa **Argos Translate** por defecto (offline, sin clave API). Los modelos de Argos para cada par de idiomas se descargan la primera vez (~50–200 MB) y se almacenan en caché localmente.
 
