@@ -70,7 +70,11 @@ def _is_installed(from_code: str, to_code: str) -> bool:
 
 
 def list_installed_pairs() -> list[dict]:
-    """Return all installed language pairs as [{"from": code, "to": code}] dicts."""
+    """Return all installed language pairs as [{"from": code, "to": code}] dicts.
+
+    Identity pairs (from == to) are skipped — Argos can report installed
+    language objects without a real translation package.
+    """
     import argostranslate.translate
 
     seen: set[tuple[str, str]] = set()
@@ -78,9 +82,10 @@ def list_installed_pairs() -> list[dict]:
     for lang in argostranslate.translate.get_installed_languages():
         for t in lang.translations_to:
             key = (lang.code, t.to_lang.code)
-            if key not in seen:
-                seen.add(key)
-                pairs.append({"from": lang.code, "to": t.to_lang.code})
+            if key[0] == key[1] or key in seen:
+                continue
+            seen.add(key)
+            pairs.append({"from": lang.code, "to": t.to_lang.code})
     return pairs
 
 

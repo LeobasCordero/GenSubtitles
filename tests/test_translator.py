@@ -389,6 +389,19 @@ def test_list_installed_pairs_deduplicates():
     assert len(en_es_pairs) == 1, f"Expected 1 en→es pair, got {len(en_es_pairs)}"
 
 
+def test_list_installed_pairs_skips_identity():
+    """Identity pairs like en→en are not real translation routes and are omitted."""
+    en_lang = _make_fake_language("en", ["en", "es"])
+    es_lang = _make_fake_language("es", ["es"])
+    with _inject_argostranslate(installed_languages=[en_lang, es_lang]):
+        from gensubtitles.core.translator import list_installed_pairs
+
+        pairs = list_installed_pairs()
+    assert {"from": "en", "to": "es"} in pairs
+    assert {"from": "en", "to": "en"} not in pairs
+    assert {"from": "es", "to": "es"} not in pairs
+
+
 # ── translate_file() tests ────────────────────────────────────────────────────
 
 

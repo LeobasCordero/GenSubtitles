@@ -8,6 +8,7 @@
 # Windows: winget install ffmpeg
 
 faster-whisper>=1.2.1
+av>=11,<19  # PyAV 19 dropped metadata_errors; faster-whisper 1.2.1 still passes it
 argostranslate>=1.11.0
 tqdm>=4.0.0
 srt>=3.5.3
@@ -16,7 +17,7 @@ platformdirs>=4.0.0
 fastapi>=0.135.3
 uvicorn[standard]>=0.34.0
 python-multipart>=0.0.20
-typer[all]>=0.15.0
+typer>=0.15.0,<0.20
 deepl>=1.18
 requests>=2.31.0
 darkdetect>=0.8.0
