@@ -41,24 +41,18 @@ SPACING_XXL: int = 32
 # Dimension constants
 # ---------------------------------------------------------------------------
 # Heights
-BTN_HEIGHT_PRIMARY: int = 44   # Generate, Translate, Save, Back, Clear buttons
-BTN_HEIGHT_CANCEL: int = 36    # Cancel button
+BTN_HEIGHT_PRIMARY: int = 44   # Generate, Translate, Save, Back, Clear, Browse
+BTN_HEIGHT_CANCEL: int = 44    # Cancel — same touch target as primary
 BTN_HEIGHT_MINI: int = 28      # Colour-swatch buttons
 
-# Widths
-BTN_WIDTH_BROWSE: int = 80     # Browse… / Save as… buttons
+# Widths. Browse buttons size to their label; do not force 80 px.
 BTN_WIDTH_NARROW: int = 100    # Other small buttons (e.g. Open Folder)
 BTN_WIDTH_SWATCH: int = 36     # Colour-swatch buttons
 ENTRY_WIDTH_SMALL: int = 80    # Small entry fields (e.g. font-size input)
 
 # Other dimensions
 PROGRESS_BAR_HEIGHT: int = 16
-
-# ---------------------------------------------------------------------------
-# Widget-style helpers
-# ---------------------------------------------------------------------------
-# Each helper resolves colour tokens at call time so that appearance-mode
-# changes (Dark ↔ Light) are always reflected correctly.
+LOG_MIN_HEIGHT: int = 120  # Pinned Generate-tab log; survives step-by-step expansion
 
 
 def apply_entry_style(widget: object) -> None:
@@ -69,11 +63,35 @@ def apply_entry_style(widget: object) -> None:
     )
 
 
+def apply_option_menu_style(widget: object) -> None:
+    """Apply body font and palette colours to *widget* (CTkOptionMenu)."""
+    body = font("body")
+    widget.configure(  # type: ignore[attr-defined]
+        font=body,
+        dropdown_font=body,
+        fg_color=p("surface"),
+        button_color=p("secondary"),
+        button_hover_color=p("secondary_hov"),
+        text_color=p("text_primary"),
+        dropdown_fg_color=p("surface"),
+        dropdown_hover_color=p("menu_active_bg"),
+        dropdown_text_color=p("text_primary"),
+    )
+
+
+def apply_primary_label_style(widget: object) -> None:
+    """Apply primary-text colour to *widget* (CTkLabel)."""
+    widget.configure(  # type: ignore[attr-defined]
+        text_color=p("text_primary"),
+    )
+
+
 def apply_accent_btn_style(widget: object) -> None:
-    """Apply primary / accent colours to *widget* (CTkButton)."""
+    """Apply primary fill and an explicit text colour to *widget* (CTkButton)."""
     widget.configure(  # type: ignore[attr-defined]
         fg_color=p("accent"),
         hover_color=p("accent_hov"),
+        text_color=p("btn_primary_text"),
     )
 
 
@@ -88,10 +106,11 @@ def apply_secondary_btn_style(widget: object) -> None:
 
 def apply_cancel_btn_style(widget: object) -> None:
     """Apply cancel / destructive colours to *widget* (CTkButton)."""
+    # White label keeps AA contrast on error red across all palettes.
     widget.configure(  # type: ignore[attr-defined]
         fg_color=p("progress_err"),
         hover_color=p("secondary_hov"),
-        text_color=("#FFFFFF", "#FFFFFF"),
+        text_color="#FFFFFF",
     )
 
 

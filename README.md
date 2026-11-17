@@ -52,13 +52,17 @@ Pick the usage mode that suits you:
 
 ## GUI Usage
 
+The window has two tabs: **Generate** and **Translate a file**.
+
 ### Generating Subtitles
 
 1. Launch the desktop app: `python main.py gui`
 2. Click **Browse…** and choose your video file (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`).
-3. The **Output** path is auto-populated by default after you select a video. You can change it if needed, but it must be set before clicking **Generate**.
-4. Set the **Source Language** (leave blank for auto-detection) and optionally set a **Target Language** to enable translation.
-5. Click **Generate** to start. Progress steps are shown in the status area.
+3. The subtitle path is filled in from the video name. Change it if you need to.
+4. Leave **Spoken language** on **Detect**, or pick a language. Leave **Subtitle language** on **Keep original language**, or pick another language.
+5. Click **Generate subtitles**. The cue strip shows the clock while the job runs, then the saved line in your subtitle font.
+
+Turn on **Step-by-step mode** to run extract, transcribe, translate, and write as four actions on the same video and languages. The full **Generate subtitles** button stays off while that mode is on.
 
 > **Whisper model:** The GUI does not currently expose a model selector. Model size is controlled by the `WHISPER_MODEL_SIZE` environment variable and defaults to `turbo`.
 >
@@ -66,11 +70,11 @@ Pick the usage mode that suits you:
 
 ### Translation Settings
 
-Use the **Source Language** and **Target Language** dropdowns on the main form to control translation:
+Use **Spoken language** and **Subtitle language** on Generate:
 
-- Leave **Source Language** blank to let Whisper auto-detect the spoken language.
-- Set **Target Language** to an ISO 639-1 code (e.g., `es` for Spanish, `fr` for French) to translate subtitles after transcription.
-- Leave **Target Language** blank to skip translation and output in the source language.
+- **Detect** lets Whisper identify the spoken language.
+- Pick a subtitle language to translate after transcription. **Keep original language** writes the transcript as-is.
+- **Translate a file** is the other tab: it translates an existing subtitle, or only changes the format when **Only change the format** is checked. The button label switches between **Translate subtitles** and **Convert format**.
 
 Translation in the GUI uses **Argos Translate** by default (offline, no API key required). Argos models for each language pair are downloaded on first use (~50–200 MB each) and cached locally.
 
