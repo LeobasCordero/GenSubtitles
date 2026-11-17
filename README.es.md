@@ -60,7 +60,7 @@ Elige el modo de uso que mejor se adapte a tus necesidades:
 4. Establece el **Source Language** (déjalo en blanco para detección automática) y opcionalmente un **Target Language** para activar la traducción.
 5. Haz clic en **Generate** para iniciar. El progreso se muestra en el área de estado.
 
-> **Primera ejecución:** Whisper descargará el modelo configurado en el primer uso. El valor predeterminado es `medium` (~1,5 GB). En el servidor API, el tamaño del modelo se controla mediante la variable de entorno `WHISPER_MODEL_SIZE`; también puedes usar `small` (~470 MB) o `tiny` (~75 MB) para reducir la descarga inicial.
+> **Primera ejecución:** Whisper descargará el modelo configurado en el primer uso. El valor predeterminado es `turbo` (~810 MB). En el servidor API, el tamaño del modelo se controla mediante la variable de entorno `WHISPER_MODEL_SIZE`; también puedes usar `small` (~470 MB) o `tiny` (~75 MB) para reducir la descarga inicial.
 
 ### Configuración de traducción
 
@@ -113,7 +113,7 @@ Genera subtítulos a partir de un archivo de vídeo y escribe un archivo `.srt` 
 |------|-------------|----------------|
 | `--input`, `-i` | Vídeo de entrada (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`) | Requerido |
 | `--output`, `-o` | Ruta de destino para el subtítulo | `<input>.<format>` |
-| `--model`, `-m` | Modelo Whisper: `tiny` / `base` / `small` / `medium` / `large-v1` / `large-v2` / `large-v3` / `turbo` | `medium` |
+| `--model`, `-m` | Modelo Whisper: `tiny` / `base` / `small` / `medium` / `large-v1` / `large-v2` / `large-v3` / `turbo` | `turbo` |
 | `--target-lang`, `-t` | Código ISO 639-1 de destino (p. ej., `es`). Omitir = sin traducción | Ninguno |
 | `--source-lang`, `-s` | Código de idioma de origen. Omitir = detección automática de Whisper | Auto |
 | `--device` | Dispositivo: `auto` / `cpu` / `cuda` | `auto` |
@@ -135,7 +135,7 @@ python main.py --input video.mp4 --target-lang fr --format ssa --engine deepl
 python main.py --input video.mp4 --model small --device cpu
 ```
 
-> **Primera ejecución:** El modelo `medium` requiere una descarga única de ~1,5 GB. Usa `--model small` (~470 MB) o `--model tiny` (~75 MB) para reducir la descarga inicial.
+> **Primera ejecución:** El modelo `turbo` requiere una descarga única de ~810 MB. Usa `--model small` (~470 MB) o `--model tiny` (~75 MB) para reducir la descarga inicial.
 
 ### translate
 
@@ -298,7 +298,7 @@ python main.py --input video.mp4 --target-lang es --engine libretranslate
 
 ### Primera ejecución — descarga de modelo grande
 
-El modelo `medium` predeterminado requiere una descarga de ~1,5 GB. Usa un modelo más pequeño para reducir la descarga inicial:
+El modelo `turbo` predeterminado requiere una descarga de ~810 MB. Usa un modelo más pequeño para reducir la descarga inicial:
 ```bash
 python main.py --input video.mp4 --model small   # ~470 MB
 python main.py --input video.mp4 --model tiny    # ~75 MB

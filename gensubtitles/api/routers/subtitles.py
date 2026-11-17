@@ -298,7 +298,7 @@ async def post_subtitles_transcribe(
     audio: UploadFile,
     background_tasks: BackgroundTasks,
     source_lang: Optional[str] = Query(None, description="Force source language (ISO 639-1). Omit for auto-detect."),
-    model_size: str = Query("medium", description="Whisper model size."),
+    model_size: str = Query("turbo", description="Whisper model size."),
     transcriber: WhisperTranscriber = Depends(get_transcriber),
 ) -> FileResponse:
     """Upload a WAV file; receive transcription.json (segments with detected language).

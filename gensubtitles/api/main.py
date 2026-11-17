@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
     # Reset startup state for this lifespan cycle (avoids stale state from prior runs)
     _set_startup("starting", "Starting server\u2026", -1)
 
-    model_size = os.environ.get("WHISPER_MODEL_SIZE", "medium")
+    model_size = os.environ.get("WHISPER_MODEL_SIZE", "turbo")
     device = os.environ.get("WHISPER_DEVICE", "auto")
     skip_prefetch = os.environ.get("GENSUBTITLES_SKIP_HF_PREFETCH", "").lower() in ("1", "true", "yes")
 

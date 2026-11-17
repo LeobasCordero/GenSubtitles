@@ -144,6 +144,7 @@ def test_whisper_transcriber_compute_type_int8_for_cpu():
         WhisperTranscriber("tiny", device="cpu")
     _args, kwargs = fw.WhisperModel.call_args
     assert kwargs.get("compute_type") == "int8"
+    assert 1 <= kwargs.get("cpu_threads") <= 8
 
 
 def test_whisper_transcriber_compute_type_float16_for_cuda():
@@ -384,6 +385,20 @@ def test_word_timestamps_always_passed():
     assert kwargs.get("word_timestamps") is True
 
 
+def test_transcribe_uses_fast_decode_settings():
+    """Greedy decode: beam_size=1, temperature=0, no previous-text conditioning."""
+    mock_model = _make_model_mock()
+    fw = _make_fw_module(model_mock=mock_model)
+    with patch.dict("sys.modules", {"faster_whisper": fw}):
+        transcriber = WhisperTranscriber("tiny", device="cpu")
+    transcriber.model = mock_model
+    transcriber.transcribe("fake.wav")
+    _args, kwargs = mock_model.transcribe.call_args
+    assert kwargs.get("beam_size") == 1
+    assert kwargs.get("temperature") == 0
+    assert kwargs.get("condition_on_previous_text") is False
+
+
 # ── end-time tightening (D-03) ───────────────────────────────────────────────
 
 
@@ -428,18 +443,18 @@ def test_segment_with_none_words_dropped():
     assert result.segments == []
 
 
-# ── default model_size = "medium" (D-06) ─────────────────────────────────────
+# ── default model_size = "turbo" ─────────────────────────────────────────────
 
 
-def test_transcribe_audio_default_model_size_is_medium():
-    """D-06: transcribe_audio() default model_size parameter is 'medium'."""
+def test_transcribe_audio_default_model_size_is_turbo():
+    """transcribe_audio() default model_size parameter is 'turbo'."""
     import inspect
     sig = inspect.signature(transcribe_audio)
-    assert sig.parameters["model_size"].default == "medium"
+    assert sig.parameters["model_size"].default == "turbo"
 
 
-def test_whisper_transcriber_default_model_size_is_medium():
-    """D-06: WhisperTranscriber.__init__ default model_size parameter is 'medium'."""
+def test_whisper_transcriber_default_model_size_is_turbo():
+    """WhisperTranscriber.__init__ default model_size parameter is 'turbo'."""
     import inspect
     sig = inspect.signature(WhisperTranscriber.__init__)
-    assert sig.parameters["model_size"].default == "medium"
+    assert sig.parameters["model_size"].default == "turbo"

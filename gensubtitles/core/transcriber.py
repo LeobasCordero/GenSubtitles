@@ -12,6 +12,7 @@ Provides:
 from __future__ import annotations
 
 import logging
+import os
 from collections import namedtuple
 from pathlib import Path
 from typing import Optional
@@ -47,7 +48,7 @@ class WhisperTranscriber:
     model-size validation, and VAD-filtered transcription.
 
     Usage:
-        transcriber = WhisperTranscriber(model_size="medium", device="auto")
+        transcriber = WhisperTranscriber(model_size="turbo", device="auto")
         result = transcriber.transcribe("audio.wav")
         for seg in result.segments:
             print(seg.start, seg.end, seg.text)
@@ -55,7 +56,7 @@ class WhisperTranscriber:
 
     def __init__(
         self,
-        model_size: str = "medium",
+        model_size: str = "turbo",
         device: str = "auto",
         compute_type: Optional[str] = None,
     ) -> None:
@@ -86,10 +87,16 @@ class WhisperTranscriber:
         try:
             from faster_whisper import WhisperModel  # deferred — heavy import
 
+            model_kwargs: dict = {
+                "device": resolved_device,
+                "compute_type": resolved_compute,
+            }
+            if resolved_device == "cpu":
+                model_kwargs["cpu_threads"] = self._cpu_threads()
+
             self._model_raw = WhisperModel(
                 model_size,
-                device=resolved_device,
-                compute_type=resolved_compute,
+                **model_kwargs,
             )
         except Exception as exc:
             raise TranscriptionError(
@@ -134,7 +141,12 @@ class WhisperTranscriber:
             TranscriptionResult(segments=list[Segment], language=str, duration=float)
             where duration is the total audio duration in seconds.
         """
-        kwargs: dict = {"vad_filter": True, "beam_size": 5}
+        kwargs: dict = {
+            "vad_filter": True,
+            "beam_size": 1,
+            "temperature": 0,
+            "condition_on_previous_text": False,
+        }
         # TRN-VAD: tuned silence detection (D-01)
         kwargs["vad_parameters"] = {
             "min_silence_duration_ms": 400,
@@ -204,13 +216,18 @@ class WhisperTranscriber:
         """Return sensible compute_type for the resolved device."""
         return "float16" if device == "cuda" else "int8"
 
+    @staticmethod
+    def _cpu_threads() -> int:
+        """Cap CPU decode threads at physical cores, never more than 8."""
+        return max(1, min(8, os.cpu_count() or 4))
+
 
 # ── module-level convenience function ─────────────────────────────────────────
 
 
 def transcribe_audio(
     audio_path: str | Path,
-    model_size: str = "medium",
+    model_size: str = "turbo",
     device: str = "auto",
     language: Optional[str] = None,
 ) -> TranscriptionResult:
@@ -221,7 +238,7 @@ def transcribe_audio(
 
     Args:
         audio_path:  Path to audio file.
-        model_size:  One of VALID_MODEL_SIZES (default "medium").
+        model_size:  One of VALID_MODEL_SIZES (default "turbo").
         device:      "auto", "cpu", or "cuda".
         language:    ISO 639-1 code or None for auto-detect.
 
