@@ -48,7 +48,7 @@ class ExtractRequest(BaseModel):
 
 class TranscribeRequest(BaseModel):
     work_dir: str
-    model_size: str = "medium"
+    model_size: str = "turbo"
     source_lang: Optional[str] = None
     device: str = "auto"
 

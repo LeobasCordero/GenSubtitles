@@ -169,7 +169,7 @@ def extract_audio_step(
 def transcribe_step(
     work_dir: str | Path,
     transcriber: Optional["WhisperTranscriber"] = None,
-    model_size: str = "medium",
+    model_size: str = "turbo",
     source_lang: Optional[str] = None,
     device: str = "auto",
     progress_callback: Optional[Callable[[str, int, int], None]] = None,

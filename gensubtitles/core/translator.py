@@ -16,13 +16,28 @@ from __future__ import annotations
 import logging
 import re as _re
 from collections import namedtuple
-from typing import Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Callable
 
 from gensubtitles.core.settings import load_settings
 
 logger = logging.getLogger(__name__)
 
 TranslatedSegment = namedtuple("TranslatedSegment", ["start", "end", "text"])
+
+# Argos models have a short context window; keep each batch inside it.
+_ARGOS_WINDOW_SEGMENTS = 10
+_ARGOS_WINDOW_MAX_CHARS = 1500
+_LIBRETRANSLATE_WORKERS = 4
+
+# Sound-effect / music cues — copy as-is; Argos mangles them.
+_EFFECT_CUE_RE = _re.compile(
+    r"^(?:"
+    r"\[+[^\]]*\]+"
+    r"|\(+[^)]*\)+"
+    r"|[♪♫\s.\-–—…]+"
+    r")+$"
+)
 
 # Module-level cache for available packages (refreshed once per session)
 _pkg_index_cache: list | None = None
@@ -55,7 +70,11 @@ def _is_installed(from_code: str, to_code: str) -> bool:
 
 
 def list_installed_pairs() -> list[dict]:
-    """Return all installed language pairs as [{"from": code, "to": code}] dicts."""
+    """Return all installed language pairs as [{"from": code, "to": code}] dicts.
+
+    Identity pairs (from == to) are skipped — Argos can report installed
+    language objects without a real translation package.
+    """
     import argostranslate.translate
 
     seen: set[tuple[str, str]] = set()
@@ -63,9 +82,10 @@ def list_installed_pairs() -> list[dict]:
     for lang in argostranslate.translate.get_installed_languages():
         for t in lang.translations_to:
             key = (lang.code, t.to_lang.code)
-            if key not in seen:
-                seen.add(key)
-                pairs.append({"from": lang.code, "to": t.to_lang.code})
+            if key[0] == key[1] or key in seen:
+                continue
+            seen.add(key)
+            pairs.append({"from": lang.code, "to": t.to_lang.code})
     return pairs
 
 
@@ -250,54 +270,112 @@ def translate_segments(
             f"Unknown engine '{engine}'. Choose argos, deepl, or libretranslate."
         )
 
-    # --- Argos engine: context-batching via XML numbered markers ---
+    # --- Argos engine: windowed context-batching via XML numbered markers ---
     route = ensure_route_installed(source_lang, target_lang)
+    if len(route) > 1:
+        hops = " → ".join(f"{a}→{b}" for a, b in route)
+        logger.warning("Using English pivot route (%s); quality may drop at each hop.", hops)
 
     import argostranslate.translate
 
     current = list(segments)
     for hop_idx, (hop_from, hop_to) in enumerate(route):
-        # Build the batch string using numbered XML markers (D-01)
-        batch = "".join(
-            f"<{i + 1}>{seg.text}</{i + 1}>" for i, seg in enumerate(current)
+        current = _translate_argos_hop(
+            current, hop_from, hop_to, argostranslate.translate.translate
         )
-
-        # Translate the entire batch as a single string
-        translated_batch = argostranslate.translate.translate(batch, hop_from, hop_to)
-
-        # Parse markers back out
-        matches = _re.findall(r"<(\d+)>(.*?)</\1>", translated_batch, _re.DOTALL)
-        texts_by_idx: dict[int, str] = {int(m[0]): m[1] for m in matches}
-
-        # D-02: on marker mismatch, fall back to per-segment translation
-        expected_keys = set(range(1, len(current) + 1))
-        actual_keys = set(texts_by_idx)
-        if actual_keys != expected_keys:
-            logger.warning(
-                "Batched translation marker mismatch (expected %s, got %s). "
-                "Argos Translate stripped the XML markers — falling back to "
-                "per-segment translation.",
-                sorted(expected_keys),
-                sorted(actual_keys),
-            )
-            current = [
-                TranslatedSegment(
-                    start=seg.start,
-                    end=seg.end,
-                    text=argostranslate.translate.translate(seg.text, hop_from, hop_to),
-                )
-                for seg in current
-            ]
-        else:
-            current = [
-                TranslatedSegment(start=seg.start, end=seg.end, text=texts_by_idx[i + 1])
-                for i, seg in enumerate(current)
-            ]
-
         if progress_callback is not None:
             progress_callback(hop_idx + 1, len(route))
 
     return current
+
+
+def _is_effect_cue(text: str) -> bool:
+    """True for music/SFX lines that should not be translated."""
+    stripped = text.strip()
+    if not stripped:
+        return True
+    return bool(_EFFECT_CUE_RE.fullmatch(stripped))
+
+
+def _argos_windows(segments: list[Any]) -> list[list[Any]]:
+    """Split segments into windows that fit the Argos context window."""
+    windows: list[list[Any]] = []
+    current: list[Any] = []
+    chars = 0
+    for seg in segments:
+        n = len(seg.text or "")
+        if current and (
+            len(current) >= _ARGOS_WINDOW_SEGMENTS
+            or chars + n > _ARGOS_WINDOW_MAX_CHARS
+        ):
+            windows.append(current)
+            current = []
+            chars = 0
+        current.append(seg)
+        chars += n
+    if current:
+        windows.append(current)
+    return windows
+
+
+def _translate_argos_hop(
+    segments: list[Any],
+    hop_from: str,
+    hop_to: str,
+    translate_fn: Callable[[str, str, str], str],
+) -> list[TranslatedSegment]:
+    """Translate one language hop, skipping effect cues and windowing the rest."""
+    out: list[TranslatedSegment | None] = [None] * len(segments)
+    translatable: list[Any] = []
+    translatable_idx: list[int] = []
+    for i, seg in enumerate(segments):
+        if _is_effect_cue(seg.text):
+            out[i] = TranslatedSegment(start=seg.start, end=seg.end, text=seg.text)
+        else:
+            translatable.append(seg)
+            translatable_idx.append(i)
+
+    offset = 0
+    for window in _argos_windows(translatable):
+        texts = _translate_texts_window([seg.text for seg in window], hop_from, hop_to, translate_fn)
+        for local_i, text in enumerate(texts):
+            src = window[local_i]
+            global_i = translatable_idx[offset + local_i]
+            out[global_i] = TranslatedSegment(start=src.start, end=src.end, text=text)
+        offset += len(window)
+
+    return [seg for seg in out if seg is not None]
+
+
+def _translate_texts_window(
+    texts: list[str],
+    hop_from: str,
+    hop_to: str,
+    translate_fn: Callable[[str, str, str], str],
+) -> list[str]:
+    """Translate a short list of texts as one XML batch; split in half on mismatch."""
+    if not texts:
+        return []
+    if len(texts) == 1:
+        return [translate_fn(texts[0], hop_from, hop_to)]
+
+    batch = "".join(f"<{i + 1}>{text}</{i + 1}>" for i, text in enumerate(texts))
+    translated_batch = translate_fn(batch, hop_from, hop_to)
+    matches = _re.findall(r"<(\d+)>(.*?)</\1>", translated_batch, _re.DOTALL)
+    texts_by_idx: dict[int, str] = {int(m[0]): m[1] for m in matches}
+    expected_keys = set(range(1, len(texts) + 1))
+    if set(texts_by_idx) == expected_keys:
+        return [texts_by_idx[i + 1] for i in range(len(texts))]
+
+    logger.warning(
+        "Batched translation marker mismatch (expected %s, got %s). Splitting window.",
+        sorted(expected_keys),
+        sorted(texts_by_idx),
+    )
+    mid = max(1, len(texts) // 2)
+    return _translate_texts_window(texts[:mid], hop_from, hop_to, translate_fn) + _translate_texts_window(
+        texts[mid:], hop_from, hop_to, translate_fn
+    )
 
 
 def _translate_deepl(texts: list[str], target_lang: str) -> list[str]:
@@ -340,8 +418,8 @@ def _translate_libretranslate(
             "LibreTranslate URL not configured. Set libretranslate_url in settings."
         )
     endpoint = f"{url.rstrip('/')}/translate"
-    translated = []
-    for text in texts:
+
+    def _one(text: str) -> str:
         payload: dict = {
             "q": text,
             "source": source_lang,
@@ -353,12 +431,23 @@ def _translate_libretranslate(
         try:
             resp = requests.post(endpoint, json=payload, timeout=30)
             resp.raise_for_status()
-            translated.append(resp.json()["translatedText"])
+            return resp.json()["translatedText"]
         except RuntimeError:
             raise
         except Exception as exc:
             raise RuntimeError(f"LibreTranslate translation failed: {exc}") from exc
-    return translated
+
+    if len(texts) == 1:
+        return [_one(texts[0])]
+
+    workers = min(_LIBRETRANSLATE_WORKERS, len(texts))
+    results: list[str] = [""] * len(texts)
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_one, text): i for i, text in enumerate(texts)}
+        for fut in as_completed(futures):
+            i = futures[fut]
+            results[i] = fut.result()
+    return results
 
 
 def translate_file(

@@ -60,9 +60,9 @@ Pick the usage mode that suits you:
 4. Set the **Source Language** (leave blank for auto-detection) and optionally set a **Target Language** to enable translation.
 5. Click **Generate** to start. Progress steps are shown in the status area.
 
-> **Whisper model:** The GUI does not currently expose a model selector. Model size is controlled by the `WHISPER_MODEL_SIZE` environment variable and defaults to `medium`.
+> **Whisper model:** The GUI does not currently expose a model selector. Model size is controlled by the `WHISPER_MODEL_SIZE` environment variable and defaults to `turbo`.
 >
-> **First run:** The configured Whisper model is downloaded on first use. The default `medium` model is ~1.5 GB. Use `small` (~470 MB) or `tiny` (~75 MB) via `WHISPER_MODEL_SIZE` to reduce the initial download.
+> **First run:** The configured Whisper model is downloaded on first use. The default `turbo` model is ~810 MB. Use `small` (~470 MB) or `tiny` (~75 MB) via `WHISPER_MODEL_SIZE` to reduce the initial download.
 
 ### Translation Settings
 
@@ -115,7 +115,7 @@ Generates subtitles from a video file and writes an `.srt` or `.ssa` file.
 |------|-------------|---------|
 | `--input`, `-i` | Input video (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`) | Required |
 | `--output`, `-o` | Destination subtitle path | `<input>.<format>` |
-| `--model`, `-m` | Whisper model: `tiny` / `base` / `small` / `medium` / `large-v1` / `large-v2` / `large-v3` / `turbo` | `medium` |
+| `--model`, `-m` | Whisper model: `tiny` / `base` / `small` / `medium` / `large-v1` / `large-v2` / `large-v3` / `turbo` | `turbo` |
 | `--target-lang`, `-t` | ISO 639-1 target language code (e.g., `es`). Omit = no translation | None |
 | `--source-lang`, `-s` | Source language code. Omit = Whisper auto-detect | Auto |
 | `--device` | Compute device: `auto` / `cpu` / `cuda` | `auto` |
@@ -137,7 +137,7 @@ python main.py --input video.mp4 --target-lang fr --format ssa --engine deepl
 python main.py --input video.mp4 --model small --device cpu
 ```
 
-> **First run:** The `medium` model requires a one-time ~1.5 GB download. Use `--model small` (~470 MB) or `--model tiny` (~75 MB) for a smaller initial download.
+> **First run:** The `turbo` model requires a one-time ~810 MB download. Use `--model small` (~470 MB) or `--model tiny` (~75 MB) for a smaller initial download.
 
 ### translate
 
@@ -300,7 +300,7 @@ python main.py --input video.mp4 --target-lang es --engine libretranslate
 
 ### First run — large model download
 
-The default `medium` model requires a ~1.5 GB one-time download. Use a smaller model to reduce the initial download:
+The default `turbo` model requires a ~810 MB one-time download. Use a smaller model to reduce the initial download:
 ```bash
 python main.py --input video.mp4 --model small   # ~470 MB
 python main.py --input video.mp4 --model tiny    # ~75 MB

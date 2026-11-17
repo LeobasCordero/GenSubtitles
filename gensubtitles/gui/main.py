@@ -634,7 +634,7 @@ class GenSubtitlesApp(ctk.CTk):
                 if btn is not None:
                     btn.configure(state="disabled")
         # Re-enable is NOT done here for _btn_generate/_tl_btn_translate —
-        # their state is managed by _on_server_ready, _run_sse_flow, _finish_translate.
+        # their state is managed by _on_server_ready, _finish_generate, _finish_translate.
 
     def _get_tab_work_dir(
         self,
@@ -795,20 +795,9 @@ class GenSubtitlesApp(ctk.CTk):
 
     def _on_translate_step_source_change(self, selection: str) -> None:
         """Filter Tab 5 target dropdown to valid destinations for selected source."""
-        all_labels = sorted(_CODE_TO_LABEL.values())
-        if not self._language_pairs:
-            targets = all_labels
-        elif selection == "Auto-detect":
-            targets = sorted({_CODE_TO_LABEL.get(p["to"], p["to"]) for p in self._language_pairs})
-            targets = targets or all_labels
-        else:
-            src_code = _label_to_code(selection)
-            targets = [
-                _CODE_TO_LABEL.get(p["to"], p["to"])
-                for p in self._language_pairs if p["from"] == src_code
-            ]
-            targets = sorted(set(targets)) or all_labels
-        targets = ["No target"] + [t for t in targets if t != "No target"]
+        targets = ["No target"] + [
+            t for t in self._target_labels_for_source(selection) if t != "No target"
+        ]
         self._translate_step_option_target.configure(values=targets)
         current = self._translate_step_target_var.get()
         if current not in targets:
@@ -1899,24 +1888,31 @@ class GenSubtitlesApp(ctk.CTk):
     # Clear button logic
     # ------------------------------------------------------------------
 
+    def _target_labels_for_source(self, selection: str) -> list[str]:
+        """Return target language labels; packages download on demand if missing."""
+        all_labels = sorted(_CODE_TO_LABEL.values())
+        pairs = [p for p in self._language_pairs if p.get("from") != p.get("to")]
+        if not pairs:
+            return all_labels
+        if selection == "Auto-detect":
+            targets = sorted({_CODE_TO_LABEL.get(p["to"], p["to"]) for p in pairs})
+            return targets or all_labels
+        src_code = _label_to_code(selection)
+        targets = [
+            _CODE_TO_LABEL.get(p["to"], p["to"])
+            for p in pairs if p["from"] == src_code
+        ]
+        # Prefer installed destinations, but always offer the full known list so
+        # missing Argos packages can still be downloaded on first use.
+        installed = sorted(set(targets))
+        extras = [t for t in all_labels if t not in installed]
+        return installed + extras if installed else all_labels
+
     def _on_source_lang_change(self, selection: str) -> None:
         """Filter target language dropdown to valid destinations for selected source."""
-        all_labels = sorted(_CODE_TO_LABEL.values())
-        if not self._language_pairs:
-            # No pairs installed yet — show all known languages so user can pick;
-            # the pair will be auto-downloaded at generation time.
-            targets = all_labels
-        elif selection == "Auto-detect":
-            targets = sorted({_CODE_TO_LABEL.get(p["to"], p["to"]) for p in self._language_pairs})
-            targets = targets or all_labels
-        else:
-            src_code = _label_to_code(selection)
-            targets = [
-                _CODE_TO_LABEL.get(p["to"], p["to"])
-                for p in self._language_pairs if p["from"] == src_code
-            ]
-            targets = sorted(set(targets)) or all_labels
-        targets = ["No target"] + [t for t in targets if t != "No target"]
+        targets = ["No target"] + [
+            t for t in self._target_labels_for_source(selection) if t != "No target"
+        ]
         self._option_target_lang.configure(values=targets)
         current = self._target_lang_var.get()
         if current not in targets:
@@ -2035,13 +2031,14 @@ class GenSubtitlesApp(ctk.CTk):
             self._on_source_lang_change("Auto-detect")
             self._translate_step_source_var.set("Auto-detect")
             self._on_translate_step_source_change("Auto-detect")
-            # Also populate Translate tab dropdowns
-            non_auto = [s for s in sources if s != "Auto-detect"]
-            if non_auto:
-                self._tl_option_source.configure(values=non_auto)
-                self._tl_source_var.set(non_auto[0])
-                self._tl_option_source.configure(command=self._on_tl_source_lang_change)
-                self._on_tl_source_lang_change(non_auto[0])
+            # Translate tab: always offer the full known language list so users
+            # can pick destinations whose Argos packages are not installed yet.
+            all_labels = sorted(_CODE_TO_LABEL.values())
+            self._tl_option_source.configure(values=all_labels)
+            if self._tl_source_var.get() not in all_labels:
+                self._tl_source_var.set("English" if "English" in all_labels else all_labels[0])
+            self._tl_option_source.configure(command=self._on_tl_source_lang_change)
+            self._on_tl_source_lang_change(self._tl_source_var.get())
 
         if not self._closing:
             self.after(0, _apply)
@@ -2052,21 +2049,15 @@ class GenSubtitlesApp(ctk.CTk):
         self._prefetch_pair_bg(_label_to_code(src_label), _label_to_code(selection))
 
     def _on_tl_source_lang_change(self, selection: str) -> None:
-        """Filter Translate tab target dropdown to valid destinations for selected source."""
-        all_labels = sorted(_CODE_TO_LABEL.values())
-        if not self._language_pairs:
-            targets = [t for t in all_labels if t != selection]
-        else:
-            src_code = _label_to_code(selection)
-            targets = [
-                _CODE_TO_LABEL.get(p["to"], p["to"])
-                for p in self._language_pairs if p["from"] == src_code
-            ]
-            targets = sorted(set(targets)) or [t for t in all_labels if t != selection]
+        """Refresh Translate tab target dropdown for the selected source."""
+        targets = [t for t in self._target_labels_for_source(selection) if t != selection]
+        if not targets:
+            targets = [t for t in sorted(_CODE_TO_LABEL.values()) if t != selection]
         self._tl_option_target.configure(values=targets)
         current = self._tl_target_var.get()
         if current not in targets:
-            self._tl_target_var.set(targets[0])
+            preferred = "Spanish" if "Spanish" in targets else targets[0]
+            self._tl_target_var.set(preferred)
         # NOTE: no prefetch here — this fires on init. Prefetch only on explicit target selection.
 
     def _update_clear_state(self) -> None:
@@ -2371,6 +2362,8 @@ class GenSubtitlesApp(ctk.CTk):
             self.after(2000, self._hide_generate_progress)
         self._set_all_action_buttons("normal")
         self._btn_generate.configure(state="normal")
+        # _set_all_action_buttons never re-enables Tab 1/2 primaries; restore both.
+        self._tl_btn_translate.configure(state="normal")
         self._entry_input.configure(state="normal")
         self._entry_output.configure(state="normal")
         self._option_source_lang.configure(state="normal")

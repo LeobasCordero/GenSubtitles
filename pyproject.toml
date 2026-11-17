@@ -9,6 +9,7 @@ description = "Automatic video subtitle generation — offline, no API keys requ
 requires-python = ">=3.11"
 dependencies = [
     "faster-whisper>=1.2.1",
+    "av>=11,<19",
     "argostranslate>=1.11.0",
     "tqdm>=4.0.0",
     "srt>=3.5.3",
@@ -17,7 +18,7 @@ dependencies = [
     "fastapi>=0.135.3",
     "uvicorn[standard]>=0.34.0",
     "python-multipart>=0.0.20",
-    "typer[all]>=0.15.0",
+    "typer>=0.15.0,<0.20",
     "deepl>=1.18",
     "requests>=2.31.0",
 ]

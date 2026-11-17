@@ -115,7 +115,7 @@ See [Translation Engines](#7-translation-engines) for a comparison.
 |------|-------------|---------|
 | `--input`, `-i` | Input video (`.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`) | Required |
 | `--output`, `-o` | Destination subtitle path | `<input>.<format>` |
-| `--model`, `-m` | Whisper model size | `medium` |
+| `--model`, `-m` | Whisper model size | `turbo` |
 | `--target-lang`, `-t` | ISO 639-1 target language code (e.g., `es`). Omit = no translation | None |
 | `--source-lang`, `-s` | Source language code. Omit = Whisper auto-detect | Auto |
 | `--device` | Compute device: `auto` / `cpu` / `cuda` | `auto` |
@@ -288,9 +288,9 @@ Done: final.srt
 | `tiny` | ~75 MB | Fastest; good for quick tests or short clips with clear speech |
 | `base` | ~145 MB | Good balance for simple content |
 | `small` | ~470 MB | Better accuracy for conversational speech |
-| `medium` | ~1.5 GB | **Default.** Solid accuracy for most content |
+| `medium` | ~1.5 GB | Solid accuracy for most content |
 | `large-v1` / `large-v2` / `large-v3` | ~3 GB | Most accurate; best for difficult accents or technical vocabulary |
-| `turbo` | ~810 MB | Near-large accuracy at medium speed |
+| `turbo` | ~810 MB | **Default.** Near-large accuracy, faster than `medium` |
 
 > **First run:** The selected model downloads automatically (internet required for the download only). All subsequent runs are fully offline.
 

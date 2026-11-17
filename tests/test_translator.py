@@ -389,6 +389,19 @@ def test_list_installed_pairs_deduplicates():
     assert len(en_es_pairs) == 1, f"Expected 1 en→es pair, got {len(en_es_pairs)}"
 
 
+def test_list_installed_pairs_skips_identity():
+    """Identity pairs like en→en are not real translation routes and are omitted."""
+    en_lang = _make_fake_language("en", ["en", "es"])
+    es_lang = _make_fake_language("es", ["es"])
+    with _inject_argostranslate(installed_languages=[en_lang, es_lang]):
+        from gensubtitles.core.translator import list_installed_pairs
+
+        pairs = list_installed_pairs()
+    assert {"from": "en", "to": "es"} in pairs
+    assert {"from": "en", "to": "en"} not in pairs
+    assert {"from": "es", "to": "es"} not in pairs
+
+
 # ── translate_file() tests ────────────────────────────────────────────────────
 
 
@@ -464,25 +477,29 @@ def test_translate_segments_batch_output_correct():
     assert result[1].end == 2.0
 
 
-def test_translate_segments_batch_mismatch_raises_runtime_error():
-    """TRANS-BATCH-03: If translated batch returns fewer markers than segments,
-    RuntimeError is raised with specific count message."""
+def test_translate_segments_batch_mismatch_splits_window():
+    """If a batched window loses markers, it is split in half instead of failing."""
     en_lang = _make_fake_language("en", ["es"])
 
     def too_few_markers(text: str, src: str, tgt: str) -> str:
-        """Returns only marker <1> regardless of how many were sent."""
-        return "<1>[es]only one</1>"
+        import re as _re
+
+        if _re.search(r"<\d+>", text) and text.count("<") > 2:
+            return "<1>[es]only one</1>"
+        return _batch_aware_translate(text, src, tgt)
 
     with _inject_argostranslate(installed_languages=[en_lang]) as (_, fake_translate):
         fake_translate.translate.side_effect = too_few_markers
         from gensubtitles.core.translator import translate_segments
 
         segs = [_make_fake_segment(i, i + 1, f"s{i}") for i in range(3)]
-        with pytest.raises(
-            RuntimeError,
-            match=r"Batched translation marker mismatch: expected markers",
-        ):
-            translate_segments(segs, "en", "es")
+        result = translate_segments(segs, "en", "es")
+
+    assert len(result) == 3
+    assert result[0].text == "[es]s0"
+    assert result[1].text == "[es]s1"
+    assert result[2].text == "[es]s2"
+    assert fake_translate.translate.call_count > 1
 
 
 def test_translate_segments_two_hop_batches_independently():
@@ -507,6 +524,51 @@ def test_translate_segments_two_hop_batches_independently():
     assert len(hop_calls) == 2
     assert hop_calls[0] == ("ja", "en")
     assert hop_calls[1] == ("en", "es")
+
+
+def test_translate_segments_long_input_uses_multiple_windows():
+    """A long subtitle list is translated in several Argos windows, not one giant batch."""
+    en_lang = _make_fake_language("en", ["es"])
+    with _inject_argostranslate(installed_languages=[en_lang]) as (_, fake_translate):
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [_make_fake_segment(i, i + 1, f"line {i}") for i in range(25)]
+        result = translate_segments(segs, "en", "es")
+
+    assert len(result) == 25
+    assert result[0].text == "[es]line 0"
+    assert result[24].text == "[es]line 24"
+    assert fake_translate.translate.call_count == 3
+
+
+def test_translate_segments_skips_effect_cues():
+    """Music and bracketed SFX lines are copied without calling Argos."""
+    en_lang = _make_fake_language("en", ["es"])
+    captured: list[str] = []
+
+    def capture_batch(text: str, src: str, tgt: str) -> str:
+        captured.append(text)
+        return _batch_aware_translate(text, src, tgt)
+
+    with _inject_argostranslate(installed_languages=[en_lang]) as (_, fake_translate):
+        fake_translate.translate.side_effect = capture_batch
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [
+            _make_fake_segment(0, 1, "Hello"),
+            _make_fake_segment(1, 2, "[Music]"),
+            _make_fake_segment(2, 3, "♪"),
+            _make_fake_segment(3, 4, "World"),
+        ]
+        result = translate_segments(segs, "en", "es")
+
+    assert result[0].text == "[es]Hello"
+    assert result[1].text == "[Music]"
+    assert result[2].text == "♪"
+    assert result[3].text == "[es]World"
+    assert len(captured) == 1
+    assert "[Music]" not in captured[0]
+    assert "♪" not in captured[0]
 
 
 # ── TRANS-ENGINE: DeepL + LibreTranslate engine dispatch ──────────────────────
@@ -609,6 +671,41 @@ def test_translate_segments_libretranslate_calls_api():
     call_kwargs = fake_requests.post.call_args
     assert "http://localhost:5000/translate" in str(call_kwargs)
     assert result[0].text == "Hola"
+
+
+def test_translate_segments_libretranslate_preserves_order_in_parallel():
+    """LibreTranslate keeps segment order when several requests run in parallel."""
+    from unittest.mock import MagicMock as _MM
+    from unittest.mock import patch as _patch
+
+    from gensubtitles.core.settings import AppSettings
+
+    def _post(url, json=None, timeout=None):
+        resp = _MM()
+        resp.json.return_value = {"translatedText": f"ES:{json['q']}"}
+        return resp
+
+    fake_requests = _MM()
+    fake_requests.post.side_effect = _post
+
+    with (
+        _patch(
+            "gensubtitles.core.translator.load_settings",
+            return_value=AppSettings(libretranslate_url="http://localhost:5000"),
+        ),
+        _patch.dict("sys.modules", {"requests": fake_requests}),
+    ):
+        from gensubtitles.core.translator import translate_segments
+
+        segs = [
+            _make_fake_segment(0, 1, "Hello"),
+            _make_fake_segment(1, 2, "World"),
+            _make_fake_segment(2, 3, "Foo"),
+        ]
+        result = translate_segments(segs, "en", "es", engine="libretranslate")
+
+    assert fake_requests.post.call_count == 3
+    assert [r.text for r in result] == ["ES:Hello", "ES:World", "ES:Foo"]
 
 
 def test_translate_segments_unknown_engine_raises_value_error():

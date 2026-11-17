@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
     # Reset startup state for this lifespan cycle (avoids stale state from prior runs)
     _set_startup("starting", "Starting server\u2026", -1)
 
-    model_size = os.environ.get("WHISPER_MODEL_SIZE", "medium")
+    model_size = os.environ.get("WHISPER_MODEL_SIZE", "turbo")
     device = os.environ.get("WHISPER_DEVICE", "auto")
     skip_prefetch = os.environ.get("GENSUBTITLES_SKIP_HF_PREFETCH", "").lower() in ("1", "true", "yes")
 
@@ -88,8 +88,10 @@ def _download_model_if_needed(model_size: str) -> None:
     """
     import huggingface_hub
     import huggingface_hub.file_download as _hfd
+    from faster_whisper.utils import _MODELS  # noqa: PLC0415
 
-    repo_id = f"Systran/faster-whisper-{model_size}"
+    # turbo / distil variants live outside Systran/* — use faster-whisper's map.
+    repo_id = _MODELS.get(model_size, f"Systran/faster-whisper-{model_size}")
 
     # Check local cache first
     already_cached = False
@@ -113,7 +115,9 @@ def _download_model_if_needed(model_size: str) -> None:
 
     _downloaded: list[int] = [0]
     _dl_lock = threading.Lock()
-    _orig_tqdm = _hfd.tqdm
+    # huggingface_hub ≥2.x exposes base_tqdm; older releases used tqdm.
+    _tqdm_attr = "base_tqdm" if hasattr(_hfd, "base_tqdm") else "tqdm"
+    _orig_tqdm = getattr(_hfd, _tqdm_attr)
 
     class _ByteTqdm(_orig_tqdm):  # type: ignore[misc]
         def update(self, n: int = 1) -> None:
@@ -144,14 +148,14 @@ def _download_model_if_needed(model_size: str) -> None:
         f"\u23ec Downloading '{model_size}' model (first time only)\u2026",
         initial_progress,
     )
-    _hfd.tqdm = _ByteTqdm
+    setattr(_hfd, _tqdm_attr, _ByteTqdm)
     try:
         huggingface_hub.snapshot_download(repo_id)
     except Exception as exc:  # noqa: BLE001
         _set_startup("error", f"Model download failed: {exc}", -1)
         logger.error("Model download failed: %s", exc)
     finally:
-        _hfd.tqdm = _orig_tqdm
+        setattr(_hfd, _tqdm_attr, _orig_tqdm)
 
 
 app = FastAPI(
