@@ -26,6 +26,8 @@ _log = logging.getLogger(__name__)
 #   Night #161410 · Graphite #2A2724 · Text #F4F1E8 · Time #D6A15A · Fault #C45B52
 # Amber is only the clock and the active progress bar. Primary buttons are a
 # dark fill with an explicit text colour so light accents stay readable.
+# Named extras use popular high-contrast schemes (Nord, Dracula, Catppuccin
+# Mocha, Solarized Light). Light ``time`` is darkened for WCAG AA on cream.
 _PALETTES: dict[str, dict[str, str]] = {
     "Dark": {
         "bg":             "#161410",
@@ -61,99 +63,117 @@ _PALETTES: dict[str, dict[str, str]] = {
         "secondary_hov":  "#C9BEB0",
         "btn_secondary_text": "#1A1612",
         "progress_idle":  "#B5AA9C",
-        "progress_proc":  "#D6A15A",
-        "time":           "#D6A15A",
+        "progress_proc":  "#9A6B2F",
+        "time":           "#9A6B2F",
         "progress_done":  "#6E6256",
         "progress_err":   "#A33B32",
         "menu_bg":        "#F7F3EC",
         "menu_fg":        "#1A1612",
         "menu_active_bg": "#E4DCD0",
     },
-    "Ocean Dark": {
-        "bg":                 "#0A1628",
-        "surface":            "#112240",
-        "input_bg":           "#1A3050",
-        "text_primary":       "#CCD6F6",
-        "text_secondary":     "#8892B0",
-        "accent":             "#64FFDA",
-        "accent_hov":         "#52E0BE",
-        "btn_primary_text":   "#0A1628",
-        "secondary":          "#233554",
-        "secondary_hov":      "#2D4470",
-        "btn_secondary_text": "#CCD6F6",
-        "progress_idle":      "#4A5568",
-        "progress_proc":      "#64FFDA",
-        "time":               "#64FFDA",
-        "progress_done":      "#52E0BE",
-        "progress_err":       "#FF6B6B",
-        "menu_bg":            "#061122",
-        "menu_fg":            "#CCD6F6",
-        "menu_active_bg":     "#1A3050",
+    # Nord — polar night / snow storm / frost
+    "Nord": {
+        "bg":                 "#2E3440",
+        "surface":            "#3B4252",
+        "input_bg":           "#434C5E",
+        "text_primary":       "#ECEFF4",
+        "text_secondary":     "#D8DEE9",
+        "accent":             "#88C0D0",
+        "accent_hov":         "#8FBCBB",
+        "btn_primary_text":   "#2E3440",
+        "secondary":          "#4C566A",
+        "secondary_hov":      "#5E6A7D",
+        "btn_secondary_text": "#ECEFF4",
+        "progress_idle":      "#4C566A",
+        "progress_proc":      "#88C0D0",
+        "time":               "#EBCB8B",
+        "progress_done":      "#A3BE8C",
+        "progress_err":       "#BF616A",
+        "menu_bg":            "#242933",
+        "menu_fg":            "#ECEFF4",
+        "menu_active_bg":     "#434C5E",
     },
-    "Emerald": {
-        "bg":                 "#0D1F12",
-        "surface":            "#1A3020",
-        "input_bg":           "#243D28",
-        "text_primary":       "#E2F4E8",
-        "text_secondary":     "#A8C9B0",
-        "accent":             "#2ECC71",
-        "accent_hov":         "#27AE60",
-        "btn_primary_text":   "#0D1F12",
-        "secondary":          "#2D4A35",
-        "secondary_hov":      "#3A5E44",
-        "btn_secondary_text": "#E2F4E8",
-        "progress_idle":      "#4A7055",
-        "progress_proc":      "#2ECC71",
-        "time":               "#2ECC71",
-        "progress_done":      "#27AE60",
-        "progress_err":       "#E74C3C",
-        "menu_bg":            "#080F0A",
-        "menu_fg":            "#E2F4E8",
-        "menu_active_bg":     "#1A3020",
+    # Dracula
+    "Dracula": {
+        "bg":                 "#282A36",
+        "surface":            "#44475A",
+        "input_bg":           "#383A4A",
+        "text_primary":       "#F8F8F2",
+        "text_secondary":     "#BD93F9",
+        "accent":             "#BD93F9",
+        "accent_hov":         "#A87FE3",
+        "btn_primary_text":   "#282A36",
+        "secondary":          "#6272A4",
+        "secondary_hov":      "#7282B4",
+        "btn_secondary_text": "#F8F8F2",
+        "progress_idle":      "#6272A4",
+        "progress_proc":      "#8BE9FD",
+        "time":               "#F1FA8C",
+        "progress_done":      "#50FA7B",
+        "progress_err":       "#FF5555",
+        "menu_bg":            "#21222C",
+        "menu_fg":            "#F8F8F2",
+        "menu_active_bg":     "#44475A",
     },
-    "Sunset": {
-        "bg":                 "#FFF8F0",
-        "surface":            "#FFFFFF",
-        "input_bg":           "#FDE8D8",
-        "text_primary":       "#2D1810",
-        "text_secondary":     "#7A4030",
-        "accent":             "#E85D04",
-        "accent_hov":         "#C44E00",
-        "btn_primary_text":   "#FFF8F0",
-        "secondary":          "#F3C5A5",
-        "secondary_hov":      "#E8A880",
-        "btn_secondary_text": "#2D1810",
-        "progress_idle":      "#C4A080",
-        "progress_proc":      "#E85D04",
-        "time":               "#E85D04",
-        "progress_done":      "#388E3C",
-        "progress_err":       "#C62828",
-        "menu_bg":            "#FFFFFF",
-        "menu_fg":            "#2D1810",
-        "menu_active_bg":     "#FDE8D8",
+    # Catppuccin Mocha
+    "Catppuccin Mocha": {
+        "bg":                 "#1E1E2E",
+        "surface":            "#313244",
+        "input_bg":           "#45475A",
+        "text_primary":       "#CDD6F4",
+        "text_secondary":     "#A6ADC8",
+        "accent":             "#89B4FA",
+        "accent_hov":         "#74A8F0",
+        "btn_primary_text":   "#1E1E2E",
+        "secondary":          "#45475A",
+        "secondary_hov":      "#585B70",
+        "btn_secondary_text": "#CDD6F4",
+        "progress_idle":      "#6C7086",
+        "progress_proc":      "#89B4FA",
+        "time":               "#F9E2AF",
+        "progress_done":      "#A6E3A1",
+        "progress_err":       "#F38BA8",
+        "menu_bg":            "#181825",
+        "menu_fg":            "#CDD6F4",
+        "menu_active_bg":     "#45475A",
     },
-    "Monochrome": {
-        "bg":                 "#0C0C0C",
-        "surface":            "#1A1A1A",
-        "input_bg":           "#252525",
-        "text_primary":       "#F0F0F0",
-        "text_secondary":     "#A0A0A0",
-        "accent":             "#FFFFFF",
-        "accent_hov":         "#E0E0E0",
-        "btn_primary_text":   "#0C0C0C",
-        "secondary":          "#333333",
-        "secondary_hov":      "#444444",
-        "btn_secondary_text": "#F0F0F0",
-        "progress_idle":      "#666666",
-        "progress_proc":      "#FFFFFF",
-        "time":               "#FFFFFF",
-        "progress_done":      "#CCCCCC",
-        "progress_err":       "#FF4444",
-        "menu_bg":            "#080808",
-        "menu_fg":            "#F0F0F0",
-        "menu_active_bg":     "#252525",
+    # Solarized Light
+    "Solarized Light": {
+        "bg":                 "#FDF6E3",
+        "surface":            "#EEE8D5",
+        "input_bg":           "#E6DFC8",
+        "text_primary":       "#073642",
+        "text_secondary":     "#586E75",
+        "accent":             "#268BD2",
+        "accent_hov":         "#1F75B0",
+        "btn_primary_text":   "#FDF6E3",
+        "secondary":          "#EEE8D5",
+        "secondary_hov":      "#E0D9C0",
+        "btn_secondary_text": "#073642",
+        "progress_idle":      "#93A1A1",
+        "progress_proc":      "#B58900",
+        "time":               "#B58900",
+        "progress_done":      "#859900",
+        "progress_err":       "#DC322F",
+        "menu_bg":            "#EEE8D5",
+        "menu_fg":            "#073642",
+        "menu_active_bg":     "#E6DFC8",
     },
 }
+
+# Legacy palette names from Phase 999.32 → current popular schemes.
+_LEGACY_PALETTE_NAMES: dict[str, str] = {
+    "Ocean Dark": "Nord",
+    "Emerald": "Dracula",
+    "Sunset": "Catppuccin Mocha",
+    "Monochrome": "Solarized Light",
+}
+
+# Palettes whose background is light (sync CTk appearance to Light).
+_LIGHT_PALETTE_NAMES: frozenset[str] = frozenset({
+    "Default Light",
+    "Solarized Light",
+})
 
 # ---------------------------------------------------------------------------
 # Runtime palette override state (Phase 999.32)
@@ -169,6 +189,17 @@ _user_overrides: dict[str, str] = {}         # user's per-token customizations
 _DEFAULT_PALETTE_NAMES: frozenset[str] = frozenset({"Default Dark", "Default Light"})
 
 
+def resolve_palette_name(palette_name: str) -> str:
+    """Map legacy palette names to current ``PALETTE_NAMES`` entries."""
+    return _LEGACY_PALETTE_NAMES.get(palette_name, palette_name)
+
+
+def appearance_mode_for_palette(palette_name: str) -> str:
+    """Return ``\"Dark\"`` or ``\"Light\"`` matching *palette_name* luminance."""
+    name = resolve_palette_name(palette_name)
+    return "Light" if name in _LIGHT_PALETTE_NAMES else "Dark"
+
+
 def set_active_palette(
     palette_name: str,
     user_overrides: "dict[str, str] | None" = None,
@@ -180,10 +211,11 @@ def set_active_palette(
 
     Args:
         palette_name: A key in _PALETTES, or "Default Dark" / "Default Light"
-                      to use the mode-based fallback.
+                      to use the mode-based fallback. Legacy names are remapped.
         user_overrides: Dict of {token_key: hex_color} for user customizations.
                         Pass None or {} to clear any previous overrides.
     """
+    palette_name = resolve_palette_name(palette_name)
     _active_palette_tokens.clear()
     _user_overrides.clear()
     if palette_name == "Default Dark":
@@ -192,7 +224,14 @@ def set_active_palette(
         _active_palette_tokens.update(_PALETTES["Light"])
     else:
         tokens = _PALETTES.get(palette_name, {})
-        _active_palette_tokens.update(tokens)
+        if not tokens:
+            _log.warning(
+                "theme.set_active_palette(): unknown palette %r; using Dark",
+                palette_name,
+            )
+            _active_palette_tokens.update(_PALETTES["Dark"])
+        else:
+            _active_palette_tokens.update(tokens)
     if user_overrides:
         _user_overrides.update(user_overrides)
 
@@ -200,7 +239,7 @@ def set_active_palette(
 #: Constant listing all palette names in display order.
 PALETTE_NAMES: tuple[str, ...] = (
     "Default Dark", "Default Light",
-    "Ocean Dark", "Emerald", "Sunset", "Monochrome",
+    "Nord", "Dracula", "Catppuccin Mocha", "Solarized Light",
 )
 
 
@@ -270,3 +309,9 @@ def font(role: str = "body", family: str | None = None) -> ctk.CTkFont:
     if chosen:
         return ctk.CTkFont(family=chosen, size=size, weight=weight)
     return ctk.CTkFont(size=size, weight=weight)
+
+
+def menu_font_tuple() -> tuple[str, int]:
+    """Return a ``(family, size)`` tuple for native ``tk.Menu`` items."""
+    family = _UI_FAMILY or "TkMenuFont"
+    return (family, _FONT_SIZES["body"])

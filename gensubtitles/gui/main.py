@@ -19,12 +19,14 @@ from hashlib import sha256
 from pathlib import Path
 
 import customtkinter as ctk
-from .theme import font, p
+from .theme import appearance_mode_for_palette, font, menu_font_tuple, p, resolve_palette_name
 from .styles import (
     BTN_HEIGHT_PRIMARY, BTN_HEIGHT_CANCEL, BTN_HEIGHT_MINI,
     BTN_WIDTH_NARROW, BTN_WIDTH_SWATCH, ENTRY_WIDTH_SMALL,
-    PROGRESS_BAR_HEIGHT,
-    apply_entry_style, apply_accent_btn_style, apply_secondary_btn_style,
+    LOG_MIN_HEIGHT, PROGRESS_BAR_HEIGHT,
+    SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG,
+    apply_entry_style, apply_option_menu_style, apply_primary_label_style,
+    apply_accent_btn_style, apply_secondary_btn_style,
     apply_cancel_btn_style, apply_progress_bar_style, apply_stage_label_style,
     apply_secondary_label_style, apply_settings_header_style, apply_window_bg,
 )
@@ -137,7 +139,7 @@ class GenSubtitlesApp(ctk.CTk):
         super().__init__()
 
         self.title("GenSubtitles")
-        self.minsize(900, 560)
+        self.minsize(900, 640)
         self.configure(fg_color=p("bg"))
 
         # String variables for entry widgets
@@ -193,7 +195,7 @@ class GenSubtitlesApp(ctk.CTk):
     def _build_ui(self) -> None:
         """Build the two-tab window: generate (with optional steps) and translate a file."""
         self._tabview = ctk.CTkTabview(self)
-        self._tabview.pack(fill="both", expand=True, padx=16, pady=16)
+        self._tabview.pack(fill="both", expand=True, padx=SPACING_LG, pady=SPACING_LG)
         self._tabview.add("Generate Subtitles")
         self._tabview.add("Translate Subtitles")
 
@@ -206,18 +208,28 @@ class GenSubtitlesApp(ctk.CTk):
         self._target_lang_var.set(s("keep_original"))
 
         tab = self._tabview.tab("Generate Subtitles")
-        gen = ctk.CTkFrame(tab, fg_color="transparent")
-        gen.pack(fill="both", expand=True, padx=16, pady=(8, 16))
+        outer = ctk.CTkFrame(tab, fg_color="transparent")
+        outer.pack(fill="both", expand=True, padx=SPACING_LG, pady=(SPACING_SM, SPACING_LG))
+        outer.columnconfigure(0, weight=1)
+        outer.rowconfigure(0, weight=1)
+        self._gen_outer = outer
+
+        # Scrollable form + stepper; log stays pinned below so step-by-step never clips it.
+        gen = ctk.CTkScrollableFrame(outer, fg_color="transparent")
+        gen.grid(row=0, column=0, sticky="nsew")
         gen.columnconfigure(0, weight=1)
         self._gen_frame = gen
         self._files_frame = gen
 
+        _disabled = p("text_secondary")
+
         row = 0
         self._lbl_input_video = ctk.CTkLabel(gen, text=s("input_video_lbl"), anchor="w")
+        apply_primary_label_style(self._lbl_input_video)
         self._lbl_input_video.grid(row=row, column=0, sticky="w", pady=(0, 2))
         row += 1
         input_row = ctk.CTkFrame(gen, fg_color="transparent")
-        input_row.grid(row=row, column=0, sticky="ew", pady=(0, 8))
+        input_row.grid(row=row, column=0, sticky="ew", pady=(0, SPACING_SM))
         input_row.columnconfigure(0, weight=1)
         self._entry_input = ctk.CTkEntry(input_row, textvariable=self._input_var)
         apply_entry_style(self._entry_input)
@@ -227,14 +239,15 @@ class GenSubtitlesApp(ctk.CTk):
             command=self._browse_input,
         )
         apply_secondary_btn_style(self._btn_browse_input)
-        self._btn_browse_input.grid(row=0, column=1, padx=(8, 0))
+        self._btn_browse_input.grid(row=0, column=1, padx=(SPACING_SM, 0))
         row += 1
 
         self._lbl_output_file = ctk.CTkLabel(gen, text=s("output_file_lbl"), anchor="w")
+        apply_primary_label_style(self._lbl_output_file)
         self._lbl_output_file.grid(row=row, column=0, sticky="w", pady=(0, 2))
         row += 1
         output_row = ctk.CTkFrame(gen, fg_color="transparent")
-        output_row.grid(row=row, column=0, sticky="ew", pady=(0, 8))
+        output_row.grid(row=row, column=0, sticky="ew", pady=(0, SPACING_SM))
         output_row.columnconfigure(0, weight=1)
         self._entry_output = ctk.CTkEntry(output_row, textvariable=self._output_var)
         apply_entry_style(self._entry_output)
@@ -244,23 +257,26 @@ class GenSubtitlesApp(ctk.CTk):
             command=self._browse_output,
         )
         apply_secondary_btn_style(self._btn_browse_output)
-        self._btn_browse_output.grid(row=0, column=1, padx=(8, 0))
+        self._btn_browse_output.grid(row=0, column=1, padx=(SPACING_SM, 0))
         row += 1
 
         lang_row = ctk.CTkFrame(gen, fg_color="transparent")
-        lang_row.grid(row=row, column=0, sticky="ew", pady=(0, 8))
+        lang_row.grid(row=row, column=0, sticky="ew", pady=(0, SPACING_SM))
         lang_row.columnconfigure(0, weight=1)
         lang_row.columnconfigure(1, weight=1)
         self._lbl_source_lang = ctk.CTkLabel(lang_row, text=s("source_lang_lbl"), anchor="w")
+        apply_primary_label_style(self._lbl_source_lang)
         self._lbl_source_lang.grid(row=0, column=0, sticky="w")
         self._lbl_target_lang = ctk.CTkLabel(lang_row, text=s("target_lang_lbl"), anchor="w")
-        self._lbl_target_lang.grid(row=0, column=1, sticky="w", padx=(8, 0))
+        apply_primary_label_style(self._lbl_target_lang)
+        self._lbl_target_lang.grid(row=0, column=1, sticky="w", padx=(SPACING_SM, 0))
         self._option_source_lang = ctk.CTkOptionMenu(
             lang_row,
             values=[s("detect_spoken")],
             variable=self._source_lang_var,
             command=self._on_source_lang_change,
         )
+        apply_option_menu_style(self._option_source_lang)
         self._option_source_lang.grid(row=1, column=0, sticky="ew", pady=(2, 0))
         self._option_target_lang = ctk.CTkOptionMenu(
             lang_row,
@@ -268,23 +284,29 @@ class GenSubtitlesApp(ctk.CTk):
             variable=self._target_lang_var,
             command=self._on_target_lang_change,
         )
-        self._option_target_lang.grid(row=1, column=1, sticky="ew", padx=(8, 0), pady=(2, 0))
+        apply_option_menu_style(self._option_target_lang)
+        self._option_target_lang.grid(
+            row=1, column=1, sticky="ew", padx=(SPACING_SM, 0), pady=(2, 0),
+        )
         row += 1
 
         fmt_row = ctk.CTkFrame(gen, fg_color="transparent")
-        fmt_row.grid(row=row, column=0, sticky="ew", pady=(0, 8))
+        fmt_row.grid(row=row, column=0, sticky="ew", pady=(0, SPACING_SM))
         fmt_row.columnconfigure(0, weight=1)
         fmt_row.columnconfigure(1, weight=1)
         self._lbl_output_format = ctk.CTkLabel(fmt_row, text=s("output_format_lbl"), anchor="w")
+        apply_primary_label_style(self._lbl_output_format)
         self._lbl_output_format.grid(row=0, column=0, sticky="w")
         self._lbl_engine = ctk.CTkLabel(fmt_row, text=s("engine_lbl"), anchor="w")
-        self._lbl_engine.grid(row=0, column=1, sticky="w", padx=(8, 0))
+        apply_primary_label_style(self._lbl_engine)
+        self._lbl_engine.grid(row=0, column=1, sticky="w", padx=(SPACING_SM, 0))
         self._option_output_format = ctk.CTkOptionMenu(
             fmt_row,
             values=["SRT", "SSA"],
             variable=self._output_format_var,
             command=self._on_output_format_change,
         )
+        apply_option_menu_style(self._option_output_format)
         self._option_output_format.grid(row=1, column=0, sticky="ew", pady=(2, 0))
         engine_values = ["Argos"]
         if self._current_settings and self._current_settings.deepl_api_key:
@@ -294,18 +316,23 @@ class GenSubtitlesApp(ctk.CTk):
         self._option_engine = ctk.CTkOptionMenu(
             fmt_row, values=engine_values, variable=self._engine_var,
         )
-        self._option_engine.grid(row=1, column=1, sticky="ew", padx=(8, 0), pady=(2, 0))
+        apply_option_menu_style(self._option_engine)
+        self._option_engine.grid(
+            row=1, column=1, sticky="ew", padx=(SPACING_SM, 0), pady=(2, 0),
+        )
         self._lbl_engine.grid_remove()
         self._option_engine.grid_remove()
         row += 1
 
         self._cue_frame = ctk.CTkFrame(gen, fg_color=p("surface"))
-        self._cue_frame.grid(row=row, column=0, sticky="ew", pady=(8, 8))
+        self._cue_frame.grid(row=row, column=0, sticky="ew", pady=(SPACING_SM, SPACING_SM))
         self._cue_frame.columnconfigure(0, weight=1)
         self._elapsed_label = ctk.CTkLabel(
             self._cue_frame, text="", font=font("clock"), text_color=p("time"), anchor="w",
         )
-        self._elapsed_label.grid(row=0, column=0, sticky="w", padx=16, pady=(12, 0))
+        self._elapsed_label.grid(
+            row=0, column=0, sticky="w", padx=SPACING_LG, pady=(SPACING_MD, 0),
+        )
         self._cue_line = ctk.CTkLabel(
             self._cue_frame,
             text=s("cue_idle"),
@@ -314,16 +341,20 @@ class GenSubtitlesApp(ctk.CTk):
             anchor="center",
             justify="center",
         )
-        self._cue_line.grid(row=1, column=0, sticky="ew", padx=16, pady=(4, 8))
+        self._cue_line.grid(
+            row=1, column=0, sticky="ew", padx=SPACING_LG, pady=(SPACING_XS, SPACING_SM),
+        )
         self._progress_bar = ctk.CTkProgressBar(self._cue_frame, height=PROGRESS_BAR_HEIGHT)
         apply_progress_bar_style(self._progress_bar)
-        self._progress_bar.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 12))
+        self._progress_bar.grid(
+            row=2, column=0, sticky="ew", padx=SPACING_LG, pady=(0, SPACING_MD),
+        )
         self._progress_bar.grid_remove()
         row += 1
 
         self._stage_label = ctk.CTkLabel(gen, text=s("starting_server"), anchor="w")
         apply_stage_label_style(self._stage_label)
-        self._stage_label.grid(row=row, column=0, sticky="w", pady=(0, 4))
+        self._stage_label.grid(row=row, column=0, sticky="w", pady=(0, SPACING_XS))
         row += 1
 
         self._stepper_var = ctk.BooleanVar(value=False)
@@ -333,11 +364,13 @@ class GenSubtitlesApp(ctk.CTk):
             variable=self._stepper_var,
             command=self._on_stepper_toggle,
         )
-        self._stepper_switch.grid(row=row, column=0, sticky="w", pady=(4, 4))
+        self._stepper_switch.grid(
+            row=row, column=0, sticky="w", pady=(SPACING_XS, SPACING_XS),
+        )
         row += 1
 
         self._stepper_frame = ctk.CTkFrame(gen, fg_color="transparent")
-        self._stepper_frame.grid(row=row, column=0, sticky="ew", pady=(0, 8))
+        self._stepper_frame.grid(row=row, column=0, sticky="ew", pady=(0, SPACING_SM))
         self._stepper_frame.columnconfigure((0, 1, 2, 3), weight=1)
         self._step_status_labels: dict[str, ctk.CTkLabel] = {}
         self._step_buttons: dict[str, ctk.CTkButton] = {}
@@ -355,19 +388,22 @@ class GenSubtitlesApp(ctk.CTk):
         }
         for col, key in enumerate(self._step_label_keys):
             cell = ctk.CTkFrame(self._stepper_frame, fg_color="transparent")
-            cell.grid(row=0, column=col, sticky="nsew", padx=4)
+            cell.grid(row=0, column=col, sticky="nsew", padx=SPACING_XS)
             cell.columnconfigure(0, weight=1)
             ctk.CTkLabel(
                 cell, text=str(col + 1), font=font("help"), text_color=p("text_secondary"),
             ).grid(row=0, column=0, sticky="w")
-            name = ctk.CTkLabel(cell, text=s(self._step_label_keys[key]), font=font("body"), anchor="w")
+            name = ctk.CTkLabel(
+                cell, text=s(self._step_label_keys[key]), font=font("body"),
+                text_color=p("text_primary"), anchor="w",
+            )
             name.grid(row=1, column=0, sticky="ew")
             setattr(self, f"_step_name_{key}", name)
             status = ctk.CTkLabel(
                 cell, text=s("step_status_waiting"), font=font("help"),
                 text_color=p("text_secondary"), anchor="w",
             )
-            status.grid(row=2, column=0, sticky="ew", pady=(0, 4))
+            status.grid(row=2, column=0, sticky="ew", pady=(0, SPACING_XS))
             self._step_status_labels[key] = status
             btn = ctk.CTkButton(
                 cell,
@@ -375,7 +411,7 @@ class GenSubtitlesApp(ctk.CTk):
                 command=step_cmds[key],
                 state="disabled",
                 height=BTN_HEIGHT_PRIMARY,
-                text_color_disabled=("#757575", "#9E9E9E"),
+                text_color_disabled=_disabled,
             )
             apply_secondary_btn_style(btn)
             btn.grid(row=3, column=0, sticky="ew")
@@ -384,7 +420,7 @@ class GenSubtitlesApp(ctk.CTk):
         row += 1
 
         btn_row = ctk.CTkFrame(gen, fg_color="transparent")
-        btn_row.grid(row=row, column=0, sticky="ew", pady=(8, 4))
+        btn_row.grid(row=row, column=0, sticky="ew", pady=(SPACING_SM, SPACING_XS))
         btn_row.columnconfigure(0, weight=1)
         btn_row.columnconfigure(1, weight=1)
         self._btn_generate = ctk.CTkButton(
@@ -393,20 +429,20 @@ class GenSubtitlesApp(ctk.CTk):
             command=self._on_generate,
             state="disabled",
             height=BTN_HEIGHT_PRIMARY,
-            text_color_disabled=("#757575", "#9E9E9E"),
+            text_color_disabled=_disabled,
         )
         apply_accent_btn_style(self._btn_generate)
-        self._btn_generate.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        self._btn_generate.grid(row=0, column=0, sticky="ew", padx=(0, SPACING_XS))
         self._btn_clear = ctk.CTkButton(
             btn_row,
             text=s("generate_clear_btn"),
             command=self._on_clear,
             state="disabled",
             height=BTN_HEIGHT_PRIMARY,
-            text_color_disabled=("#757575", "#9E9E9E"),
+            text_color_disabled=_disabled,
         )
         apply_secondary_btn_style(self._btn_clear)
-        self._btn_clear.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        self._btn_clear.grid(row=0, column=1, sticky="ew", padx=(SPACING_XS, 0))
         for var in (self._input_var, self._output_var, self._target_lang_var):
             var.trace_add("write", lambda *_: self._update_clear_state())
         row += 1
@@ -416,30 +452,31 @@ class GenSubtitlesApp(ctk.CTk):
             text=s("cancel_btn"),
             command=self._on_cancel,
             height=BTN_HEIGHT_CANCEL,
-            text_color_disabled=("#757575", "#9E9E9E"),
+            text_color_disabled=_disabled,
         )
         apply_cancel_btn_style(self._btn_cancel)
-        self._btn_cancel.grid(row=row, column=0, sticky="ew", pady=(4, 0))
+        self._btn_cancel.grid(row=row, column=0, sticky="ew", pady=(SPACING_XS, 0))
         self._btn_cancel.grid_remove()
         row += 1
 
         self._open_folder_row = row
         row += 1
 
-        self._log_label = ctk.CTkLabel(gen, text=s("log_lbl"), anchor="w", font=font("help"))
+        # Pinned log below the scrollable form
+        self._log_label = ctk.CTkLabel(outer, text=s("log_lbl"), anchor="w", font=font("help"))
         apply_secondary_label_style(self._log_label)
-        self._log_label.grid(row=row, column=0, sticky="w", pady=(8, 2))
-        row += 1
+        self._log_label.grid(row=1, column=0, sticky="w", pady=(SPACING_SM, 2))
         self._log_textbox = ctk.CTkTextbox(
-            gen,
+            outer,
             state="disabled",
-            height=90,
+            height=LOG_MIN_HEIGHT,
             fg_color=p("input_bg"),
+            text_color=p("text_primary"),
             font=font("mono"),
             activate_scrollbars=True,
         )
-        self._log_textbox.grid(row=row, column=0, sticky="nsew", pady=(0, 4))
-        gen.rowconfigure(row, weight=1)
+        self._log_textbox.grid(row=2, column=0, sticky="nsew", pady=(0, SPACING_XS))
+        outer.rowconfigure(2, weight=0, minsize=LOG_MIN_HEIGHT)
 
         self._step_audio_path: Path | None = None
         self._step_transcription_path: Path | None = None
@@ -819,10 +856,11 @@ class GenSubtitlesApp(ctk.CTk):
     def _build_menu_bar(self) -> None:
         import tkinter as tk  # noqa: PLC0415
 
+        _menu_font = menu_font_tuple()
         _menu_cfg = dict(
             bg=p("menu_bg"), fg=p("menu_fg"),
             activebackground=p("menu_active_bg"), activeforeground=p("menu_fg"),
-            bd=0, tearoff=0,
+            bd=0, tearoff=0, font=_menu_font,
         )
         menubar = tk.Menu(self, **{k: v for k, v in _menu_cfg.items() if k != "tearoff"})
         self.configure(menu=menubar)
@@ -830,13 +868,13 @@ class GenSubtitlesApp(ctk.CTk):
 
         # Settings menu
         settings_menu = tk.Menu(menubar, **_menu_cfg)
-        menubar.add_cascade(label="Settings", menu=settings_menu)
+        menubar.add_cascade(label="Settings", menu=settings_menu, font=_menu_font)
         settings_menu.add_command(label="Preferences\u2026", command=self._show_settings)
         settings_menu.add_command(label=s("menu_color_palette"), command=self._show_palette_panel)
 
         # Help menu (stubs \u2014 Plan 06 will implement the dialog bodies)
         help_menu = tk.Menu(menubar, **_menu_cfg)
-        menubar.add_cascade(label="Help", menu=help_menu)
+        menubar.add_cascade(label="Help", menu=help_menu, font=_menu_font)
         help_menu.add_command(label="Tutorial", command=self._show_tutorial)
         help_menu.add_command(label="Available Languages", command=self._show_language_pairs)
         help_menu.add_separator()
@@ -860,18 +898,24 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_settings_program.grid(row=1, column=0, columnspan=3, sticky="w", padx=12, pady=(8, 4))
 
         self._lbl_appearance_mode = ctk.CTkLabel(sf, text=s("appearance_lbl"))
+        apply_primary_label_style(self._lbl_appearance_mode)
         self._lbl_appearance_mode.grid(row=2, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_appearance_var = ctk.StringVar(value="System")
-        ctk.CTkOptionMenu(
+        self._settings_appearance_menu = ctk.CTkOptionMenu(
             sf, values=["System", "Light", "Dark"], variable=self._settings_appearance_var,
-        ).grid(row=2, column=1, sticky="ew", padx=(0, 12), pady=6)
+        )
+        apply_option_menu_style(self._settings_appearance_menu)
+        self._settings_appearance_menu.grid(row=2, column=1, sticky="ew", padx=(0, 12), pady=6)
 
         self._lbl_ui_language_setting = ctk.CTkLabel(sf, text=s("ui_lang_lbl"))
+        apply_primary_label_style(self._lbl_ui_language_setting)
         self._lbl_ui_language_setting.grid(row=3, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_lang_var = ctk.StringVar(value="English")
-        ctk.CTkOptionMenu(
+        self._settings_lang_menu = ctk.CTkOptionMenu(
             sf, values=["English", "Spanish"], variable=self._settings_lang_var,
-        ).grid(row=3, column=1, sticky="ew", padx=(0, 12), pady=6)
+        )
+        apply_option_menu_style(self._settings_lang_menu)
+        self._settings_lang_menu.grid(row=3, column=1, sticky="ew", padx=(0, 12), pady=6)
 
         self._lbl_default_outdir = ctk.CTkLabel(sf, text=s("default_outdir_lbl"))
         self._lbl_default_outdir.grid(row=4, column=0, sticky="w", padx=(12, 8), pady=6)
@@ -897,6 +941,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._lbl_subtitle_style = self._lbl_settings_caption
 
         self._lbl_font_family = ctk.CTkLabel(sf, text=s("font_family_lbl"))
+        apply_primary_label_style(self._lbl_font_family)
         self._lbl_font_family.grid(row=7, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_font_var = ctk.StringVar(value="Arial")
         self._settings_font_menu = ctk.CTkOptionMenu(
@@ -905,9 +950,11 @@ class GenSubtitlesApp(ctk.CTk):
             variable=self._settings_font_var,
             command=self._refresh_caption_preview,
         )
+        apply_option_menu_style(self._settings_font_menu)
         self._settings_font_menu.grid(row=7, column=1, sticky="ew", padx=(0, 12), pady=6)
 
         self._lbl_font_size = ctk.CTkLabel(sf, text=s("font_size_lbl"))
+        apply_primary_label_style(self._lbl_font_size)
         self._lbl_font_size.grid(row=8, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_font_size_var = ctk.StringVar(value="20")
         self._settings_font_size_entry = ctk.CTkEntry(
@@ -918,6 +965,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._settings_font_size_var.trace_add("write", lambda *_: self._refresh_caption_preview())
 
         self._lbl_text_color = ctk.CTkLabel(sf, text=s("text_color_lbl"))
+        apply_primary_label_style(self._lbl_text_color)
         self._lbl_text_color.grid(row=9, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_text_color_var = ctk.StringVar(value="#FFFFFF")
         self._btn_text_color_swatch = ctk.CTkButton(
@@ -929,6 +977,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._btn_text_color_swatch.grid(row=9, column=1, sticky="w", padx=(0, 12), pady=6)
 
         self._lbl_outline_color = ctk.CTkLabel(sf, text=s("outline_color_lbl"))
+        apply_primary_label_style(self._lbl_outline_color)
         self._lbl_outline_color.grid(row=10, column=0, sticky="w", padx=(12, 8), pady=6)
         self._settings_outline_color_var = ctk.StringVar(value="#000000")
         self._btn_outline_color_swatch = ctk.CTkButton(
@@ -1027,15 +1076,17 @@ class GenSubtitlesApp(ctk.CTk):
         self._palette_active_lbl = ctk.CTkLabel(pf, text=s("palette_active_lbl"), anchor="w")
         self._palette_active_lbl.grid(row=1, column=0, sticky="w", padx=12, pady=(4, 2))
 
-        self._palette_name_var = ctk.StringVar(value=(
+        _saved_palette = (
             self._current_settings.active_palette if self._current_settings else "Default Dark"
-        ))
+        )
+        self._palette_name_var = ctk.StringVar(value=resolve_palette_name(_saved_palette))
         self._palette_dropdown = ctk.CTkOptionMenu(
             pf,
             values=list(_theme.PALETTE_NAMES),
             variable=self._palette_name_var,
             command=self._on_palette_selected,
         )
+        apply_option_menu_style(self._palette_dropdown)
         self._palette_dropdown.grid(row=2, column=0, columnspan=3, sticky="ew", padx=12, pady=(0, 12))
 
         # Token swatch rows — one per token key
@@ -1166,15 +1217,21 @@ class GenSubtitlesApp(ctk.CTk):
             if swatch_color != base_tokens.get(token_key, "").upper():
                 palette_overrides[token_key] = swatch_color
 
+        palette_name = resolve_palette_name(palette_name)
+        appearance = appearance_mode_for_palette(palette_name)
         if self._current_settings is not None:
             self._current_settings = dataclasses.replace(
                 self._current_settings,
                 active_palette=palette_name,
                 palette_overrides=palette_overrides,
+                appearance_mode=appearance,
             )
             save_settings(self._current_settings)
+            if hasattr(self, "_settings_appearance_var"):
+                self._settings_appearance_var.set(appearance)
 
         _theme.set_active_palette(palette_name, palette_overrides)
+        ctk.set_appearance_mode(appearance)
         self._apply_theme()
         self._hide_palette_panel()
 
@@ -1205,6 +1262,7 @@ class GenSubtitlesApp(ctk.CTk):
         tf.columnconfigure(0, weight=1)
 
         self._lbl_tl_input_sub = ctk.CTkLabel(tf, text=s("input_sub_lbl"), anchor="w")
+        apply_primary_label_style(self._lbl_tl_input_sub)
         self._lbl_tl_input_sub.grid(row=0, column=0, sticky="w", pady=(0, 2))
         in_row = ctk.CTkFrame(tf, fg_color="transparent")
         in_row.grid(row=1, column=0, sticky="ew", pady=(0, 8))
@@ -1220,6 +1278,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_btn_browse.grid(row=0, column=1, padx=(8, 0))
 
         self._lbl_tl_output_path = ctk.CTkLabel(tf, text=s("output_path_lbl"), anchor="w")
+        apply_primary_label_style(self._lbl_tl_output_path)
         self._lbl_tl_output_path.grid(row=2, column=0, sticky="w", pady=(0, 2))
         out_row = ctk.CTkFrame(tf, fg_color="transparent")
         out_row.grid(row=3, column=0, sticky="ew", pady=(0, 8))
@@ -1235,20 +1294,24 @@ class GenSubtitlesApp(ctk.CTk):
         self._tl_btn_browse_out.grid(row=0, column=1, padx=(8, 0))
 
         self._lbl_tl_source_lang = ctk.CTkLabel(tf, text=s("source_lang_lbl"), anchor="w")
+        apply_primary_label_style(self._lbl_tl_source_lang)
         self._lbl_tl_source_lang.grid(row=4, column=0, sticky="w", pady=(0, 2))
         self._tl_source_var = ctk.StringVar(value="English")
         self._tl_option_source = ctk.CTkOptionMenu(
             tf, values=["English"], variable=self._tl_source_var,
         )
+        apply_option_menu_style(self._tl_option_source)
         self._tl_option_source.grid(row=5, column=0, sticky="ew", pady=(0, 8))
 
         self._lbl_tl_target_lang = ctk.CTkLabel(tf, text=s("target_lang_lbl"), anchor="w")
+        apply_primary_label_style(self._lbl_tl_target_lang)
         self._lbl_tl_target_lang.grid(row=6, column=0, sticky="w", pady=(0, 2))
         self._tl_target_var = ctk.StringVar(value="Spanish")
         self._tl_option_target = ctk.CTkOptionMenu(
             tf, values=["Spanish"], variable=self._tl_target_var,
             command=self._on_tl_target_lang_change,
         )
+        apply_option_menu_style(self._tl_option_target)
         self._tl_option_target.grid(row=7, column=0, sticky="ew", pady=(0, 8))
 
         self._tl_convert_only_var = ctk.BooleanVar(value=False)
@@ -1396,6 +1459,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._transcribe_option_source = ctk.CTkOptionMenu(
             frame, values=["Auto-detect"], variable=self._source_lang_var,
         )
+        apply_option_menu_style(self._transcribe_option_source)
         self._transcribe_option_source.grid(row=3, column=0, sticky="ew", padx=12, pady=(0, 8))
 
         # Action + clear buttons
@@ -1468,6 +1532,7 @@ class GenSubtitlesApp(ctk.CTk):
             variable=self._translate_step_source_var,
             command=self._on_translate_step_source_change,
         )
+        apply_option_menu_style(self._translate_step_option_source)
         self._translate_step_option_source.grid(row=3, column=0, sticky="ew", padx=12, pady=(0, 8))
 
         # Target language
@@ -1477,6 +1542,7 @@ class GenSubtitlesApp(ctk.CTk):
             frame, values=["No target"], variable=self._translate_step_target_var,
             command=self._on_translate_step_target_change,
         )
+        apply_option_menu_style(self._translate_step_option_target)
         self._translate_step_option_target.grid(row=5, column=0, sticky="ew", padx=12, pady=(0, 8))
 
         # Engine dropdown (hidden initially)
@@ -1490,6 +1556,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._translate_step_option_engine = ctk.CTkOptionMenu(
             frame, values=_engine_values, variable=self._translate_step_engine_var,
         )
+        apply_option_menu_style(self._translate_step_option_engine)
         self._translate_step_option_engine.grid(row=7, column=0, sticky="ew", padx=12, pady=(0, 8))
         self._translate_step_lbl_engine.grid_remove()
         self._translate_step_option_engine.grid_remove()
@@ -1581,6 +1648,7 @@ class GenSubtitlesApp(ctk.CTk):
         self._write_option_format = ctk.CTkOptionMenu(
             frame, values=["SRT", "SSA"], variable=self._write_format_var,
         )
+        apply_option_menu_style(self._write_option_format)
         self._write_option_format.grid(row=5, column=0, sticky="ew", padx=12, pady=(0, 8))
 
         # Action + clear buttons
@@ -2236,6 +2304,7 @@ class GenSubtitlesApp(ctk.CTk):
         set_appearance_mode() is called, but colours passed as explicit hex
         strings in constructors are static and must be refreshed here.
         """
+        _disabled = p("text_secondary")
         apply_window_bg(self)
         if hasattr(self, "_cue_frame"):
             self._cue_frame.configure(fg_color=p("surface"))
@@ -2243,6 +2312,42 @@ class GenSubtitlesApp(ctk.CTk):
             self._elapsed_label.configure(text_color=p("time"), font=font("clock"))
         if hasattr(self, "_tl_elapsed_label"):
             self._tl_elapsed_label.configure(text_color=p("time"), font=font("clock"))
+        if hasattr(self, "_cue_line"):
+            # Preserve saved cue styling when showing the idle invitation only.
+            try:
+                if self._cue_line.cget("text") == s("cue_idle"):
+                    self._cue_line.configure(text_color=p("text_primary"), font=font("body"))
+            except Exception:  # noqa: BLE001
+                self._cue_line.configure(text_color=p("text_primary"))
+
+        # Primary form labels
+        for _lbl_attr in (
+            "_lbl_input_video", "_lbl_output_file", "_lbl_source_lang", "_lbl_target_lang",
+            "_lbl_output_format", "_lbl_engine",
+            "_lbl_tl_input_sub", "_lbl_tl_output_path", "_lbl_tl_source_lang", "_lbl_tl_target_lang",
+            "_lbl_appearance_mode", "_lbl_ui_language_setting", "_lbl_default_outdir",
+            "_lbl_clear_console", "_lbl_font_family", "_lbl_font_size",
+            "_lbl_text_color", "_lbl_outline_color",
+            "_palette_active_lbl", "_palette_header_lbl",
+        ):
+            _lbl = getattr(self, _lbl_attr, None)
+            if _lbl is not None:
+                apply_primary_label_style(_lbl)
+
+        for _key in getattr(self, "_step_label_keys", {}):
+            _name = getattr(self, f"_step_name_{_key}", None)
+            if _name is not None:
+                apply_primary_label_style(_name)
+            _status = self._step_status_labels.get(_key) if hasattr(self, "_step_status_labels") else None
+            if _status is not None:
+                # Keep "done" amber; waiting/idle stay secondary.
+                try:
+                    if _status.cget("text") == s("step_status_done"):
+                        _status.configure(text_color=p("time"))
+                    else:
+                        apply_secondary_label_style(_status)
+                except Exception:  # noqa: BLE001
+                    apply_secondary_label_style(_status)
 
         # Entry fields
         for entry in (
@@ -2251,26 +2356,56 @@ class GenSubtitlesApp(ctk.CTk):
         ):
             apply_entry_style(entry)
 
+        # Option menus
+        for _om_attr in (
+            "_option_source_lang", "_option_target_lang", "_option_output_format", "_option_engine",
+            "_tl_option_source", "_tl_option_target",
+            "_settings_appearance_menu", "_settings_lang_menu", "_settings_font_menu",
+            "_palette_dropdown",
+            "_transcribe_option_source",
+            "_translate_step_option_source", "_translate_step_option_target",
+            "_translate_step_option_engine", "_write_option_format",
+        ):
+            _om = getattr(self, _om_attr, None)
+            if _om is not None:
+                apply_option_menu_style(_om)
+
         # Accent (primary) buttons
         for btn in (self._btn_generate, self._tl_btn_translate):
             apply_accent_btn_style(btn)
+            btn.configure(text_color_disabled=_disabled)
 
         # Secondary buttons
         apply_secondary_btn_style(self._btn_clear)
+        self._btn_clear.configure(text_color_disabled=_disabled)
+        apply_secondary_btn_style(self._btn_browse_input)
+        apply_secondary_btn_style(self._btn_browse_output)
+        if hasattr(self, "_tl_btn_browse"):
+            apply_secondary_btn_style(self._tl_btn_browse)
+        if hasattr(self, "_tl_btn_browse_out"):
+            apply_secondary_btn_style(self._tl_btn_browse_out)
+        for _btn in getattr(self, "_step_buttons", {}).values():
+            apply_secondary_btn_style(_btn)
+            _btn.configure(text_color_disabled=_disabled)
+        if hasattr(self, "_btn_open_folder"):
+            apply_secondary_btn_style(self._btn_open_folder)
 
         # Log textboxes — apply fg_color for theme switch
         for _tb_attr in ("_log_textbox", "_extract_log_textbox", "_transcribe_log_textbox",
                          "_translate_step_log_textbox", "_write_log_textbox"):
             _tb = getattr(self, _tb_attr, None)
             if _tb is not None:
-                _tb.configure(fg_color=p("input_bg"))
+                _tb.configure(fg_color=p("input_bg"), text_color=p("text_primary"))
 
         # Cancel button
         apply_cancel_btn_style(self._btn_cancel)
+        self._btn_cancel.configure(text_color_disabled=_disabled)
 
         # Stage / status labels
         apply_stage_label_style(self._stage_label)
         apply_stage_label_style(self._tl_stage_label)
+        if hasattr(self, "_log_label"):
+            apply_secondary_label_style(self._log_label)
 
         # Progress bars — reset to idle colour only (active colour is set dynamically)
         for pb in (self._progress_bar, self._tl_progress_bar):
@@ -2286,24 +2421,34 @@ class GenSubtitlesApp(ctk.CTk):
             apply_entry_style(self._settings_outdir_entry)
         if hasattr(self, "_settings_font_size_entry"):
             apply_entry_style(self._settings_font_size_entry)
-        if hasattr(self, "_lbl_subtitle_style"):
-            apply_secondary_label_style(self._lbl_subtitle_style)
         if hasattr(self, "_settings_header_lbl"):
             apply_settings_header_style(self._settings_header_lbl)
+        if hasattr(self, "_lbl_settings_program"):
+            apply_settings_header_style(self._lbl_settings_program)
+        if hasattr(self, "_lbl_settings_caption"):
+            apply_settings_header_style(self._lbl_settings_caption)
         if hasattr(self, "_btn_open_config_folder"):
             apply_secondary_btn_style(self._btn_open_config_folder)
         if hasattr(self, "_lbl_config_path_label"):
             apply_secondary_label_style(self._lbl_config_path_label)
         if hasattr(self, "_lbl_config_path_value"):
             apply_secondary_label_style(self._lbl_config_path_value)
+        if hasattr(self, "_btn_palette_save"):
+            apply_accent_btn_style(self._btn_palette_save)
+        if hasattr(self, "_btn_palette_reset"):
+            apply_secondary_btn_style(self._btn_palette_reset)
+        if hasattr(self, "_btn_palette_back"):
+            apply_secondary_btn_style(self._btn_palette_back)
 
         # tkinter Menu bar (not a CTK widget — must be reconfigured manually)
         if hasattr(self, "_menubar") and hasattr(self, "_menus"):
+            _menu_font = menu_font_tuple()
             _menu_clr = {
                 "bg": p("menu_bg"),
                 "fg": p("menu_fg"),
                 "activebackground": p("menu_active_bg"),
                 "activeforeground": p("menu_fg"),
+                "font": _menu_font,
             }
             self._menubar.configure(**_menu_clr)
             for menu in self._menus:
@@ -2400,9 +2545,28 @@ class GenSubtitlesApp(ctk.CTk):
             from gensubtitles.core.settings import AppSettings, load_settings  # noqa: PLC0415
 
             self._current_settings = load_settings()
-            ctk.set_appearance_mode(self._current_settings.appearance_mode)
-            # Apply saved palette BEFORE building UI so p() resolves correctly (D-06)
+            import dataclasses  # noqa: PLC0415
             from gensubtitles.gui import theme as _theme  # noqa: PLC0415
+
+            # Migrate legacy palette names (Ocean Dark → Nord, etc.)
+            from gensubtitles.core.settings import save_settings  # noqa: PLC0415
+
+            resolved = resolve_palette_name(self._current_settings.active_palette)
+            if resolved != self._current_settings.active_palette:
+                self._current_settings = dataclasses.replace(
+                    self._current_settings, active_palette=resolved,
+                )
+                try:
+                    save_settings(self._current_settings)
+                except Exception as persist_exc:  # noqa: BLE001
+                    logger.warning("Could not persist migrated palette name: %s", persist_exc)
+            # Named palettes drive CTk appearance so unthemed widgets stay readable
+            if resolved not in ("Default Dark", "Default Light"):
+                appearance = appearance_mode_for_palette(resolved)
+                ctk.set_appearance_mode(appearance)
+            else:
+                ctk.set_appearance_mode(self._current_settings.appearance_mode)
+            # Apply saved palette BEFORE building UI so p() resolves correctly (D-06)
             _theme.set_active_palette(
                 self._current_settings.active_palette,
                 self._current_settings.palette_overrides,
